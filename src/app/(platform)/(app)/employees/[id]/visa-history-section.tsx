@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { Select } from "@/components/ui/Select";
 import { addVisaApplicationAction, removeVisaApplicationAction } from "./actions";
+import { readOtherDoc } from "@/components/otherDocRead";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { shrinkImage } from "@/lib/compressImage";
 import { Paperclip, X } from "lucide-react";
@@ -70,7 +71,14 @@ export function VisaHistorySection({
 
   async function onPick(picked: File | null) {
     setError(null);
-    setFile(picked ? await shrinkImage(picked) : null);
+    const f = picked ? await shrinkImage(picked) : null;
+    setFile(f);
+    // Read the number and expiry off the file into the notes for the person to check; nothing is saved until they press Add.
+    if (f && notesRef.current && !notesRef.current.value) {
+      const read = await readOtherDoc(f);
+      const parts = [read?.docNumber && `Number ${read.docNumber}`, read?.expiry && `valid until ${read.expiry.split("-").reverse().join("/")}`].filter(Boolean);
+      if (parts.length && notesRef.current && !notesRef.current.value) notesRef.current.value = parts.join(", ");
+    }
   }
 
   function handleRemove(entryId: string) {

@@ -80,10 +80,13 @@ export function InlineDocumentUpload({
   }
 
   function fileDocument(file: File, expiryDate: string, fields: ExtractedDocumentFields | null) {
+    // No expiry typed: file the document under the one read from it (the person can correct it on the record afterwards).
+    const readExpiry = expiryFieldName ? ((fields as Record<string, unknown> | null)?.[expiryFieldName] as string | undefined) : undefined;
+    const filedExpiry = expiryDate || (readExpiry && /^\d{4}-\d{2}-\d{2}$/.test(readExpiry) ? readExpiry : "");
     const formData = new FormData();
     formData.append("employeeId", employeeId);
     formData.append("type", type);
-    formData.append("expiryDate", expiryDate);
+    formData.append("expiryDate", filedExpiry);
     formData.append("file", file);
     startTransition(() => {
       uploadDocumentAction(formData);

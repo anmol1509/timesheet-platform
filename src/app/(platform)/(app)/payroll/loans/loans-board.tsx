@@ -9,6 +9,7 @@ import { Badge, type BadgeColor } from "@/components/Badge";
 import { approveAdvanceAction, cancelLoanAction, createLoanAction, markAdvanceGivenAction, rejectAdvanceAction, setLoanPlanAction } from "../pay-items-actions";
 import { MonthInput } from "@/components/ui/MonthInput";
 import { NumberInput } from "@/components/ui/NumberInput";
+import { readOtherDoc } from "@/components/otherDocRead";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { ADVANCE_METHODS } from "@/lib/advances";
 import { ReceiptButton } from "./receipt-button";
@@ -113,6 +114,14 @@ function addOne(month: string) {
 }
 
 function GivenForm({ row, onDone }: { row: LoanRow; onDone: () => void }) {
+  // A transfer slip or voucher: its number goes in the reference box for the person to check.
+  const [reference, setReference] = useState("");
+  const [refNote, setRefNote] = useState(false);
+  async function readProof(file: File | undefined) {
+    if (!file || reference) return;
+    const read = await readOtherDoc(file);
+    if (read?.docNumber) { setReference((r) => r || read.docNumber.slice(0, 80)); setRefNote(true); }
+  }
   const [state, action, pending] = useActionState(
     async (prev: State, fd: FormData) => {
       const res = await markAdvanceGivenAction(fd);
@@ -127,8 +136,8 @@ function GivenForm({ row, onDone }: { row: LoanRow; onDone: () => void }) {
       <input type="hidden" name="id" value={row.id} />
       <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Day it was handed over *</span><DatePicker name="givenDate" defaultValue={today()} /></label>
       <label className="block"><span className="mb-1 block text-xs font-medium text-muted">How was it paid?</span><Select name="method" defaultValue="CASH" searchable={false} options={ADVANCE_METHODS.map(([value, label]) => ({ value, label }))} /></label>
-      <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Reference (voucher or transfer number, optional)</span><input name="reference" className="input w-full" maxLength={80} /></label>
-      <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Attach proof (signed voucher, transfer slip… optional, up to 5)</span><input type="file" name="files" multiple accept="application/pdf,image/*" className="input w-full" /></label>
+      <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Reference (voucher or transfer number, optional)</span><input name="reference" value={reference} onChange={(e) => setReference(e.target.value)} className="input w-full" maxLength={80} />{refNote && <span className="mt-1 block text-xs text-muted">Read from the attached file. Check it before saving.</span>}</label>
+      <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Attach proof (signed voucher, transfer slip… optional, up to 5)</span><input type="file" name="files" multiple accept="application/pdf,image/*" className="input w-full" onChange={(e) => void readProof(e.target.files?.[0])} /></label>
       <p className="text-xs text-muted">Deduction from payroll follows the plan&apos;s months once this is recorded, even for an earlier pay month (salary paid late). The day cannot be changed afterwards.</p>
       <div className="flex items-center gap-3">
         <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? "Saving…" : "Record as given"}</button>

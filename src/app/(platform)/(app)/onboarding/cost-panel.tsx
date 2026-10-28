@@ -15,7 +15,7 @@ const aed = (n: number) => `AED ${n.toLocaleString("en-US", { minimumFractionDig
 const lbl = "mb-1 block text-xs font-medium text-muted";
 
 /** What this candidate has cost so far (agency fee, visa and permit fees, medical, ticket), with paid and outstanding. */
-export function CostPanel({ candidateId, costs }: { candidateId: string; costs: Cost[] }) {
+export function CostPanel({ candidateId, costs, canEdit = true }: { candidateId: string; costs: Cost[]; canEdit?: boolean }) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const totals = costTotals(costs);
@@ -49,19 +49,19 @@ export function CostPanel({ candidateId, costs }: { candidateId: string; costs: 
                 <span className="ml-2 text-xs text-muted">{new Date(c.incurredOn).toLocaleDateString("en-GB")}{c.note ? ` · ${c.note}` : ""}</span>
               </span>
               <span className="tabular text-primary">{aed(c.amount)}</span>
-              <form action={toggleCostPaidAction}>
+              {canEdit ? <form action={toggleCostPaidAction}>
                 <input type="hidden" name="costId" value={c.id} />
                 <button type="submit" className={c.paid ? "text-xs font-medium text-[var(--success)] hover:underline" : "text-xs font-medium text-[var(--warning-text,#92400e)] hover:underline"} title="Click to change">{c.paid ? "Paid" : "Owing"}</button>
-              </form>
-              <form action={deleteCostAction}>
+              </form> : <span className="text-xs text-muted">{c.paid ? "Paid" : "Owing"}</span>}
+              {canEdit && <form action={deleteCostAction}>
                 <input type="hidden" name="costId" value={c.id} />
                 <button type="submit" className="text-subtle hover:text-[var(--error)]" aria-label={`Remove ${COST_KIND_LABEL[c.kind] ?? c.kind}`}><Trash2 className="h-4 w-4" aria-hidden /></button>
-              </form>
+              </form>}
             </li>
           ))}
         </ul>
       )}
-      <form ref={formRef} action={action} className="grid gap-3 border-t border-default bg-surface-subtle px-4 py-3 sm:grid-cols-[12rem_8rem_9rem_1fr_auto] sm:items-end">
+      {canEdit && <form ref={formRef} action={action} className="grid grid-cols-1 gap-3 border-t border-default bg-surface-subtle px-4 py-3 sm:grid-cols-[12rem_8rem_9rem_1fr_auto] sm:items-end">
         <label className="block"><span className={lbl}>For</span><Select name="kind" defaultValue="AGENCY_FEE" searchable={false} options={COST_KINDS.map((k) => ({ value: k.value, label: k.label }))} /></label>
         <label className="block"><span className={lbl}>Amount (AED)</span><input name="amount" inputMode="decimal" required className="input w-full" placeholder="0.00" /></label>
         <label className="block"><span className={lbl}>Date</span><DatePicker name="incurredOn" defaultValue={new Date().toISOString().slice(0, 10)} className="w-full" /></label>
@@ -71,7 +71,7 @@ export function CostPanel({ candidateId, costs }: { candidateId: string; costs: 
           <button type="submit" className="btn btn-primary btn-sm" disabled={pending}>{pending ? "Adding…" : "Add cost"}</button>
         </div>
         {state.error && <p role="alert" className="text-sm text-[var(--error)] sm:col-span-full">{state.error}</p>}
-      </form>
+      </form>}
     </div>
   );
 }

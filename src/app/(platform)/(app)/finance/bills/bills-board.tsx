@@ -17,6 +17,7 @@ import type { SupplierMonthPayable } from "@/lib/supplierMonthPayable";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { MonthInput } from "@/components/ui/MonthInput";
 import { NumberInput } from "@/components/ui/NumberInput";
+import { readFields } from "@/components/readFields";
 
 type State = { error: string | null; ok?: boolean };
 export type BillRow = {
@@ -62,15 +63,33 @@ function BillForm({ suppliers, onDone }: { suppliers: { id: string; name: string
   }, [supplierId, month]);
 
   const today = new Date().toISOString().slice(0, 10);
+  // What the AI read from a bill file, for the person to check. The uncontrolled boxes remount (fillKey) to show it.
+  const [billDate, setBillDate] = useState(today);
+  const [dueDate, setDueDate] = useState("");
+  const [fill, setFill] = useState({ billNo: "", amount: "", vat: "0", description: "" });
+  const [fillKey, setFillKey] = useState(0);
+  const [readNote, setReadNote] = useState<string | null>(null);
+  async function readBill(file: File | undefined) {
+    if (!file) return;
+    setReadNote("Reading the bill…");
+    const f = await readFields("/api/finance/read-bill", file);
+    if (!f) { setReadNote("Couldn\u2019t read that file. You can fill the bill in by hand."); return; }
+    if (f.date) setBillDate(f.date);
+    if (f.dueDate) setDueDate(f.dueDate);
+    setFill({ billNo: f.invoiceNo ?? "", amount: f.amount ?? "", vat: f.vat || "0", description: f.description ?? "" });
+    setFillKey((k) => k + 1);
+    setReadNote(f.invoiceNo || f.amount || f.date ? "Filled in from the bill. Check every figure before adding it." : "Nothing could be read from that file.");
+  }
   const dup = state.error?.startsWith("DUPLICATE:");
   const useSheet = () => { if (amountRef.current && sheet) { amountRef.current.value = String(sheet.net); amountRef.current.dispatchEvent(new Event("input", { bubbles: true })); } };
   return (
     <form onSubmit={keepInput(action)} className="mt-4 space-y-3">
       {allowDuplicate && <input type="hidden" name="allowDuplicate" value="1" />}
+      <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Have the bill as a file? Read it to fill this in <span className="font-normal">(optional; PDF or image, up to 4 MB)</span></span><input type="file" accept="application/pdf,image/jpeg,image/png,image/webp" className="file-input w-full" onChange={(e) => void readBill(e.target.files?.[0])} />{readNote && <span className="mt-1 block text-xs text-muted">{readNote}</span>}</label>
       <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Supplier</span><Select name="supplierId" placeholder="Choose a supplier…" value={supplierId} onChange={(v) => { setSupplierId(v); setSheet(null); }} options={suppliers.map((s) => ({ value: s.id, label: s.name }))} /></label>
       <div className="grid grid-cols-2 gap-3">
         <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Month the bill covers *</span><MonthInput name="periodMonth" value={month} onChange={(v) => { setMonth(v); setSheet(null); }} required className="w-full" /></label>
-        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Bill number *</span><input name="billNo" required className="input w-full" /></label>
+        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Bill number *</span><input key={`bn-${fillKey}`} name="billNo" required defaultValue={fill.billNo} className="input w-full" /></label>
       </div>
       {supplierId && month && (
         <div className="rounded-control border border-default bg-surface-subtle p-3 text-sm">
@@ -91,12 +110,12 @@ function BillForm({ suppliers, onDone }: { suppliers: { id: string; name: string
         </div>
       )}
       <div className="grid grid-cols-2 gap-3">
-        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Bill date *</span><DatePicker name="billDate" defaultValue={today} required className="w-full" /></label>
-        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Due date *</span><DatePicker name="dueDate" required className="w-full" /></label>
-        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Amount (AED, before VAT) *</span><NumberInput key={resetKey} name="amount" required min={0} step={0.01} inputRef={amountRef} className="w-full" /></label>
-        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">VAT (AED)</span><NumberInput name="vatAmount" defaultValue="0" min={0} step={0.01} className="w-full" /></label>
+        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Bill date *</span><DatePicker name="billDate" value={billDate} onChange={setBillDate} required className="w-full" /></label>
+        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Due date *</span><DatePicker name="dueDate" value={dueDate} onChange={setDueDate} required className="w-full" /></label>
+        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Amount (AED, before VAT) *</span><NumberInput key={`${resetKey}-${fillKey}`} name="amount" defaultValue={fill.amount} required min={0} step={0.01} inputRef={amountRef} className="w-full" /></label>
+        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">VAT (AED)</span><NumberInput key={`vat-${fillKey}`} name="vatAmount" defaultValue={fill.vat} min={0} step={0.01} className="w-full" /></label>
       </div>
-      <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Description</span><input name="description" className="input w-full" placeholder="e.g. Labour supply, Aug" /></label>
+      <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Description</span><input key={`d-${fillKey}`} name="description" defaultValue={fill.description} className="input w-full" placeholder="e.g. Labour supply, Aug" /></label>
       <div className="flex flex-wrap items-center gap-3">
         <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? "Saving…" : dup ? "Keep both: add anyway" : "Add bill"}</button>
         {state.error && <p role="alert" className={dup ? "text-sm text-[var(--warning)]" : errCls}>{state.error.replace("DUPLICATE: ", "")}</p>}

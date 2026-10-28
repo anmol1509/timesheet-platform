@@ -9,6 +9,7 @@ import { BILL_STATUS_LABELS, type BillStatus } from "@/lib/payables";
 import { resubmitInvoiceAction, submitInvoiceAction } from "./actions";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { MonthInput } from "@/components/ui/MonthInput";
+import { readFields } from "@/components/readFields";
 import { NumberInput } from "@/components/ui/NumberInput";
 
 type State = { error: string | null; ok?: boolean };
@@ -35,21 +36,37 @@ function InvoiceForm({ row, onDone }: { row?: InvoiceRow; onDone: () => void }) 
     { error: null } as State
   );
   const dup = state.error?.startsWith("DUPLICATE:");
+  // Read from the chosen invoice file for the supplier to check; the boxes remount (fillKey) to show what was read.
+  const [billDate, setBillDate] = useState(row?.billDate ?? new Date().toISOString().slice(0, 10));
+  const [fill, setFill] = useState<{ billNo: string; amount: string | number; vat: string | number; description: string }>({ billNo: row?.billNo ?? "", amount: row?.amount ?? "", vat: row?.vatAmount ?? 0, description: row?.description ?? "" });
+  const [fillKey, setFillKey] = useState(0);
+  const [readNote, setReadNote] = useState<string | null>(null);
+  async function readInvoice(file: File | undefined) {
+    if (!file) return;
+    setReadNote("Reading the invoice…");
+    const f = await readFields("/api/vendor/read", file, { kind: "invoice" });
+    if (!f || !(f.invoiceNo || f.amount || f.date)) { setReadNote(null); return; }
+    if (f.date) setBillDate(f.date);
+    setFill((p) => ({ billNo: f.invoiceNo || p.billNo, amount: f.amount || p.amount, vat: f.vat || p.vat, description: f.description || p.description }));
+    setFillKey((k) => k + 1);
+    setReadNote("Filled in from your invoice. Check the details before submitting.");
+  }
   return (
     <form onSubmit={keepInput(action)} className="mt-4 space-y-3">
       {row && <input type="hidden" name="billId" value={row.id} />}
       {allowDuplicate && <input type="hidden" name="allowDuplicate" value="1" />}
       <div className="grid grid-cols-2 gap-3">
-        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Invoice number *</span><input name="billNo" required defaultValue={row?.billNo} className="input w-full" /></label>
-        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Invoice date *</span><DatePicker name="billDate" defaultValue={row?.billDate ?? new Date().toISOString().slice(0, 10)} required className="w-full" /></label>
+        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Invoice number *</span><input key={`bn-${fillKey}`} name="billNo" required defaultValue={fill.billNo} className="input w-full" /></label>
+        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Invoice date *</span><DatePicker name="billDate" value={billDate} onChange={setBillDate} required className="w-full" /></label>
         <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Month it covers *</span><MonthInput name="periodMonth" defaultValue={row?.periodMonth ?? thisMonth()} required className="w-full" /></label>
-        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Amount (AED, before VAT) *</span><NumberInput name="amount" defaultValue={row?.amount} required min={0} step={0.01} className="w-full" /></label>
-        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">VAT (AED)</span><NumberInput name="vatAmount" defaultValue={row?.vatAmount ?? 0} min={0} step={0.01} className="w-full" /></label>
-        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Description</span><input name="description" defaultValue={row?.description ?? ""} className="input w-full" placeholder="e.g. Labour supply, September" /></label>
+        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Amount (AED, before VAT) *</span><NumberInput key={`am-${fillKey}`} name="amount" defaultValue={fill.amount} required min={0} step={0.01} className="w-full" /></label>
+        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">VAT (AED)</span><NumberInput key={`vat-${fillKey}`} name="vatAmount" defaultValue={fill.vat} min={0} step={0.01} className="w-full" /></label>
+        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Description</span><input key={`d-${fillKey}`} name="description" defaultValue={fill.description} className="input w-full" placeholder="e.g. Labour supply, September" /></label>
       </div>
       <label className="block">
         <span className="mb-1 block text-xs font-medium text-muted">{row ? "Attach a corrected copy (optional)" : "Attach your invoice (PDF, JPG or PNG, up to 8MB)"}</span>
-        <input type="file" name="file" accept="application/pdf,image/jpeg,image/png" required={!row} className="file-input w-full" />
+        <input type="file" name="file" accept="application/pdf,image/jpeg,image/png" required={!row} className="file-input w-full" onChange={(e) => void readInvoice(e.target.files?.[0])} />
+        {readNote && <span className="mt-1 block text-xs text-muted">{readNote}</span>}
       </label>
       <div className="flex flex-wrap items-center gap-3">
         <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? "Sending…" : dup ? "Submit anyway" : row ? "Resubmit invoice" : "Submit invoice"}</button>

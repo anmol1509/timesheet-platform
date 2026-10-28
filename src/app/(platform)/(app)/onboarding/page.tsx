@@ -2,7 +2,8 @@ import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
 import { Plus, ListChecks, Handshake } from "lucide-react";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch } from "@/lib/auth";
+import { requireUserWithBranch, subjectOf } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { branchWhere } from "@/lib/branch";
 import { cn } from "@/lib/cn";
 import { STAGES, currentStage, daysSince, isOverdue, papersPending, pendingSince } from "@/lib/onboarding";
@@ -15,7 +16,8 @@ import { Insights } from "@/components/ListSummary";
 export const metadata = { title: "Candidate onboarding" };
 
 export default async function OnboardingPage() {
-  const { branchId } = await requireUserWithBranch();
+  const { user, branchId } = await requireUserWithBranch();
+  const canEdit = can(subjectOf(user), "onboarding.tracker", "edit");
 
   const found = await prisma.candidateOnboarding.findMany({
     where: branchWhere(branchId),
@@ -55,19 +57,21 @@ export default async function OnboardingPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <PageHeader
           title="Candidate onboarding"
           icon={ListChecks}
           description={<>From agency submission through to joining. One status per stage, dated and referenced.</>}
         />
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Link href="/onboarding/agencies" className="btn btn-secondary">
             <Handshake className="h-4 w-4" aria-hidden /> Agencies
           </Link>
-          <Link href="/onboarding/new" className="btn btn-primary">
-            <Plus className="h-4 w-4" aria-hidden /> Add candidate
-          </Link>
+          {canEdit && (
+            <Link href="/onboarding/new" className="btn btn-primary">
+              <Plus className="h-4 w-4" aria-hidden /> Add candidate
+            </Link>
+          )}
         </div>
       </div>
 

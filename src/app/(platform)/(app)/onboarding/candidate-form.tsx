@@ -42,8 +42,9 @@ type Candidate = {
 };
 type State = { error: string | null; ok?: boolean };
 
-function Feedback({ state }: { state: State }) {
+function Feedback({ state, saved }: { state: State; saved?: boolean }) {
   if (state.error) return <p role="alert" className="text-sm text-[var(--error)]">{state.error}</p>;
+  if (saved && state.ok) return <p role="status" className="text-sm text-[var(--success)]">Saved.</p>;
   return null;
 }
 
@@ -73,6 +74,7 @@ export function CandidateForm({
   projects,
   demandRequests,
   hrUsers,
+  readOnly = false,
 }: {
   candidate?: Candidate;
   /** Your own companies: the only ones that can sponsor a hire. */
@@ -82,6 +84,8 @@ export function CandidateForm({
   projects: (Option & { code: string })[];
   demandRequests: DemandOption[];
   hrUsers: Option[];
+  /** A person who may only look: every field is disabled and there is nothing to save. */
+  readOnly?: boolean;
 }) {
   const router = useRouter();
   const [agencyId, setAgencyId] = useState(candidate?.agencyId ?? "");
@@ -98,10 +102,11 @@ export function CandidateForm({
   );
 
   return (
-    <form action={action} className="card max-w-3xl space-y-6 p-5">
+    <form action={action} className="card w-full max-w-3xl min-w-0 space-y-6 p-5">
+      <fieldset disabled={readOnly} className="min-w-0 space-y-6 border-0 p-0">
       <section>
         <SectionHead icon={UserRound} title="Profile" />
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <label className="block sm:col-span-2">
             <span className={label}>Type of hire</span>
             <Select name="candidateType" defaultValue={candidate?.candidateType ?? "OVERSEAS"} searchable={false} options={CANDIDATE_TYPES.map((t) => ({ value: t.value, label: `${t.label}: ${t.hint}` }))} />
@@ -143,7 +148,7 @@ export function CandidateForm({
 
       <section>
         <SectionHead icon={IdCard} title="Identity documents" hint="the passport number is needed before this candidate can be added as an employee; the Emirates ID can come later" />
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <label className="block">
             <span className={label}>Passport number</span>
             <input name="passportNumber" defaultValue={candidate?.passportNumber ?? ""} className="input w-full" />
@@ -157,7 +162,7 @@ export function CandidateForm({
 
       <section>
         <SectionHead icon={Building2} title="Assignment" />
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <label className="block">
             <span className={label}>Agency</span>
             <AgencyPicker
@@ -236,12 +241,15 @@ export function CandidateForm({
         </label>
       </section>
 
-      <div className="flex items-center gap-3 border-t border-default pt-4">
-        <button type="submit" className="btn btn-primary" disabled={pending}>
-          {pending ? "Saving…" : candidate ? "Save changes" : "Add candidate"}
-        </button>
-        <Feedback state={state} />
-      </div>
+      {!readOnly && (
+        <div className="flex items-center gap-3 border-t border-default pt-4">
+          <button type="submit" className="btn btn-primary" disabled={pending}>
+            {pending ? "Saving…" : candidate ? "Save changes" : "Add candidate"}
+          </button>
+          <Feedback state={state} saved={!!candidate} />
+        </div>
+      )}
+      </fieldset>
     </form>
   );
 }

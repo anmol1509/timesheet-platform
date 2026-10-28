@@ -40,6 +40,7 @@ export function StageRow({
   task,
   hrUsers,
   attachments,
+  canEdit = true,
 }: {
   candidateId: string;
   candidateBranchId: string;
@@ -49,8 +50,14 @@ export function StageRow({
   task: Task;
   hrUsers: HrOption[];
   attachments: StageAttachmentRow[];
+  /** False for a person who may only look: the forms are left out. */
+  canEdit?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  // Filled in from an attached file by the AI, for the person to check before saving the step.
+  const [refNo, setRefNo] = useState("");
+  const [expiry, setExpiry] = useState("");
+  const [readNote, setReadNote] = useState(false);
   const router = useRouter();
   // What was submitted, kept so "Save anyway" sends the same values (the form clears itself after a submit).
   const submitted = useRef<FormData | null>(null);
@@ -93,7 +100,7 @@ export function StageRow({
           {task && (task.ownerName || task.dueDate) && (
             <span className={cn("text-[11px]", overdue ? "font-medium text-[var(--error)]" : "text-subtle")}>
               {task.ownerName ? task.ownerName : "Unassigned"}
-              {task.dueDate ? ` · due ${new Date(task.dueDate).toLocaleDateString()}${overdue ? " (overdue)" : ""}` : ""}
+              {task.dueDate ? ` · due ${new Date(task.dueDate).toLocaleDateString("en-GB")}${overdue ? " (overdue)" : ""}` : ""}
             </span>
           )}
         </span>
@@ -106,7 +113,7 @@ export function StageRow({
       </button>
       {open && (
         <div className="border-t border-default bg-surface-subtle">
-          <form action={taskAction} className="flex flex-wrap items-end gap-3 border-b border-default px-4 py-3">
+          {canEdit && <form action={taskAction} className="flex flex-wrap items-end gap-3 border-b border-default px-4 py-3">
             <User className="mb-2 h-4 w-4 shrink-0 text-subtle" aria-hidden />
             <label className="block">
               <span className="mb-1 block text-xs font-medium text-muted">Owner</span>
@@ -125,8 +132,8 @@ export function StageRow({
               {taskPending ? "Saving…" : "Assign"}
             </button>
             {taskState.error && <p role="alert" className="text-sm text-[var(--error)]">{taskState.error}</p>}
-          </form>
-          <form action={action} className="grid gap-3 px-4 py-4 sm:grid-cols-2">
+          </form>}
+          {canEdit ? <form action={action} className="grid gap-3 px-4 py-4 sm:grid-cols-2">
             <label className="block">
               <span className="mb-1 block text-xs font-medium text-muted">Status</span>
               <Select
@@ -142,11 +149,11 @@ export function StageRow({
             </label>
             <label className="block">
               <span className="mb-1 block text-xs font-medium text-muted">Reference number</span>
-              <input name="referenceNo" className="input w-full" />
+              <input name="referenceNo" value={refNo} onChange={(e) => setRefNo(e.target.value)} className="input w-full" />
             </label>
             <label className="block">
               <span className="mb-1 block text-xs font-medium text-muted">Expiry date (if applicable)</span>
-              <DatePicker name="expiryDate" className="w-full" />
+              <DatePicker name="expiryDate" value={expiry} onChange={setExpiry} className="w-full" />
             </label>
             <label className="block sm:col-span-2">
               <span className="mb-1 block text-xs font-medium text-muted">Remarks</span>
@@ -174,8 +181,9 @@ export function StageRow({
                 >Save anyway</button>
               </div>
             )}
-          </form>
-          <StageAttachments candidateId={candidateId} candidateBranchId={candidateBranchId} stageKey={stage.key} attachments={attachments} />
+          </form> : <p className="px-4 py-3 text-sm text-muted">You can see this step but not change it.</p>}
+          {readNote && <p className="px-4 pb-1 text-xs text-muted">Reference and expiry read from the file. Check them, then save the step.</p>}
+          <StageAttachments onRead={(r) => { if (r.docNumber) setRefNo((v) => v || r.docNumber); if (r.expiry) setExpiry((v) => v || r.expiry); setReadNote(true); }} candidateId={candidateId} candidateBranchId={candidateBranchId} stageKey={stage.key} attachments={attachments} canEdit={canEdit} />
         </div>
       )}
     </div>

@@ -11,7 +11,7 @@ type State = { error: string | null; ok?: boolean };
  * Drops a candidate who won't be joining (withdrew, failed, didn't arrive) so they leave the queue and the reminders, or shows
  * that they were dropped, with a way to bring them back. Joined candidates can't be dropped.
  */
-export function DropPanel({ candidateId, joined, droppedAt, droppedReason }: { candidateId: string; joined: boolean; droppedAt: Date | null; droppedReason: string | null }) {
+export function DropPanel({ candidateId, joined, droppedAt, droppedReason, canEdit = true }: { candidateId: string; joined: boolean; droppedAt: Date | null; droppedReason: string | null; canEdit?: boolean }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [state, action, pending] = useActionState(
@@ -27,14 +27,14 @@ export function DropPanel({ candidateId, joined, droppedAt, droppedReason }: { c
     return (
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--warning-border)] bg-[var(--warning-soft)] px-4 py-3">
         <p className="text-sm text-primary"><span className="font-medium">Dropped</span> on {new Date(droppedAt).toLocaleDateString("en-GB")}{droppedReason ? `: ${droppedReason}` : ""}. They are out of the queue and the reminders.</p>
-        <form action={reinstateCandidateAction}>
+        {canEdit && <form action={reinstateCandidateAction}>
           <input type="hidden" name="id" value={candidateId} />
           <button type="submit" className="btn btn-secondary btn-sm"><RotateCcw className="h-3.5 w-3.5" aria-hidden /> Bring back</button>
-        </form>
+        </form>}
       </div>
     );
   }
-  if (joined) return null;
+  if (joined || !canEdit) return null;
 
   return open ? (
     <form action={action} className="flex flex-wrap items-start gap-2 rounded-lg border border-default bg-surface-subtle px-4 py-3">

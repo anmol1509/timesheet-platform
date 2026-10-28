@@ -29,6 +29,7 @@ export function AttachmentUploader({
   revalidate,
   docTypeOptions,
   attachments,
+  readOnly = false,
 }: {
   entityType: string;
   entityId: string;
@@ -36,6 +37,8 @@ export function AttachmentUploader({
   revalidate: string;
   docTypeOptions: { value: string; label: string }[];
   attachments: AttachmentRow[];
+  /** Only list the files: no upload form and no delete (a person who may only look). */
+  readOnly?: boolean;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
   const [error, setError] = useState<string | null>(null);
@@ -55,9 +58,11 @@ export function AttachmentUploader({
   async function onFile(file: File | undefined) {
     if (!file) return;
     if (!isOther) {
-      if (entityType !== "SUPPLIER") return;
       setNote("Reading the file for its expiry date…");
-      const read = await readCompanyDoc(file);
+      // A supplier's papers have their own reader (licences, permits, TRN); every other record's files use the general one.
+      const read = entityType === "SUPPLIER"
+        ? await readCompanyDoc(file)
+        : await readOtherDoc(file).then((r) => (r ? { expiry: r.expiry, number: r.docNumber, issue: r.issueDate } : null));
       if (read) { setReadNumber(read.number); setReadIssue(read.issue); }
       if (read?.expiry) { setPlainExpiry(read.expiry); setNote("Expiry read from the file. Check it before uploading."); }
       else setNote(null);
@@ -70,12 +75,13 @@ export function AttachmentUploader({
     if (!read) { setNote(null); return; }
     setName((n) => (n === guess && read.name ? read.name : n));
     if (read.expiry) { setTrack(true); setExpiry((e) => e || read.expiry); }
+    setReadNumber(read.docNumber); setReadIssue(read.issueDate);
     setNote(read.name || read.expiry ? "Filled in from the file. Check it before uploading." : null);
   }
 
   return (
     <div className="space-y-4">
-      <form
+      {!readOnly && <form
         ref={formRef}
         action={async (formData) => {
           setError(null);
@@ -132,7 +138,7 @@ export function AttachmentUploader({
           Upload
         </button>
         {!isOther && note && <p className="w-full text-xs text-muted">{note}</p>}
-      </form>
+      </form>}
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
@@ -151,14 +157,14 @@ export function AttachmentUploader({
               <span className="shrink-0 text-xs text-muted">{a.docType}</span>
               {a.expiryDate && (
                 <span className="shrink-0 text-xs text-subtle">
-                  expires {new Date(a.expiryDate).toLocaleDateString()}
+                  expires {new Date(a.expiryDate).toLocaleDateString("en-GB")}
                 </span>
               )}
-              <DeleteButton
+              {!readOnly && <DeleteButton
                 action={deleteAttachmentAction}
                 hiddenFields={{ attachmentId: a.id, revalidate }}
                 confirmMessage={`Delete "${a.filename}"?`}
-              />
+              />}
             </li>
           ))}
         </ul>

@@ -30,7 +30,7 @@ export function DocumentChecklist({ items, canOpen = true }: { items: ChecklistI
             )}
             {r.current?.expiryDate && r.type.hasExpiry && (
               <span className="tabular text-xs text-muted">
-                {r.daysLeft !== null && r.daysLeft < 0 ? `expired ${-r.daysLeft}d ago` : `${new Date(r.current.expiryDate).toLocaleDateString()} · ${r.daysLeft}d left`}
+                {r.daysLeft !== null && r.daysLeft < 0 ? `expired ${-r.daysLeft}d ago` : `${new Date(r.current.expiryDate).toLocaleDateString("en-GB")} · ${r.daysLeft}d left`}
               </span>
             )}
             {r.count > 1 && <span className="text-xs text-muted">{r.count} files</span>}

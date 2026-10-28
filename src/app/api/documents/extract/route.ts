@@ -101,6 +101,73 @@ const DOC_TYPE_CONFIG: Record<string, { schema: object; prompt: string }> = {
     prompt:
       "This is a UAE MOHRE labour card for a construction-industry worker. Extract the full name, the work permit number (labour card number), the personal number, the expiry date, the profession, the nationality, and the establishment/employer name — all in English, exactly as printed. Dates must be ISO 8601 (YYYY-MM-DD): convert formats like 19/Apr/2028 to 2028-04-19. Return an empty string for any field you cannot read with confidence — do not guess.",
   },
+  VISA: {
+    schema: {
+      type: "object" as const,
+      properties: {
+        name: { type: "string" as const, description: "Full name as printed" },
+        visaNumber: { type: "string" as const, description: "Visa / residency file number, e.g. 301/2026/2/82612" },
+        visaExpiry: { type: "string" as const, description: "Visa expiry as ISO 8601 (YYYY-MM-DD)" },
+      },
+      required: ["name", "visaNumber", "visaExpiry"],
+      additionalProperties: false,
+    },
+    prompt:
+      "This is a residence visa, entry permit or residency page for a construction-industry worker in the UAE. Extract the holder's name, the visa or residency file number and the visa expiry date. Use an empty string for anything the document does not print. Never work an expiry out by adding a period to an issue date.",
+  },
+  MEDICAL: {
+    schema: {
+      type: "object" as const,
+      properties: {
+        name: { type: "string" as const, description: "Full name as printed" },
+        medicalExpiry: { type: "string" as const, description: "Date the certificate stops being valid as ISO 8601 (YYYY-MM-DD), only if printed" },
+      },
+      required: ["name", "medicalExpiry"],
+      additionalProperties: false,
+    },
+    prompt:
+      "This is a medical fitness certificate for a construction-industry worker in the UAE. Extract the holder's name and the date the certificate is valid until. Use an empty string for anything the document does not print. Never work an expiry out by adding a period to an issue date.",
+  },
+  CICPA: {
+    schema: {
+      type: "object" as const,
+      properties: {
+        name: { type: "string" as const, description: "Full name as printed" },
+        cicpaExpiry: { type: "string" as const, description: "Clearance expiry as ISO 8601 (YYYY-MM-DD), only if printed" },
+      },
+      required: ["name", "cicpaExpiry"],
+      additionalProperties: false,
+    },
+    prompt:
+      "This is a CICPA (Abu Dhabi critical infrastructure) clearance for a construction-industry worker in the UAE. Extract the holder's name and the clearance expiry date. Use an empty string for anything the document does not print. Never work an expiry out by adding a period to an issue date.",
+  },
+  INSURANCE: {
+    schema: {
+      type: "object" as const,
+      properties: {
+        name: { type: "string" as const, description: "Full name of the insured person as printed" },
+        insuranceExpiry: { type: "string" as const, description: "Policy or card expiry as ISO 8601 (YYYY-MM-DD), only if printed" },
+      },
+      required: ["name", "insuranceExpiry"],
+      additionalProperties: false,
+    },
+    prompt:
+      "This is a health insurance card or policy certificate for a construction-industry worker in the UAE. Extract the insured person's name and the expiry date of the cover. Use an empty string for anything the document does not print. Never work an expiry out by adding a period to an issue date.",
+  },
+  DRIVING_LICENCE: {
+    schema: {
+      type: "object" as const,
+      properties: {
+        name: { type: "string" as const, description: "Full name as printed" },
+        drivingLicenceNumber: { type: "string" as const, description: "Licence number as printed" },
+        drivingLicenceExpiry: { type: "string" as const, description: "Licence expiry as ISO 8601 (YYYY-MM-DD)" },
+      },
+      required: ["name", "drivingLicenceNumber", "drivingLicenceExpiry"],
+      additionalProperties: false,
+    },
+    prompt:
+      "This is a driving licence for a construction-industry worker in the UAE. Extract the holder's name, the licence number and the expiry date. Use an empty string for anything the document does not print. Never work an expiry out by adding a period to an issue date.",
+  },
   // The ICP "Registration ID Card Form" is the receipt for an Emirates ID
   // application — printed when residency is issued, before the card itself
   // exists. A worker has either this or the card, so it must be readable in
@@ -248,6 +315,11 @@ export type ExtractedDocumentFields = {
   photoPage?: string | null;
   visaNumber?: string | null;
   visaExpiry?: string | null;
+  medicalExpiry?: string | null;
+  cicpaExpiry?: string | null;
+  insuranceExpiry?: string | null;
+  drivingLicenceExpiry?: string | null;
+  drivingLicenceNumber?: string | null;
   sponsorName?: string | null;
   unifiedNo?: string | null;
   mobileNumber?: string | null;

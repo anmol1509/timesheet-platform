@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { employeeDocType, missingEssentials, payFieldsFor } from "./onboardingEmployee";
+import { employeeDocType, employeeFieldsFromStage, missingEssentials, passportProblem, payFieldsFor } from "./onboardingEmployee";
 
 test("candidate files carry over as the nearest worker document type", () => {
   assert.equal(employeeDocType("PASSPORT"), "PASSPORT");
@@ -30,4 +30,22 @@ test("a chosen pay type with no amount is refused, and so is a negative amount",
 test("only name, passport number and company are essential", () => {
   assert.deepEqual(missingEssentials({ name: "A", passportNumber: "N123456", supplierId: "s1" }), []);
   assert.deepEqual(missingEssentials({ name: " ", passportNumber: null, supplierId: null }), ["name", "passport number", "company"]);
+});
+
+test("a later step's expiry becomes the matching employee date", () => {
+  const d = new Date("2027-05-01");
+  assert.deepEqual(employeeFieldsFromStage("MEDICAL", d, null), { medicalExpiry: d });
+  assert.deepEqual(employeeFieldsFromStage("ID_VISA", d, "301/2026/1/1"), { visaExpiry: d, visaNumber: "301/2026/1/1" });
+  assert.deepEqual(employeeFieldsFromStage("CONTRACT", d, null), { laborCardExpiry: d });
+  assert.deepEqual(employeeFieldsFromStage("TAWJEEH", d, null), {});
+  assert.deepEqual(employeeFieldsFromStage("MEDICAL", null, null), {});
+});
+
+test("a passport number must look like one, and may be left empty", () => {
+  assert.equal(passportProblem(""), null);
+  assert.equal(passportProblem(null), null);
+  assert.equal(passportProblem("X1234567"), null);
+  assert.equal(passportProblem("N-123 4567"), null);
+  assert.ok(passportProblem("12"));
+  assert.ok(passportProblem("AB#1234567"));
 });

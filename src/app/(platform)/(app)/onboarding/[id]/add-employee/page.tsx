@@ -30,6 +30,8 @@ export default async function AddEmployeePage({ params }: { params: Promise<{ id
 
   // What the steps already recorded: the latest expiry and reference per step, used to prefill the papers.
   const latest = (stage: string) => history.find((h) => h.stage === stage);
+  // The furthest expiry among a document type's files (a renewed copy runs longest).
+  const fileExpiry = (docType: string) => files.filter((f) => f.docType === docType && f.expiryDate).map((f) => f.expiryDate as Date).sort((a, b) => b.getTime() - a.getTime())[0] ?? null;
 
   // The ID each company would give, shown so there are no surprises. Left blank on the form, it is generated when the person is added.
   const proposedIds: Record<string, string> = {};
@@ -62,6 +64,8 @@ export default async function AddEmployeePage({ params }: { params: Promise<{ id
           gender: candidate.gender ?? "", bloodGroup: candidate.bloodGroup ?? "", mobileNumber: candidate.phone ?? "", dateOfBirth: iso(candidate.dateOfBirth),
           passportNumber: candidate.passportNumber ?? "", emiratesId: candidate.emiratesId ?? "", joinDate: iso(new Date()),
           visaNumber: latest("ID_VISA")?.referenceNo ?? latest("ENTRY_PERMIT")?.referenceNo ?? "", visaExpiry: iso(latest("ID_VISA")?.expiryDate), medicalExpiry: iso(latest("MEDICAL")?.expiryDate),
+          // Expiry dates already read from the candidate's own documents, and the labour card step's date.
+          passportExpiry: iso(fileExpiry("PASSPORT")), emiratesIdExpiry: iso(fileExpiry("EMIRATES_ID")), laborCardExpiry: iso(latest("CONTRACT")?.expiryDate),
         }}
       />
     </div>

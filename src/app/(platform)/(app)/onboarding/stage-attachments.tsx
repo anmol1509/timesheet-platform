@@ -5,6 +5,7 @@ import { Paperclip } from "lucide-react";
 import { uploadAttachmentAction, deleteAttachmentAction } from "@/lib/attachments";
 import { DeleteButton } from "@/components/DeleteButton";
 import { MAX_UPLOAD_LABEL } from "@/lib/constants";
+import { readOtherDoc } from "@/components/otherDocRead";
 
 export type StageAttachmentRow = { id: string; filename: string };
 
@@ -17,19 +18,25 @@ export function StageAttachments({
   candidateBranchId,
   stageKey,
   attachments,
+  canEdit = true,
+  onRead,
 }: {
   candidateId: string;
   candidateBranchId: string;
   stageKey: string;
   attachments: StageAttachmentRow[];
+  canEdit?: boolean;
+  /** Called with what the AI read from the chosen file (number and expiry), so the step's form can be filled in for checking. */
+  onRead?: (read: { docNumber: string; expiry: string }) => void;
 }) {
+  const [reading, setReading] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
 
   return (
     <div className="border-t border-default px-4 py-3">
-      <form
+      {canEdit && <form
         ref={formRef}
         action={async (fd) => {
           setError(null);
@@ -47,12 +54,25 @@ export function StageAttachments({
         <input type="hidden" name="docType" value={stageKey} />
         <input type="hidden" name="revalidate" value={`/onboarding/${candidateId}`} />
         <Paperclip className="h-3.5 w-3.5 shrink-0 text-subtle" aria-hidden />
-        <input name="file" type="file" required className="file-input text-xs" />
+        <input
+          name="file"
+          type="file"
+          required
+          className="file-input text-xs"
+          onChange={async (e) => {
+            const f = e.target.files?.[0];
+            if (!f || !onRead) return;
+            setReading(true);
+            const read = await readOtherDoc(f);
+            setReading(false);
+            if (read && (read.docNumber || read.expiry)) onRead({ docNumber: read.docNumber, expiry: read.expiry });
+          }}
+        />
         <button type="submit" className="btn btn-secondary px-2.5 py-1 text-xs" disabled={uploading}>
           {uploading ? "Attaching…" : "Attach"}
         </button>
-        <span className="text-[11px] text-subtle">max {MAX_UPLOAD_LABEL}</span>
-      </form>
+        <span className="text-[11px] text-subtle">{reading ? "Reading the file…" : `max ${MAX_UPLOAD_LABEL}`}</span>
+      </form>}
       {error && <p role="alert" className="mt-1 text-xs text-[var(--error)]">{error}</p>}
       {attachments.length > 0 && (
         <ul className="mt-2 flex flex-wrap gap-1.5">
@@ -61,13 +81,13 @@ export function StageAttachments({
               <a href={`/api/attachments/${a.id}`} target="_blank" rel="noreferrer" className="max-w-[10rem] truncate text-primary hover:underline">
                 {a.filename}
               </a>
-              <DeleteButton
+              {canEdit && <DeleteButton
                 action={deleteAttachmentAction}
                 hiddenFields={{ attachmentId: a.id, revalidate: `/onboarding/${candidateId}` }}
                 confirmMessage={`Delete "${a.filename}"?`}
                 label="×"
                 className="text-subtle hover:text-[var(--error)]"
-              />
+              />}
             </li>
           ))}
         </ul>

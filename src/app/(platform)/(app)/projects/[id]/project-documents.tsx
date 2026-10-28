@@ -9,6 +9,7 @@ import { shrinkImage } from "@/lib/compressImage";
 import { Select } from "@/components/ui/Select";
 import { DeleteButton } from "@/components/DeleteButton";
 import { DatePicker } from "@/components/ui/DatePicker";
+import { readOtherDoc } from "@/components/otherDocRead";
 import { OtherDocStage } from "@/components/OtherDocStage";
 
 type Doc = {
@@ -43,6 +44,7 @@ export function ProjectDocuments({
   const [error, setError] = useState<string | null>(null);
   // A file picked for type Other waits here for its name and expiry decision.
   const [staged, setStaged] = useState<File | null>(null);
+  const [reading, setReading] = useState(false);
 
   async function handleUpload() {
     const picked = fileRef.current?.files?.[0];
@@ -60,10 +62,17 @@ export function ProjectDocuments({
       if (fileRef.current) fileRef.current.value = "";
       return;
     }
+    // No expiry typed: read it off the file (the person can still correct it afterwards). A failed read just leaves it empty.
+    let expiry = expiryDate;
+    if (!expiry) {
+      setReading(true);
+      expiry = await (async () => { const r = await readOtherDoc(file); return r?.expiry ?? ""; })().catch(() => "");
+      setReading(false);
+    }
     const formData = new FormData();
     formData.append("projectId", projectId);
     formData.append("type", type);
-    formData.append("expiryDate", expiryDate);
+    formData.append("expiryDate", expiry);
     formData.append("file", file);
     startTransition(() => {
       addProjectDocumentAction(formData);
@@ -97,7 +106,7 @@ export function ProjectDocuments({
           ref={fileRef}
           type="file"
           onChange={handleUpload}
-          disabled={pending}
+          disabled={pending || reading}
           className="file-input"
         />
       </div>
