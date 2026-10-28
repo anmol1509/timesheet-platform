@@ -72,6 +72,7 @@ export default function Page() {
           the exception automatically as hours come in rather than at month-end reconciliation.
         </p>
         <p>Applying these rules consistently is easier when hours are captured once: see <a href="/timesheet-software-construction-uae">timesheet software for UAE construction and manpower teams</a> and how approved hours flow into <a href="/wps-payroll-software-uae">WPS payroll</a>.</p>
+        <p>Overtime changes what a worker earns, but not the basic salary that gratuity is built on. To see what a leaver is owed, use the free <a href="/tools/gratuity-calculator-uae">UAE gratuity calculator</a>.</p>
       </PostLayout>
     </ContentShell>
   );

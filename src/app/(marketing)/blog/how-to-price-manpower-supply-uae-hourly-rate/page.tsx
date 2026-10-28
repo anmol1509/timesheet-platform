@@ -79,7 +79,7 @@ export default function Page() {
           <li>
             <strong>Provisions.</strong> End-of-service gratuity builds up every month a worker
             stays; see{" "}
-            <a href="/blog/eosb-gratuity-calculation-uae">how gratuity is calculated</a>. Annual
+            <a href="/blog/eosb-gratuity-calculation-uae">how gratuity is calculated</a>. Use the free <a href="/tools/gratuity-calculator-uae">gratuity calculator</a> for the figure. Annual
             leave and the return air ticket are similar costs that arrive later but belong to the
             months being worked now.
           </li>

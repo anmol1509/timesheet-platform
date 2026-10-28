@@ -46,6 +46,18 @@ const FAQS = [
     a: "The law sets the formula and the employer pays it. MOHRE, the ministry that administers the labour law, is where a disagreement about the figure normally starts, so keep the contract, the wage record and the service dates to hand.",
   },
   {
+    q: "How do I find my basic salary for the calculation?",
+    a: "Use the basic salary line on your contract, offer letter or payslip, not the total package. If your contract only states one total figure, ask HR for the basic component: gratuity is worked out on that part alone.",
+  },
+  {
+    q: "Does the same gratuity calculation apply in JAFZA and other free zones?",
+    a: "Many free zones, JAFZA among them, apply the federal labour law, so the same formula holds. DIFC and ADGM have their own employment rules and end of service schemes, so confirm with your free zone authority or employer before relying on this figure.",
+  },
+  {
+    q: "Is this the calculator for domestic workers?",
+    a: "No. Domestic workers are covered by a separate law with its own rules, so use MOHRE's guidance for them. This page applies to employees under the federal labour law.",
+  },
+  {
     q: "What is a final settlement?",
     a: "Everything an employee is owed when they leave: unpaid wages, gratuity, pay for unused annual leave and any other contractual dues, less valid deductions. Gratuity is one part of it.",
   },
@@ -155,6 +167,35 @@ export default function GratuityCalculatorPage() {
             service calculator for Dubai, Abu Dhabi, Sharjah and the rest of the UAE. Free zones are the exception:
             DIFC and ADGM, for example, have their own employment rules, and some employers offer an approved
             alternative scheme, so confirm which regime your employee falls under.
+          </p>
+
+          <h2>How to find your basic salary</h2>
+          <p>
+            Gratuity is worked out on basic salary alone, so the first thing to check is which part of your pay is
+            basic. Look for the line marked <em>basic salary</em> on your contract, offer letter or payslip. Housing,
+            transport, food and other allowances, commissions and overtime are separate and are left out. If your
+            contract states one total only, ask HR for the basic component, because using the total gives a figure that
+            is too high.
+          </p>
+
+          <h2>Gratuity in JAFZA, free zones and for domestic workers</h2>
+          <p>
+            <strong>Free zones.</strong> Many free zones, JAFZA among them, apply the federal labour law, so a JAFZA
+            gratuity calculation uses the same formula as the mainland. DIFC and ADGM are the exceptions: each has its
+            own employment rules and end of service arrangements. Confirm with your free zone authority or employer
+            which regime applies before relying on a figure.
+          </p>
+          <p>
+            <strong>Domestic workers.</strong> Domestic workers are covered by a separate law, so this calculator is
+            not the right tool for them. Check MOHRE&rsquo;s guidance for the rules that apply.
+          </p>
+
+          <h2>Final settlement calculator: gratuity is one part</h2>
+          <p>
+            A final settlement is the total owed when someone leaves, and gratuity is only one line of it. The others
+            are unpaid wages, pay for unused annual leave, any notice pay due and other contractual dues, less valid
+            deductions. Use this calculator for the gratuity line, add the rest from the payroll record, and see{" "}
+            <a href="/blog/final-settlement-uae-labour-law">what a final settlement includes</a> for the full list.
           </p>
 
           <h2>MOHRE and the end of service figure</h2>

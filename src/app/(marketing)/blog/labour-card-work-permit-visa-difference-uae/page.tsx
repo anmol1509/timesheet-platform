@@ -68,6 +68,7 @@ export default function Page() {
           a fine arrives.
         </p>
         <p>Once you know which document is which, keep each expiry visible: see our <a href="/blog/visa-emirates-id-expiry-compliance-checklist">visa, Emirates ID and labour card expiry checklist</a> and the <a href="/manpower-erp-uae">manpower ERP</a> that tracks them.</p>
+        <p>When a worker&rsquo;s visa and labour card end, their end-of-service gratuity falls due too. Work out the amount with the free <a href="/tools/gratuity-calculator-uae">UAE gratuity calculator</a>.</p>
       </PostLayout>
     </ContentShell>
   );
