@@ -12,6 +12,10 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: ["localhost", "127.0.0.1"],
   // The free timesheet template was linked as /tools/timesheet-template for a while; the page lives at the longer
   // address, so the old one is sent there permanently instead of returning a 404.
+  // IndexNow wants its key file at the site root, <key>.txt; it is served by src/app/indexnow-key/route.ts.
+  async rewrites() {
+    return [{ source: "/:key([a-f0-9]{32}).txt", destination: "/indexnow-key" }];
+  },
   async redirects() {
     return [{ source: "/tools/timesheet-template", destination: "/tools/construction-timesheet-template", permanent: true }];
   },

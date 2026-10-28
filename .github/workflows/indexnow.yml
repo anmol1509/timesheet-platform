@@ -1,0 +1,24 @@
+name: IndexNow
+
+# Run by hand from the Actions tab after a deploy: leave "urls" empty to submit the whole sitemap, or paste
+# addresses (space or newline separated) to submit only those.
+on:
+  workflow_dispatch:
+    inputs:
+      urls:
+        description: "Addresses to submit, separated by spaces or new lines. Empty submits the whole sitemap."
+        required: false
+        default: ""
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Submit to IndexNow
+        env:
+          URLS: ${{ inputs.urls }}
+        run: node scripts/indexnow.mjs $URLS
