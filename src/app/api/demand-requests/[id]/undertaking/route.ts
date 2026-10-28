@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { generateLetterPdf } from "@/lib/generateLetterPdf";
+import { parseDay } from "@/lib/dates";
 import { buildLetterSections, toLetterWorker, loadPaperMargins } from "@/lib/letterIssuer";
 
 /**
@@ -30,6 +31,11 @@ export async function GET(
     showSignature: url.searchParams.get("signature") === "1",
     showStamp: url.searchParams.get("stamp") === "1",
   };
+
+  // Optional dates, as YYYY-MM-DD: the date printed on the letter (today when not given) and the mobilisation date.
+  const dayParam = (name: string) => { const v = url.searchParams.get(name) ?? ""; return /^\d{4}-\d{2}-\d{2}$/.test(v) ? parseDay(v) : null; };
+  const letterDate = dayParam("letterDate") ?? new Date();
+  const mobilizeDate = dayParam("mobilizeDate");
 
   const demand = await prisma.demandRequest.findUnique({
     where: { id },
@@ -81,8 +87,8 @@ export async function GET(
       projectName: demand.project.name,
       branchName: demand.branch.name,
       docNo: demand.requestNo,
-      mobilizeDate: null,
-      date: new Date(),
+      mobilizeDate,
+      date: letterDate,
     },
   });
 
@@ -92,7 +98,7 @@ export async function GET(
     clientName: demand.client.name,
     clientAddress: demand.client.billingAddress,
     projectName: demand.project.name,
-    date: new Date(),
+    date: letterDate,
     sections,
   });
 
