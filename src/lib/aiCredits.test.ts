@@ -9,10 +9,20 @@ test("a credit is 1,000 input tokens, with output counted five times", () => {
 });
 
 test("a bigger model counts for more, an unknown one as the standard", () => {
-  assert.equal(modelWeight("claude-sonnet-5-5"), 3);
-  assert.equal(modelWeight("claude-opus-5-5"), 5);
+  assert.equal(modelWeight("claude-sonnet-5-5"), 2);
+  assert.equal(modelWeight("claude-sonnet-4-6"), 3);
+  assert.equal(modelWeight("claude-opus-5-5"), 4);
+  assert.equal(modelWeight("claude-opus-5"), 5);
+  assert.equal(modelWeight("claude-fable-5-1"), 10);
   assert.equal(modelWeight("something-else"), 1);
-  assert.equal(creditsFor("claude-sonnet-5-5", 1000, 0), 3);
+  assert.equal(creditsFor("claude-sonnet-5-5", 1000, 0), 2);
+});
+
+test("a cheaper model counts for less: Haiku 5.5 is a tenth of Haiku 4.5", () => {
+  assert.equal(modelWeight("claude-haiku-5-5"), 0.1);
+  assert.equal(modelWeight("claude-haiku-4-5-20251001"), 1);
+  assert.equal(creditsFor("claude-haiku-5-5", 5000, 380), 0.69);
+  assert.equal(creditsFor("claude-haiku-4-5-20251001", 5000, 380), 6.9);
 });
 
 test("a real call never costs nothing, an empty one does", () => {
