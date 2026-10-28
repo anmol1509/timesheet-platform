@@ -19,6 +19,24 @@ export type Post = {
 // one line added here plus its own folder.
 export const POSTS: readonly Post[] = [
   {
+    slug: "employee-time-recording-software-uae",
+    cluster: "timesheets-billing",
+    seoTitle: "Employee Time Recording Software: UAE Buyer's Guide",
+    title: "Employee Time Recording Software: What It Should Do and How to Choose",
+    description:
+      "What employee time recording software records, the features that matter for payroll and client billing, how the main methods compare, and the questions to ask before you buy.",
+    date: "2026-10-28",
+  },
+  {
+    slug: "best-employee-time-tracking-software-uae",
+    cluster: "timesheets-billing",
+    seoTitle: "Best Employee Time Tracking Software: How to Choose",
+    title: "Best Employee Time Tracking Software: How to Choose for Your Workforce",
+    description:
+      "There is no single best employee time tracking software. Match the tool to your workforce: office teams, field crews or labour supply, with a checklist to score any option.",
+    date: "2026-10-28",
+  },
+  {
     slug: "wps-sif-rejection-reasons-uae",
     cluster: "payroll-wps",
     title: "Why Your WPS SIF File Gets Rejected (and How to Fix It)",

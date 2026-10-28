@@ -305,3 +305,35 @@
   gap: 12px;
   margin: 22px 0 0;
 }
+
+/* Free online time clock */
+.clockFace {
+  margin: 4px 0 14px;
+  font-size: 44px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: 0.01em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.clockBtn {
+  padding: 11px 22px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--primary);
+  border: 0;
+  border-radius: 12px;
+  cursor: pointer;
+}
+.clockBtn:hover {
+  filter: brightness(1.08);
+}
+.clockBtnOut {
+  background: #b42318;
+}
+.clockBtn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
