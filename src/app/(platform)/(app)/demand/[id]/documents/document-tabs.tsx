@@ -109,6 +109,8 @@ function LetterBuilder({
   const [chosen, setChosen] = useState<Set<string>>(() => new Set(workers.map((w) => w.id)));
   const [onLetterhead, setOnLetterhead] = useState(true);
   const [mobilizeDate, setMobilizeDate] = useState("");
+  // The date printed on an undertaking; empty means today, as it always was.
+  const [letterDate, setLetterDate] = useState("");
   const [remarks, setRemarks] = useState("");
   const [fields, setFields] = useState<Set<string>>(new Set(DEFAULT_NOC_DISPLAY_FIELDS));
   const [signatoryName, setSignatoryName] = useState(company.signatoryName);
@@ -164,6 +166,7 @@ function LetterBuilder({
     if (signatoryTitle.trim()) q.set("signatoryTitle", signatoryTitle.trim());
     if (showSignature) q.set("signature", "1");
     if (showStamp) q.set("stamp", "1");
+    if (letterDate) q.set("letterDate", letterDate);
     return `/api/demand-requests/${demand.id}/undertaking?${q.toString()}`;
   })();
 
@@ -233,6 +236,12 @@ function LetterBuilder({
             </ul>
           </div>
 
+          {!isNoc && (
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium text-muted">Letter date <span className="font-normal">(blank = today)</span></span>
+              <DatePicker value={letterDate} onChange={setLetterDate} className="w-full" />
+            </label>
+          )}
           {isNoc && (
             <>
               <label className="block">
@@ -359,6 +368,7 @@ function LetterBuilder({
                 margins={company.margins}
                 signing={isNoc ? { name: g.id ? sponsors[g.id]?.contactPerson ?? null : null, title: null, phone: g.id ? sponsors[g.id]?.contactPhone ?? null : null, email: g.id ? sponsors[g.id]?.contactEmail ?? null : null, signatureUrl: null, stampUrl: null } : { name: signatoryName.trim() || null, title: signatoryTitle.trim() || null, phone: company.phone, email: company.email, signatureUrl: showSignature ? company.signatureUrl : null, stampUrl: showStamp ? company.stampUrl : null }}
                 mobilizeDate={mobilizeDate}
+                letterDate={isNoc ? "" : letterDate}
               />
             ))
           )}
@@ -370,7 +380,7 @@ function LetterBuilder({
 }
 
 function SheetFor({
-  label, demand, template, kind, issuerName, workers, columns, onLetterhead, letterheadUrl, topMm, bottomMm, margins, signing, mobilizeDate,
+  label, demand, template, kind, issuerName, workers, columns, onLetterhead, letterheadUrl, topMm, bottomMm, margins, signing, mobilizeDate, letterDate,
 }: {
   label: string | null;
   demand: Demand;
@@ -386,9 +396,10 @@ function SheetFor({
   margins: ReturnType<typeof marginsOfBranch>;
   signing: { name: string | null; title: string | null; phone: string | null; email: string | null; signatureUrl: string | null; stampUrl: string | null };
   mobilizeDate: string;
+  letterDate: string;
 }) {
   const src = useLetterheadImage(onLetterhead ? letterheadUrl : null);
-  const now = new Date();
+  const now = letterDate ? new Date(letterDate) : new Date();
   const body = substituteInHtml(template.html, {
     CLIENTNAME: demand.clientName,
     CLIENTADDRESS: demand.clientAddress ?? "",
