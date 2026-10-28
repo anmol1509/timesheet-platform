@@ -15,9 +15,12 @@ const SCHEMA = {
   type: "object" as const,
   properties: {
     name: { type: "string" as const, description: "A short name for this document as a person would file it, e.g. \"Fire safety certificate\", \"Offer letter\", \"Insurance policy\". No file extension. Empty if you cannot tell." },
+    docNumber: { type: "string" as const, description: "The document's own reference, licence, certificate, policy, permit or registration number, only if it prints one. Empty otherwise." },
+    issueDate: { type: "string" as const, description: "The date it was issued as YYYY-MM-DD, only if the document prints one. Empty otherwise." },
+    holder: { type: "string" as const, description: "Who the document was issued to (person, company or vehicle plate), as printed. Empty if unclear." },
     expiry: { type: "string" as const, description: "The date the document expires or stops being valid as YYYY-MM-DD, only if the document prints one. Empty otherwise." },
   },
-  required: ["name", "expiry"],
+  required: ["name", "expiry", "docNumber", "issueDate", "holder"],
   additionalProperties: false,
 };
 
@@ -45,16 +48,17 @@ export async function POST(request: Request) {
       : ({ type: "image", source: { type: "base64", media_type: media as "image/jpeg", data } } as const);
     const res = await client.messages.create({
       model: COPILOT_MODEL,
-      max_tokens: 300,
-      system: "You file paperwork for a UAE manpower company. Say what the document is in a few words and, only when the document itself prints one, the date it expires or stops being valid (YYYY-MM-DD). Never work an expiry out by adding a period to an issue date, and never use the date of a letter, form or report as the expiry. Answer only with the requested JSON.",
+      max_tokens: 400,
+      system: "You file paperwork for a UAE manpower company. Say what the document is in a few words and, only when the document itself prints them, its number, its issue date, who it was issued to, and the date it expires or stops being valid (YYYY-MM-DD). Never work an expiry out by adding a period to an issue date, and never use the date of a letter, form or report as the expiry. Answer only with the requested JSON.",
       output_config: { format: { type: "json_schema", schema: SCHEMA } },
-      messages: [{ role: "user", content: [block, { type: "text", text: "What should this document be called, and when does it expire?" }] }],
+      messages: [{ role: "user", content: [block, { type: "text", text: "What should this document be called, what is its number, when was it issued and when does it expire?" }] }],
     });
     await recordAiUsage({ branchId, userId: user.id, feature: "document-name", model: COPILOT_MODEL, usage: res.usage });
     const text = res.content.find((b) => b.type === "text");
     if (res.stop_reason === "refusal" || text?.type !== "text") return NextResponse.json({ error: "AI couldn't read this one." }, { status: 422 });
-    const out = JSON.parse(text.text) as { name?: string; expiry?: string };
-    return NextResponse.json({ name: String(out.name ?? "").trim().slice(0, 100), expiry: /^\d{4}-\d{2}-\d{2}$/.test(String(out.expiry ?? "")) ? out.expiry : "" });
+    const out = JSON.parse(text.text) as { name?: string; expiry?: string; docNumber?: string; issueDate?: string; holder?: string };
+    const iso = (v?: string) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v ?? "")) ? String(v) : "");
+    return NextResponse.json({ name: String(out.name ?? "").trim().slice(0, 100), expiry: iso(out.expiry), issueDate: iso(out.issueDate), docNumber: String(out.docNumber ?? "").trim().slice(0, 100), holder: String(out.holder ?? "").trim().slice(0, 100) });
   } catch {
     return NextResponse.json({ error: "AI couldn't read this one. You can fill it in by hand." }, { status: 502 });
   }

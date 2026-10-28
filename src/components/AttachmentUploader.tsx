@@ -58,9 +58,11 @@ export function AttachmentUploader({
   async function onFile(file: File | undefined) {
     if (!file) return;
     if (!isOther) {
-      if (entityType !== "SUPPLIER") return;
       setNote("Reading the file for its expiry date…");
-      const read = await readCompanyDoc(file);
+      // A supplier's papers have their own reader (licences, permits, TRN); every other record's files use the general one.
+      const read = entityType === "SUPPLIER"
+        ? await readCompanyDoc(file)
+        : await readOtherDoc(file).then((r) => (r ? { expiry: r.expiry, number: r.docNumber, issue: r.issueDate } : null));
       if (read) { setReadNumber(read.number); setReadIssue(read.issue); }
       if (read?.expiry) { setPlainExpiry(read.expiry); setNote("Expiry read from the file. Check it before uploading."); }
       else setNote(null);
@@ -73,6 +75,7 @@ export function AttachmentUploader({
     if (!read) { setNote(null); return; }
     setName((n) => (n === guess && read.name ? read.name : n));
     if (read.expiry) { setTrack(true); setExpiry((e) => e || read.expiry); }
+    setReadNumber(read.docNumber); setReadIssue(read.issueDate);
     setNote(read.name || read.expiry ? "Filled in from the file. Check it before uploading." : null);
   }
 

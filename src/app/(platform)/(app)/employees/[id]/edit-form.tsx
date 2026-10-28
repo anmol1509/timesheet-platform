@@ -255,7 +255,7 @@ export function EditForm({
 
   function applyExtractedFields(fields: ExtractedDocumentFields) {
     if (fields.passportCheck) setPassportCheck(fields.passportCheck);
-    setAuto((a) => ({ ...a, ...(fields.dateOfBirth ? { dateOfBirth: fields.dateOfBirth } : {}), ...(fields.passportExpiry ? { passportExpiry: fields.passportExpiry } : {}), ...(fields.emiratesIdExpiry ? { emiratesIdExpiry: fields.emiratesIdExpiry } : {}), ...(fields.laborCardExpiry ? { laborCardExpiry: fields.laborCardExpiry } : {}) }));
+    setAuto((a) => ({ ...a, ...(fields.dateOfBirth ? { dateOfBirth: fields.dateOfBirth } : {}), ...(fields.passportExpiry ? { passportExpiry: fields.passportExpiry } : {}), ...(fields.emiratesIdExpiry ? { emiratesIdExpiry: fields.emiratesIdExpiry } : {}), ...(fields.laborCardExpiry ? { laborCardExpiry: fields.laborCardExpiry } : {}), ...(fields.visaExpiry ? { visaExpiry: fields.visaExpiry } : {}), ...(fields.medicalExpiry ? { medicalExpiry: fields.medicalExpiry } : {}), ...(fields.cicpaExpiry ? { cicpaExpiry: fields.cicpaExpiry } : {}), ...(fields.insuranceExpiry ? { insuranceExpiry: fields.insuranceExpiry } : {}), ...(fields.drivingLicenceExpiry ? { drivingLicenceExpiry: fields.drivingLicenceExpiry } : {}) }));
     if (fields.nationality) setNationality(fields.nationality);
     if (fields.passportNumber && passportNumberRef.current) passportNumberRef.current.value = fields.passportNumber;
     if (fields.emiratesId && emiratesIdRef.current) emiratesIdRef.current.value = fields.emiratesId;
@@ -598,7 +598,7 @@ export function EditForm({
             <TextField label="Unified No" name="unifiedNo" defaultValue={employee.unifiedNo} />
             <LookupField label="Visa status" name="visaStatus" defaultValue={employee.visaStatus} options={lookups.VISA_STATUS} />
             <TextField label="MOL person code" name="molPersonCode" defaultValue={employee.molPersonCode} hint="MOL_PERSON_CODE" />
-            <DateField label="Visa expiry date" name="visaExpiry" defaultValue={employee.visaExpiry} />
+            <DateField label="Visa expiry date" name="visaExpiry" defaultValue={employee.visaExpiry} override={auto.visaExpiry} />
             <div />
             <InlineDocumentUpload
               employeeId={employee.id}
@@ -607,6 +607,7 @@ export function EditForm({
               type="VISA"
               documents={docsByType("VISA")}
               expiryFieldName="visaExpiry"
+              onExtracted={applyExtractedFields}
             />
           </div>
         </section>
@@ -615,7 +616,7 @@ export function EditForm({
           <h2 className="mb-3 text-sm font-semibold text-primary">Medical Certificate</h2>
           <div className="card grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
             <Field label="Medical certificate expiry">
-              <DatePicker name="medicalExpiry" defaultValue={toDateInput(employee.medicalExpiry)} className="w-full" />
+              <DatePicker key={`medicalExpiry-${auto.medicalExpiry ?? ""}`} name="medicalExpiry" defaultValue={auto.medicalExpiry || toDateInput(employee.medicalExpiry)} className="w-full" />
             </Field>
             <LookupField label="Medical status" name="medicalStatus" defaultValue={employee.medicalStatus} options={lookups.MEDICAL_STATUS} />
             <InlineDocumentUpload
@@ -625,6 +626,7 @@ export function EditForm({
               type="MEDICAL"
               documents={docsByType("MEDICAL")}
               expiryFieldName="medicalExpiry"
+              onExtracted={applyExtractedFields}
             />
           </div>
         </section>
@@ -634,7 +636,7 @@ export function EditForm({
             CICPA <span className="font-normal text-subtle">(Abu Dhabi critical-infrastructure clearance)</span>
           </h2>
           <div className="card grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
-            <DateField label="Expiry date" name="cicpaExpiry" defaultValue={employee.cicpaExpiry} />
+            <DateField label="Expiry date" name="cicpaExpiry" defaultValue={employee.cicpaExpiry} override={auto.cicpaExpiry} />
             <InlineDocumentUpload
               employeeId={employee.id}
               employeeName={employee.name}
@@ -642,6 +644,7 @@ export function EditForm({
               type="CICPA"
               documents={docsByType("CICPA")}
               expiryFieldName="cicpaExpiry"
+              onExtracted={applyExtractedFields}
             />
           </div>
         </section>
@@ -649,7 +652,7 @@ export function EditForm({
         <section>
           <h2 className="mb-3 text-sm font-semibold text-primary">Insurance</h2>
           <div className="card grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
-            <DateField label="Expiry date" name="insuranceExpiry" defaultValue={employee.insuranceExpiry} />
+            <DateField label="Expiry date" name="insuranceExpiry" defaultValue={employee.insuranceExpiry} override={auto.insuranceExpiry} />
             <InlineDocumentUpload
               employeeId={employee.id}
               employeeName={employee.name}
@@ -657,6 +660,7 @@ export function EditForm({
               type="INSURANCE"
               documents={docsByType("INSURANCE")}
               expiryFieldName="insuranceExpiry"
+              onExtracted={applyExtractedFields}
             />
           </div>
         </section>
@@ -666,7 +670,7 @@ export function EditForm({
           <div className="card grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
             <TextField label="Licence number" name="drivingLicenceNumber" defaultValue={employee.drivingLicenceNumber} />
             <LookupField label="Licence type" name="drivingLicenceType" defaultValue={employee.drivingLicenceType} options={lookups.DRIVING_LICENCE_TYPE} />
-            <DateField label="Expiry date" name="drivingLicenceExpiry" defaultValue={employee.drivingLicenceExpiry} />
+            <DateField label="Expiry date" name="drivingLicenceExpiry" defaultValue={employee.drivingLicenceExpiry} override={auto.drivingLicenceExpiry} />
             <InlineDocumentUpload
               employeeId={employee.id}
               employeeName={employee.name}
@@ -674,6 +678,7 @@ export function EditForm({
               type="DRIVING_LICENCE"
               documents={docsByType("DRIVING_LICENCE")}
               expiryFieldName="drivingLicenceExpiry"
+              onExtracted={applyExtractedFields}
             />
           </div>
         </section>
@@ -966,14 +971,17 @@ function DateField({
   label,
   name,
   defaultValue,
+  override,
 }: {
   label: string;
   name: string;
   defaultValue: Date | null;
+  /** A date read from an uploaded file, shown in place of the saved one for the person to check. */
+  override?: string;
 }) {
   return (
     <Field label={label}>
-      <DatePicker name={name} defaultValue={toDateInput(defaultValue)} />
+      <DatePicker key={`${name}-${override ?? ""}`} name={name} defaultValue={override || toDateInput(defaultValue)} />
     </Field>
   );
 }

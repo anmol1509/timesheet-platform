@@ -54,6 +54,10 @@ export function StageRow({
   canEdit?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  // Filled in from an attached file by the AI, for the person to check before saving the step.
+  const [refNo, setRefNo] = useState("");
+  const [expiry, setExpiry] = useState("");
+  const [readNote, setReadNote] = useState(false);
   const router = useRouter();
   // What was submitted, kept so "Save anyway" sends the same values (the form clears itself after a submit).
   const submitted = useRef<FormData | null>(null);
@@ -145,11 +149,11 @@ export function StageRow({
             </label>
             <label className="block">
               <span className="mb-1 block text-xs font-medium text-muted">Reference number</span>
-              <input name="referenceNo" className="input w-full" />
+              <input name="referenceNo" value={refNo} onChange={(e) => setRefNo(e.target.value)} className="input w-full" />
             </label>
             <label className="block">
               <span className="mb-1 block text-xs font-medium text-muted">Expiry date (if applicable)</span>
-              <DatePicker name="expiryDate" className="w-full" />
+              <DatePicker name="expiryDate" value={expiry} onChange={setExpiry} className="w-full" />
             </label>
             <label className="block sm:col-span-2">
               <span className="mb-1 block text-xs font-medium text-muted">Remarks</span>
@@ -178,7 +182,8 @@ export function StageRow({
               </div>
             )}
           </form> : <p className="px-4 py-3 text-sm text-muted">You can see this step but not change it.</p>}
-          <StageAttachments candidateId={candidateId} candidateBranchId={candidateBranchId} stageKey={stage.key} attachments={attachments} canEdit={canEdit} />
+          {readNote && <p className="px-4 pb-1 text-xs text-muted">Reference and expiry read from the file. Check them, then save the step.</p>}
+          <StageAttachments onRead={(r) => { if (r.docNumber) setRefNo((v) => v || r.docNumber); if (r.expiry) setExpiry((v) => v || r.expiry); setReadNote(true); }} candidateId={candidateId} candidateBranchId={candidateBranchId} stageKey={stage.key} attachments={attachments} canEdit={canEdit} />
         </div>
       )}
     </div>

@@ -5,6 +5,7 @@ import { Paperclip } from "lucide-react";
 import { uploadAttachmentAction, deleteAttachmentAction } from "@/lib/attachments";
 import { DeleteButton } from "@/components/DeleteButton";
 import { MAX_UPLOAD_LABEL } from "@/lib/constants";
+import { readOtherDoc } from "@/components/otherDocRead";
 
 export type StageAttachmentRow = { id: string; filename: string };
 
@@ -18,13 +19,17 @@ export function StageAttachments({
   stageKey,
   attachments,
   canEdit = true,
+  onRead,
 }: {
   candidateId: string;
   candidateBranchId: string;
   stageKey: string;
   attachments: StageAttachmentRow[];
   canEdit?: boolean;
+  /** Called with what the AI read from the chosen file (number and expiry), so the step's form can be filled in for checking. */
+  onRead?: (read: { docNumber: string; expiry: string }) => void;
 }) {
+  const [reading, setReading] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -49,11 +54,24 @@ export function StageAttachments({
         <input type="hidden" name="docType" value={stageKey} />
         <input type="hidden" name="revalidate" value={`/onboarding/${candidateId}`} />
         <Paperclip className="h-3.5 w-3.5 shrink-0 text-subtle" aria-hidden />
-        <input name="file" type="file" required className="file-input text-xs" />
+        <input
+          name="file"
+          type="file"
+          required
+          className="file-input text-xs"
+          onChange={async (e) => {
+            const f = e.target.files?.[0];
+            if (!f || !onRead) return;
+            setReading(true);
+            const read = await readOtherDoc(f);
+            setReading(false);
+            if (read && (read.docNumber || read.expiry)) onRead({ docNumber: read.docNumber, expiry: read.expiry });
+          }}
+        />
         <button type="submit" className="btn btn-secondary px-2.5 py-1 text-xs" disabled={uploading}>
           {uploading ? "Attaching…" : "Attach"}
         </button>
-        <span className="text-[11px] text-subtle">max {MAX_UPLOAD_LABEL}</span>
+        <span className="text-[11px] text-subtle">{reading ? "Reading the file…" : `max ${MAX_UPLOAD_LABEL}`}</span>
       </form>}
       {error && <p role="alert" className="mt-1 text-xs text-[var(--error)]">{error}</p>}
       {attachments.length > 0 && (

@@ -13,6 +13,7 @@ import { BLOOD_GROUPS } from "@/lib/formLists";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { Select } from "@/components/ui/Select";
 import { MaskedInput } from "@/components/ui/MaskedInput";
+import { readFields } from "@/components/readFields";
 
 type State = { error: string | null; ok?: boolean };
 export type SubmissionRow = { id: string; name: string; trade: string; status: string; note: string | null; submittedAt: string };
@@ -24,6 +25,25 @@ function WorkerForm({ trades, onDone }: { trades: string[]; onDone: () => void }
     async (p: State, fd: FormData) => { const r = await submitWorkerAction(p, fd); if (r.ok) onDone(); return r; },
     { error: null } as State
   );
+  // What the AI read off the passport and Emirates ID copies, for the supplier to check. The numbers remount on a read so they show up.
+  const [dob, setDob] = useState("");
+  const [ppNo, setPpNo] = useState("");
+  const [ppExp, setPpExp] = useState("");
+  const [eid, setEid] = useState("");
+  const [eidExp, setEidExp] = useState("");
+  const [fillKey, setFillKey] = useState(0);
+  const [readNote, setReadNote] = useState<string | null>(null);
+  async function readCopy(file: File | undefined, which: "passport" | "eid") {
+    if (!file) return;
+    setReadNote("Reading the file…");
+    const f = await readFields("/api/vendor/read", file, { kind: "person" });
+    if (!f) { setReadNote(null); return; }
+    if (which === "passport") { if (f.passportNumber) setPpNo(f.passportNumber.toUpperCase().replace(/\s+/g, "")); if (f.passportExpiry) setPpExp(f.passportExpiry); }
+    else { if (f.emiratesId) setEid(f.emiratesId.replace(/[\s-]/g, "")); if (f.emiratesIdExpiry) setEidExp(f.emiratesIdExpiry); }
+    if (f.dateOfBirth) setDob((d) => d || f.dateOfBirth);
+    setFillKey((k) => k + 1);
+    setReadNote(f.passportNumber || f.passportExpiry || f.emiratesId || f.emiratesIdExpiry || f.dateOfBirth ? "Filled in from the file. Check the details before sending." : null);
+  }
   return (
     <form onSubmit={keepInput(action)} className="mt-4 space-y-4">
       <fieldset className="space-y-3"><legend className="mb-1 text-xs font-semibold tracking-wide text-muted uppercase">Personal</legend>
@@ -33,7 +53,7 @@ function WorkerForm({ trades, onDone }: { trades: string[]; onDone: () => void }
           <L t="Last name *"><input name="lastName" required className="input w-full" /></L>
         </div>
         <div className="grid grid-cols-3 gap-3">
-          <L t="Date of birth *"><DatePicker name="dateOfBirth" required className="w-full" /></L>
+          <L t="Date of birth *"><DatePicker name="dateOfBirth" required value={dob} onChange={setDob} className="w-full" /></L>
           <L t="Gender"><Select name="gender" defaultValue="" searchable={false} options={[{ value: "", label: "—" }, { value: "MALE", label: "Male" }, { value: "FEMALE", label: "Female" }]} triggerClassName="w-full" /></L>
           <L t="Nationality"><CountrySelect name="nationality" placeholder="Select nationality…" /></L>
         </div>
@@ -48,19 +68,20 @@ function WorkerForm({ trades, onDone }: { trades: string[]; onDone: () => void }
       </fieldset>
       <fieldset className="space-y-3"><legend className="mb-1 text-xs font-semibold tracking-wide text-muted uppercase">Documents</legend>
         <div className="grid grid-cols-2 gap-3">
-          <L t="Passport number *"><MaskedInput kind="passport" name="passportNumber" required className="input w-full" /></L>
-          <L t="Passport expiry"><DatePicker name="passportExpiry" className="w-full" /></L>
-          <L t="Emirates ID / ICP number *"><MaskedInput kind="eid" name="emiratesId" required className="input w-full" /></L>
-          <L t="Emirates ID expiry"><DatePicker name="emiratesIdExpiry" className="w-full" /></L>
+          <L t="Passport number *"><MaskedInput key={`pp-${fillKey}`} kind="passport" name="passportNumber" required defaultValue={ppNo} className="input w-full" /></L>
+          <L t="Passport expiry"><DatePicker name="passportExpiry" value={ppExp} onChange={setPpExp} className="w-full" /></L>
+          <L t="Emirates ID / ICP number *"><MaskedInput key={`eid-${fillKey}`} kind="eid" name="emiratesId" required defaultValue={eid} className="input w-full" /></L>
+          <L t="Emirates ID expiry"><DatePicker name="emiratesIdExpiry" value={eidExp} onChange={setEidExp} className="w-full" /></L>
           <L t="Visa expiry"><DatePicker name="visaExpiry" className="w-full" /></L>
           <L t="Labour card expiry"><DatePicker name="laborCardExpiry" className="w-full" /></L>
           <L t="Medical expiry"><DatePicker name="medicalExpiry" className="w-full" /></L>
         </div>
         <div className="grid gap-3 sm:grid-cols-3">
-          <L t="Passport copy"><input type="file" name="passportFile" accept="application/pdf,image/jpeg,image/png" className="file-input w-full" /></L>
-          <L t="Emirates ID / ICP copy"><input type="file" name="emiratesIdFile" accept="application/pdf,image/jpeg,image/png" className="file-input w-full" /></L>
+          <L t="Passport copy"><input type="file" name="passportFile" accept="application/pdf,image/jpeg,image/png" className="file-input w-full" onChange={(e) => void readCopy(e.target.files?.[0], "passport")} /></L>
+          <L t="Emirates ID / ICP copy"><input type="file" name="emiratesIdFile" accept="application/pdf,image/jpeg,image/png" className="file-input w-full" onChange={(e) => void readCopy(e.target.files?.[0], "eid")} /></L>
           <L t="Other document"><input type="file" name="otherFile" accept="application/pdf,image/jpeg,image/png" className="file-input w-full" /></L>
         </div>
+        {readNote && <p className="text-xs text-muted">{readNote}</p>}
       </fieldset>
       <div className="flex flex-wrap items-center gap-3">
         <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? "Sending…" : "Send for approval"}</button>
