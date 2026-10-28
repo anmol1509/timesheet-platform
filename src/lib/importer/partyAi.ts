@@ -1,7 +1,7 @@
 import type { AiMeter } from "@/lib/aiCredits";
 import { aiGate, recordAiUsage } from "@/lib/aiCreditsServer";
 import Anthropic from "@anthropic-ai/sdk";
-import { COPILOT_MODEL } from "@/lib/constants";
+import { COPILOT_MODEL, thinkingOff } from "@/lib/constants";
 import { nameSimilarity } from "./workerMatch";
 import type { NewSupplier } from "./types";
 
@@ -64,6 +64,7 @@ export async function suggestPartyMatches(
     const client = new Anthropic({ maxRetries: 0, timeout: TIMEOUT_MS });
     const response = await client.messages.create({
       model: COPILOT_MODEL,
+      ...thinkingOff(COPILOT_MODEL),
       max_tokens: 1500,
       system: SYSTEM,
       output_config: { format: { type: "json_schema", schema: SCHEMA } },

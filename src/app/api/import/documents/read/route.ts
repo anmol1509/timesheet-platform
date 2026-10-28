@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { COPILOT_MODEL } from "@/lib/constants";
+import { COPILOT_MODEL, thinkingOff } from "@/lib/constants";
 import { requireImporter } from "@/lib/importer/access";
 import { extOf } from "@/lib/importer/documentMatch";
 import { MAX_BULK_FILE_BYTES } from "@/lib/importer/documentLimits";
@@ -40,6 +40,7 @@ export async function POST(request: Request) {
       : ({ type: "image", source: { type: "base64", media_type: media as "image/jpeg", data } } as const);
     const res = await client.messages.create({
       model: COPILOT_MODEL,
+      ...thinkingOff(COPILOT_MODEL),
       max_tokens: 400,
       system: "You read identity, visa, licence and company documents for a UAE manpower company. Report the document type, its expiry date (YYYY-MM-DD) and who it was issued to. Use null when something isn't shown. Answer only with the requested JSON.",
       output_config: { format: { type: "json_schema", schema: SCHEMA } },

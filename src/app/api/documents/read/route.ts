@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { COPILOT_MODEL } from "@/lib/constants";
+import { COPILOT_MODEL, thinkingOff } from "@/lib/constants";
 import { requireUserWithBranch } from "@/lib/auth";
 import { rateLimit } from "@/lib/rateLimit";
 import { aiGate, recordAiUsage } from "@/lib/aiCreditsServer";
@@ -48,6 +48,7 @@ export async function POST(request: Request) {
       : ({ type: "image", source: { type: "base64", media_type: media as "image/jpeg", data } } as const);
     const res = await client.messages.create({
       model: COPILOT_MODEL,
+      ...thinkingOff(COPILOT_MODEL),
       max_tokens: 400,
       system: "You file paperwork for a UAE manpower company. Say what the document is in a few words and, only when the document itself prints them, its number, its issue date, who it was issued to, and the date it expires or stops being valid (YYYY-MM-DD). Never work an expiry out by adding a period to an issue date, and never use the date of a letter, form or report as the expiry. Answer only with the requested JSON.",
       output_config: { format: { type: "json_schema", schema: SCHEMA } },

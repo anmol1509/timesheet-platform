@@ -3,7 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { getCurrentUser, isBlockedByPermissions } from "@/lib/auth";
 import { EXTRACTION_LIMIT, rateLimit } from "@/lib/rateLimit";
 import { aiBranchOf, aiGate, recordAiUsage } from "@/lib/aiCreditsServer";
-import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL, DOCUMENT_MODEL } from "@/lib/constants";
+import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL, DOCUMENT_MODEL, thinkingOff } from "@/lib/constants";
 
 const SUPPORTED_IMAGE_TYPES = new Set([
   "image/jpeg",
@@ -98,6 +98,7 @@ export async function POST(request: Request) {
   try {
     const response = await client.messages.create({
       model: DOCUMENT_MODEL,
+      ...thinkingOff(DOCUMENT_MODEL),
       max_tokens: 8192,
       output_config: { format: { type: "json_schema", schema: EXTRACT_EMPLOYEES_SCHEMA } },
       messages: [

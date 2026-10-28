@@ -9,7 +9,7 @@ export const MAX_UPLOAD_LABEL = "3.5 MB";
  * a stronger model on a batch of awkward scans without a code change.
  */
 export const DOCUMENT_MODEL =
-  process.env.DOCUMENT_MODEL || "claude-haiku-4-5-20251001";
+  process.env.DOCUMENT_MODEL || "claude-haiku-5-5";
 
 /**
  * Model behind My Assistant. Sonnet 5.5 follows multi-step questions and picks
@@ -22,7 +22,18 @@ export const ASSISTANT_MODEL = process.env.ASSISTANT_MODEL || "claude-sonnet-5-5
 export const ASSISTANT_FALLBACK_MODEL = "claude-haiku-4-5-20251001";
 
 /** Model for the import copilot's one-shot review. Short structured output; Haiku is plenty. */
-export const COPILOT_MODEL = process.env.COPILOT_MODEL || "claude-haiku-4-5-20251001";
+export const COPILOT_MODEL = process.env.COPILOT_MODEL || "claude-haiku-5-5";
+
+/**
+ * Haiku 5.5 thinks by default and that thinking is paid for out of max_tokens, so a short JSON answer
+ * could be cut off before any text. Reading a document is perception, not reasoning, and thinking is off
+ * on Haiku 4.5 anyway, so it is switched off to keep the two comparable. Spread into messages.create().
+ * A project goes back by setting DOCUMENT_MODEL / COPILOT_MODEL to claude-haiku-4-5-20251001,
+ * with no code change.
+ */
+export function thinkingOff(model: string): { thinking?: { type: "disabled" } } {
+  return /haiku-5/.test(model) ? { thinking: { type: "disabled" } } : {};
+}
 
 /**
  * Extra request settings a model needs. Sonnet 5.5 thinks by default, and that
