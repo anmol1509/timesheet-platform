@@ -4,7 +4,7 @@ import { z } from "zod";
 import { requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { prisma } from "@/lib/db";
-import { getClientMonthEntries, summarizeInvoice, nextInvoiceNumber } from "@/lib/clientInvoice";
+import { getClientMonthEntries, summarizeInvoice, nextInvoiceNumber, VAT_RATE } from "@/lib/clientInvoice";
 import { monthLabelFromKey } from "@/lib/timesheetSummary";
 import { generateClientInvoiceXlsx } from "@/lib/generateXlsx";
 import { generateClientInvoicePdf } from "@/lib/generatePdf";
@@ -99,6 +99,19 @@ export async function POST(request: Request) {
             clientId,
             generatedById: user.id,
             branchId: branchId!,
+            // Kept line by line as issued: an e-invoice needs them, and the totals can't be split back into them.
+            lines: {
+              create: lines.map((l) => ({
+                description: `${l.employeeName}${l.trade ? ` — ${l.trade}` : ""} (${monthLabel})`,
+                employeeIdNo: l.employeeIdNo,
+                trade: l.trade,
+                quantity: l.totalHours,
+                unitPrice: l.billRate,
+                netAmount: l.totalHours * l.billRate,
+                vatRate: VAT_RATE,
+                vatAmount: l.totalHours * l.billRate * VAT_RATE,
+              })),
+            },
           },
         }),
         prisma.timesheetEntry.updateMany({

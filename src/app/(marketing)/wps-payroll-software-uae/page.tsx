@@ -228,6 +228,7 @@ export default function WpsPayrollSoftwarePage() {
             cards={[
               { href: "/timesheet-software-construction-uae", title: "Timesheet software", body: "Where the approved hours payroll runs from actually come from: Excel, manual entry or supplier submissions." },
               { href: "/construction-invoicing-software-uae", title: "Billing & VAT invoicing", body: "The same approved hours, turned into VAT-ready client invoices instead of a second spreadsheet." },
+              { href: "/tools/gratuity-calculator-uae", title: "UAE gratuity calculator", body: "The end-of-service figure for any leaver, with the working shown. Payroll applies the same formula automatically." },
               { href: "/blog/wps-sif-rejection-reasons-uae", title: "Why SIF files get rejected", body: "The most common reasons a WPS salary file bounces back, and how to stop them recurring every month." },
             ]}
           />

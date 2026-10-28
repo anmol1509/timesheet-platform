@@ -592,7 +592,35 @@ model ClientInvoice {
   branch   Branch @relation(fields: [branchId], references: [id])
   branchId String
 
+  // E-invoicing: what was sent to the accredited service provider and what came back. All null until it is sent.
+  einvoiceProvider String?
+  einvoiceRef      String? // the provider's id for this invoice
+  einvoiceStatus   String? // "PENDING" | "ACCEPTED" | "REJECTED" | "FAILED"
+  einvoiceError    String?
+  einvoiceSentAt   DateTime?
+
+  lines ClientInvoiceLine[]
+
   @@index([month, clientId])
+}
+
+// One billed line, kept as issued. An e-invoice needs quantity, unit price and VAT per line, and the total alone
+// can't be turned back into those.
+model ClientInvoiceLine {
+  id           String  @id @default(cuid())
+  description  String
+  employeeIdNo String?
+  trade        String?
+  quantity     Float // hours
+  unitPrice    Float // AED per hour
+  netAmount    Float
+  vatRate      Float // 0.05 standard
+  vatAmount    Float
+
+  invoice   ClientInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  invoiceId String
+
+  @@index([invoiceId])
 }
 
 model ClientContact {
