@@ -10,6 +10,11 @@ const nextConfig: NextConfig = {
   // jar separate from localhost (used to test staff and employee sign-in side by
   // side). Development only; has no effect in production builds.
   allowedDevOrigins: ["localhost", "127.0.0.1"],
+  // The free timesheet template was linked as /tools/timesheet-template for a while; the page lives at the longer
+  // address, so the old one is sent there permanently instead of returning a 404.
+  async redirects() {
+    return [{ source: "/tools/timesheet-template", destination: "/tools/construction-timesheet-template", permanent: true }];
+  },
 };
 
 export default nextConfig;
