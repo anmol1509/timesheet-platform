@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { COPILOT_MODEL } from "@/lib/constants";
+import { COPILOT_MODEL, thinkingOff } from "@/lib/constants";
 import { aiGate, recordAiUsage } from "@/lib/aiCreditsServer";
 
 /** Shared by the routes that read a bill or invoice, or a worker's ID papers, for the person to check before saving. */
@@ -62,6 +62,7 @@ export async function readFileFields(kind: ReadKind, file: unknown, ctx: { branc
       : ({ type: "image", source: { type: "base64", media_type: media as "image/jpeg", data } } as const);
     const res = await client.messages.create({
       model: COPILOT_MODEL,
+      ...thinkingOff(COPILOT_MODEL),
       max_tokens: 500,
       output_config: { format: { type: "json_schema", schema: SCHEMAS[kind] } },
       messages: [{ role: "user", content: [block, { type: "text", text: PROMPTS[kind] }] }],

@@ -25,6 +25,17 @@ export const ASSISTANT_FALLBACK_MODEL = "claude-haiku-4-5-20251001";
 export const COPILOT_MODEL = process.env.COPILOT_MODEL || "claude-haiku-4-5-20251001";
 
 /**
+ * Haiku 5.5 thinks by default and that thinking is paid for out of max_tokens, so a short JSON answer
+ * could be cut off before any text. Reading a document is perception, not reasoning, and thinking is off
+ * on Haiku 4.5 anyway, so it is switched off to keep the two comparable. Spread into messages.create().
+ * A project switches by setting DOCUMENT_MODEL / COPILOT_MODEL to claude-haiku-5-5 (and back to
+ * claude-haiku-4-5-20251001), with no code change.
+ */
+export function thinkingOff(model: string): { thinking?: { type: "disabled" } } {
+  return /haiku-5/.test(model) ? { thinking: { type: "disabled" } } : {};
+}
+
+/**
  * Extra request settings a model needs. Sonnet 5.5 thinks by default, and that
  * thinking is paid for out of max_tokens, so a short chat reply could be cut off.
  * Thinking is limited to the gaps between tool calls and effort is kept low, which

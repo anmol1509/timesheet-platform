@@ -3,12 +3,21 @@ import assert from "node:assert/strict";
 import { DEFAULT_RATES, buildCostReport, claudeCostUsd, emailSignal, parseRates, watchSignals } from "./ownerCosts";
 
 test("Claude cost uses the model family's price per million tokens", () => {
-  assert.equal(claudeCostUsd([{ model: "claude-sonnet-5-5", input: 1_000_000, output: 1_000_000 }], DEFAULT_RATES), 18);
+  assert.equal(claudeCostUsd([{ model: "claude-sonnet-5-5", input: 1_000_000, output: 1_000_000 }], DEFAULT_RATES), 12);
+  assert.equal(claudeCostUsd([{ model: "claude-haiku-5-5", input: 1_000_000, output: 1_000_000 }], DEFAULT_RATES), 0.6);
+  assert.equal(claudeCostUsd([{ model: "claude-haiku-4-5-20251001", input: 1_000_000, output: 1_000_000 }], DEFAULT_RATES), 6);
   assert.equal(claudeCostUsd(undefined, DEFAULT_RATES), 0);
 });
 
 test("an unknown model is priced like the dearest one", () => {
-  assert.equal(claudeCostUsd([{ model: "mystery", input: 1_000_000, output: 0 }], DEFAULT_RATES), 5);
+  assert.equal(claudeCostUsd([{ model: "mystery", input: 1_000_000, output: 0 }], DEFAULT_RATES), 10);
+});
+
+test("rates saved before Haiku 5.5 existed still price it at its own rate", () => {
+  const r = parseRates({ models: [{ family: "haiku", inputUsd: 1, outputUsd: 5 }, { family: "sonnet", inputUsd: 3, outputUsd: 15 }] });
+  assert.equal(claudeCostUsd([{ model: "claude-haiku-5-5", input: 1_000_000, output: 0 }], r), 0.1);
+  assert.equal(claudeCostUsd([{ model: "claude-haiku-4-5-20251001", input: 1_000_000, output: 0 }], r), 1);
+  assert.equal(claudeCostUsd([{ model: "claude-sonnet-5-5", input: 1_000_000, output: 0 }], r), 3);
 });
 
 test("bad stored settings fall back to the defaults", () => {

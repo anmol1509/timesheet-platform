@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { COPILOT_MODEL } from "@/lib/constants";
+import { COPILOT_MODEL, thinkingOff } from "@/lib/constants";
 import { requireImporter } from "@/lib/importer/access";
 import { rateLimit } from "@/lib/rateLimit";
 import { aiGate, recordAiUsage } from "@/lib/aiCreditsServer";
@@ -102,6 +102,7 @@ export async function POST(request: Request) {
     content.push({ type: "text", text: "Read every page above." });
     const res = await client.messages.create({
       model: COPILOT_MODEL,
+      ...thinkingOff(COPILOT_MODEL),
       max_tokens: 3200,
       system: systemFor(audience, options.map((t) => `${t.value} (${t.label})`).join(", ")),
       output_config: { format: { type: "json_schema", schema: schemaFor(types, audience) } },

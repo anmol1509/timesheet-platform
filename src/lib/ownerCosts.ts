@@ -26,10 +26,13 @@ export type Rates = {
 export const DEFAULT_RATES: Rates = {
   usdToAed: 3.67,
   models: [
+    // The more specific name goes first: a model is priced by the first family its name contains.
+    { family: "haiku-5", inputUsd: 0.1, outputUsd: 0.5 },
     { family: "haiku", inputUsd: 1, outputUsd: 5 },
-    { family: "sonnet", inputUsd: 3, outputUsd: 15 },
+    { family: "sonnet", inputUsd: 2, outputUsd: 10 },
+    { family: "opus-5-5", inputUsd: 4, outputUsd: 20 },
     { family: "opus", inputUsd: 5, outputUsd: 25 },
-    { family: "fable", inputUsd: 5, outputUsd: 25 },
+    { family: "fable", inputUsd: 10, outputUsd: 50 },
   ],
   supabasePlanUsd: 25,
   supabaseComputeCreditUsd: 10,
@@ -49,7 +52,10 @@ export function parseRates(raw: unknown): Rates {
   const d = DEFAULT_RATES;
   const compute: Record<string, number> = {};
   if (r.customerComputeUsd && typeof r.customerComputeUsd === "object") for (const [k, v] of Object.entries(r.customerComputeUsd)) compute[k.toUpperCase()] = num(v, 10);
-  const models = Array.isArray(r.models) && r.models.length ? r.models.filter((m) => m && typeof m.family === "string").map((m) => ({ family: m.family.toLowerCase(), inputUsd: num(m.inputUsd, 0), outputUsd: num(m.outputUsd, 0) })) : d.models;
+  const saved = Array.isArray(r.models) && r.models.length ? r.models.filter((m) => m && typeof m.family === "string").map((m) => ({ family: m.family.toLowerCase(), inputUsd: num(m.inputUsd, 0), outputUsd: num(m.outputUsd, 0) })) : [];
+  // Settings saved before a family existed (haiku-5, opus-5-5) pick it up at its default; what the owner saved stays as it was.
+  const models = saved.length ? [...saved, ...d.models.filter((m) => !saved.some((x) => x.family === m.family))] : d.models;
+  models.sort((a, b) => b.family.length - a.family.length);
   return {
     usdToAed: num(r.usdToAed, d.usdToAed) || d.usdToAed, models: models.length ? models : d.models,
     supabasePlanUsd: num(r.supabasePlanUsd, d.supabasePlanUsd), supabaseComputeCreditUsd: num(r.supabaseComputeCreditUsd, d.supabaseComputeCreditUsd),
