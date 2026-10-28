@@ -53,7 +53,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       branchName: noc.branch.name,
       docNo: noc.docNo,
       mobilizeDate: noc.mobilizeDate,
-      date: new Date(),
+      date: noc.letterDate ?? new Date(),
     },
   });
 
@@ -67,7 +67,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     clientName: noc.demandRequest.client.name,
     clientAddress: noc.demandRequest.client.billingAddress,
     projectName: noc.demandRequest.project.name,
-    date: new Date(),
+    date: noc.letterDate ?? new Date(),
     sections,
     // The NOC screen's column picker still drives the table; the client's own
     // column set is what the default selection produces.

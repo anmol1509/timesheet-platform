@@ -109,7 +109,7 @@ function LetterBuilder({
   const [chosen, setChosen] = useState<Set<string>>(() => new Set(workers.map((w) => w.id)));
   const [onLetterhead, setOnLetterhead] = useState(true);
   const [mobilizeDate, setMobilizeDate] = useState("");
-  // The date printed on an undertaking; empty means today, as it always was.
+  // The date printed on the letter (NOC or undertaking); empty means today.
   const [letterDate, setLetterDate] = useState("");
   const [remarks, setRemarks] = useState("");
   const [fields, setFields] = useState<Set<string>>(new Set(DEFAULT_NOC_DISPLAY_FIELDS));
@@ -178,6 +178,7 @@ function LetterBuilder({
     for (const id of chosen) fd.append("employeeId", id);
     fd.set("displayFields", [...fields].join(","));
     fd.set("mobilizeDate", mobilizeDate);
+    fd.set("letterDate", letterDate);
     fd.set("remarks", remarks);
     startIssue(async () => {
       const res = await issueNocAction(fd);
@@ -236,12 +237,10 @@ function LetterBuilder({
             </ul>
           </div>
 
-          {!isNoc && (
-            <label className="block">
-              <span className="mb-1 block text-xs font-medium text-muted">Letter date <span className="font-normal">(blank = today)</span></span>
-              <DatePicker value={letterDate} onChange={setLetterDate} className="w-full" />
-            </label>
-          )}
+          <label className="block">
+            <span className="mb-1 block text-xs font-medium text-muted">Letter date <span className="font-normal">(blank = today)</span></span>
+            <DatePicker value={letterDate} onChange={setLetterDate} className="w-full" />
+          </label>
           {isNoc && (
             <>
               <label className="block">
@@ -368,7 +367,7 @@ function LetterBuilder({
                 margins={company.margins}
                 signing={isNoc ? { name: g.id ? sponsors[g.id]?.contactPerson ?? null : null, title: null, phone: g.id ? sponsors[g.id]?.contactPhone ?? null : null, email: g.id ? sponsors[g.id]?.contactEmail ?? null : null, signatureUrl: null, stampUrl: null } : { name: signatoryName.trim() || null, title: signatoryTitle.trim() || null, phone: company.phone, email: company.email, signatureUrl: showSignature ? company.signatureUrl : null, stampUrl: showStamp ? company.stampUrl : null }}
                 mobilizeDate={mobilizeDate}
-                letterDate={isNoc ? "" : letterDate}
+                letterDate={letterDate}
               />
             ))
           )}

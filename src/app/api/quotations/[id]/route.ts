@@ -1,3 +1,4 @@
+import { parseDay } from "@/lib/dates";
 import { marginsOfBranch } from "@/lib/paperMargins";
 import { NextResponse } from "next/server";
 import { requireUserWithBranch } from "@/lib/auth";
@@ -56,7 +57,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     client: quotation.client.name,
     contact: quotation.contact?.name ?? "",
     quotationNo: quotation.quotationNumber,
-    date: fmtDate(new Date()),
+    // The date printed on the cover letter: the one chosen in the Send dialog (YYYY-MM-DD), else today.
+    date: fmtDate(parseDay(new URL(request.url).searchParams.get("date") ?? "") ?? new Date()),
     validUntil: quotation.validUntil ? fmtDate(quotation.validUntil) : "",
     total: `${quotation.currency} ${total.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
     company: quotation.branch.name,

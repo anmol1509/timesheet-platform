@@ -65,6 +65,9 @@ const uniq = (xs: (string | null)[]) => [...new Set(xs.filter((x): x is string =
 
 export function CheckInTable({ rows, camps, suppliers, clients }: { rows: EmployeeRow[]; camps: CampOption[]; suppliers: Party[]; clients: Party[] }) {
   const [filter, setFilter] = useState<Filter>("all");
+  // The date printed on a check-in document when it is downloaded (YYYY-MM-DD); blank means today.
+  const [letterDate, setLetterDate] = useState("");
+  const pdfHref = (ids: string) => `/api/checkins/pdf?ids=${ids}${letterDate ? `&letterDate=${letterDate}` : ""}`;
   const [query, setQuery] = useState("");
   const [project, setProject] = useState(ALL);
   const [supplier, setSupplier] = useState(ALL);
@@ -145,7 +148,11 @@ export function CheckInTable({ rows, camps, suppliers, clients }: { rows: Employ
           </button>
         ))}
         {filter === "checked_in" && visible.length > 0 && new Set(visible.map((r) => r.campId)).size === 1 && (
-          <a href={`/api/checkins/pdf?ids=${visible.map((r) => r.checkInId).join(",")}`} className="ml-auto text-xs font-medium text-[var(--brand-primary)] hover:underline">Download the check-in document for these {visible.length}</a>
+          <span className="ml-auto flex flex-wrap items-center gap-2">
+            <span className="text-xs text-muted">Document date</span>
+            <DatePicker value={letterDate} onChange={setLetterDate} ariaLabel="Document date (blank = today)" className="w-40" />
+            <a href={pdfHref(visible.map((r) => r.checkInId).join(","))} className="text-xs font-medium text-[var(--brand-primary)] hover:underline">Download the check-in document for these {visible.length}</a>
+          </span>
         )}
       </div>
 
@@ -227,7 +234,7 @@ export function CheckInTable({ rows, camps, suppliers, clients }: { rows: Employ
                   </td>
                   <td className="px-4 py-3 text-right">
                     {r.checkInId && (
-                      <a href={`/api/checkins/pdf?ids=${r.checkInId}`} className="mr-3 text-xs font-medium text-[var(--brand-primary)] hover:underline" title="Download this worker's check-in document again">Download</a>
+                      <a href={pdfHref(r.checkInId)} className="mr-3 text-xs font-medium text-[var(--brand-primary)] hover:underline" title="Download this worker's check-in document again">Download</a>
                     )}
                     {r.checkInId && (
                       <button type="button" onClick={() => setSwitchRow(r)} className="text-xs font-medium text-[var(--brand-primary)] hover:underline">
