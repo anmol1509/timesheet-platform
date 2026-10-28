@@ -17,7 +17,10 @@ export const metadata: Metadata = finishMetadata({
   title: tool.title,
   description: tool.description,
   keywords: ["gratuity calculator UAE", "end of service calculator UAE", "end of service calculator Dubai", "Dubai gratuity calculation", "UAE gratuity calculator Abu Dhabi", "EOSB calculator", "UAE labour law gratuity"],
-  alternates: { canonical: `${SITE_URL}${PATH}` },
+  alternates: {
+    canonical: `${SITE_URL}${PATH}`,
+    languages: { en: `${SITE_URL}${PATH}`, ar: `${SITE_URL}/ar${PATH}`, "x-default": `${SITE_URL}${PATH}` },
+  },
 });
 
 const FAQS = [
@@ -91,6 +94,10 @@ export default function GratuityCalculatorPage() {
       ]}
       article={
         <>
+          <p>
+            <a href={`/ar${PATH}`} hrefLang="ar" lang="ar">هذه الصفحة بالعربية</a>
+          </p>
+
           <h2>How UAE gratuity is calculated</h2>
           <p>
             Under Article 51 of Federal Decree-Law No. 33 of 2021, an employee who has completed at least

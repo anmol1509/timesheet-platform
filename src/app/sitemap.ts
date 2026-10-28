@@ -67,6 +67,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "monthly" as const,
       priority: 0.6,
     })),
+    {
+      // The Arabic version of the gratuity calculator; the English page lists it as its hreflang alternate.
+      url: `https://${MARKETING_HOST}/ar/tools/gratuity-calculator-uae`,
+      lastModified: now,
+      changeFrequency: "monthly" as const,
+      priority: 0.7,
+    },
     ...TOOLS.map((tool) => ({
       url: `https://${MARKETING_HOST}/tools/${tool.slug}`,
       lastModified: new Date(tool.updated),

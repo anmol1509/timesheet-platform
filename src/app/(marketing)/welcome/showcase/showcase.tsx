@@ -470,7 +470,7 @@ export function Faq({ items }: { items: readonly { q: string; a: string }[] }) {
   );
 }
 
-export function ShowcaseCta({ title, lead }: { title: string; lead: string }) {
+export function ShowcaseCta({ title, lead, label = "Book a demo" }: { title: string; lead: string; label?: string }) {
   return (
     <section className={x.ctaBand}>
       <div className={x.wrap}>
@@ -478,7 +478,7 @@ export function ShowcaseCta({ title, lead }: { title: string; lead: string }) {
           <h2>{title}</h2>
           <p>{lead}</p>
           <BookDemoButton className={`${w.btn} ${w.btnOnDark} ${w.btnLg}`}>
-            Book a demo <ArrowRight size={16} aria-hidden />
+            {label} <ArrowRight size={16} aria-hidden />
           </BookDemoButton>
         </div>
       </div>
