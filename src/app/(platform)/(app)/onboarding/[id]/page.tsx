@@ -25,6 +25,8 @@ export default async function CandidateDetailPage({ params }: { params: Promise<
   const { id } = await params;
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const showCosts = can(subjectOf(user), "finance", "view");
+  // Someone who may only look still sees everything, but none of the buttons that change it.
+  const canEdit = can(subjectOf(user), "onboarding.tracker", "edit");
 
   const candidate = await prisma.candidateOnboarding.findUnique({
     where: { id },
@@ -67,7 +69,7 @@ export default async function CandidateDetailPage({ params }: { params: Promise<
   const attachmentsByStage = new Map([...STAGES, ...AFTER_ARRIVAL_STAGES].map((s) => [s.key, attachments.filter((a) => a.docType === s.key).map((a) => ({ id: a.id, filename: a.filename }))]));
 
   return (
-    <div className="max-w-4xl space-y-6">
+    <div className="w-full max-w-4xl min-w-0 space-y-6">
       <div>
         <Link href="/onboarding" className="inline-flex items-center gap-1 text-sm text-muted hover:underline">
           <ArrowLeft className="h-3.5 w-3.5" aria-hidden /> Candidate onboarding
@@ -79,12 +81,12 @@ export default async function CandidateDetailPage({ params }: { params: Promise<
               #{String(candidate.candidateNo).padStart(3, "0")}
             </span>
           </div>
-          <DeleteButton
+          {canEdit && <DeleteButton
             action={deleteCandidateAction}
             hiddenFields={{ id: candidate.id }}
             confirmMessage={`Remove "${candidate.candidateName}" from onboarding? This can't be undone.`}
             label="Remove"
-          />
+          />}
         </div>
         <p className="mt-1 text-sm text-muted">
           {CANDIDATE_TYPES.find((t) => t.value === asCandidateType(candidate.candidateType))?.label} · {candidate.trade ?? "No trade set"} · {candidate.agency?.name ?? "No agency"}
@@ -96,8 +98,8 @@ export default async function CandidateDetailPage({ params }: { params: Promise<
 
       <Pipeline row={candidate} joined={candidate.joined} />
 
-      {!candidate.droppedAt && <JoinPanel candidate={candidate} />}
-      <DropPanel candidateId={candidate.id} joined={candidate.joined} droppedAt={candidate.droppedAt} droppedReason={candidate.droppedReason} />
+      {!candidate.droppedAt && <JoinPanel candidate={candidate} canEdit={canEdit} missingDocs={checklist.filter((c) => c.required && c.state === "missing").map((c) => c.type.label)} />}
+      <DropPanel candidateId={candidate.id} joined={candidate.joined} droppedAt={candidate.droppedAt} droppedReason={candidate.droppedReason} canEdit={canEdit} />
 
       <div className="card overflow-hidden">
         <div className="border-b border-default px-4 py-3">
@@ -115,6 +117,7 @@ export default async function CandidateDetailPage({ params }: { params: Promise<
             task={taskByStage.get(stage.key) ?? null}
             hrUsers={hrUsers}
             attachments={attachmentsByStage.get(stage.key) ?? []}
+            canEdit={canEdit}
           />
         ))}
       </div>
@@ -143,6 +146,7 @@ export default async function CandidateDetailPage({ params }: { params: Promise<
             task={taskByStage.get(stage.key) ?? null}
             hrUsers={hrUsers}
             attachments={attachmentsByStage.get(stage.key) ?? []}
+            canEdit={canEdit}
           />
         ))}
       </details>
@@ -156,6 +160,7 @@ export default async function CandidateDetailPage({ params }: { params: Promise<
         <CostPanel
           candidateId={candidate.id}
           costs={costs.map((c) => ({ id: c.id, kind: c.kind, amount: Number(c.amount), incurredOn: c.incurredOn.toISOString().slice(0, 10), paid: c.paid, note: c.note }))}
+          canEdit={canEdit}
         />
       )}
 
@@ -168,12 +173,13 @@ export default async function CandidateDetailPage({ params }: { params: Promise<
           revalidate={`/onboarding/${candidate.id}`}
           docTypeOptions={[...activeDocTypes(docTypes).map((t) => ({ value: t.key, label: t.label })), ...stageDocOptions]}
           attachments={attachments.map((a) => ({ ...a, expiryDate: a.expiryDate?.toISOString() ?? null, uploadedAt: a.uploadedAt.toISOString() }))}
+          readOnly={!canEdit}
         />
       </div>
 
       <div>
         <p className="mb-2 text-sm font-medium text-primary">Candidate details</p>
-        <CandidateForm candidate={candidate} sponsors={sponsors} agencies={agencies} agencyContacts={agencyContacts} projects={projects} demandRequests={demandRequests} hrUsers={hrUsers} />
+        <CandidateForm candidate={candidate} sponsors={sponsors} agencies={agencies} agencyContacts={agencyContacts} projects={projects} demandRequests={demandRequests} hrUsers={hrUsers} readOnly={!canEdit} />
       </div>
 
       <div className="card overflow-x-auto">
@@ -194,9 +200,9 @@ export default async function CandidateDetailPage({ params }: { params: Promise<
           <tbody className="divide-y divide-[var(--border)]">
             {history.map((h) => (
               <tr key={h.id}>
-                <td className="px-4 py-2 text-secondary">{STAGES.find((s) => s.key === h.stage)?.label ?? h.stage}</td>
+                <td className="px-4 py-2 text-secondary">{[...STAGES, ...AFTER_ARRIVAL_STAGES].find((s) => s.key === h.stage)?.label ?? h.stage}</td>
                 <td className="px-3 py-2 text-secondary">{h.oldStatus} → {h.newStatus}</td>
-                <td className="px-3 py-2 text-secondary">{new Date(h.statusDate).toLocaleDateString()}</td>
+                <td className="px-3 py-2 text-secondary">{new Date(h.statusDate).toLocaleDateString("en-GB")}</td>
                 <td className="px-3 py-2 text-secondary">{h.referenceNo ?? "—"}</td>
                 <td className="px-3 py-2 text-secondary">{h.remarks ?? "—"}</td>
                 <td className="px-3 py-2 text-secondary">{h.updatedBy?.name ?? "—"}</td>

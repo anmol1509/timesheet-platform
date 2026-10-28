@@ -40,6 +40,7 @@ export function StageRow({
   task,
   hrUsers,
   attachments,
+  canEdit = true,
 }: {
   candidateId: string;
   candidateBranchId: string;
@@ -49,6 +50,8 @@ export function StageRow({
   task: Task;
   hrUsers: HrOption[];
   attachments: StageAttachmentRow[];
+  /** False for a person who may only look: the forms are left out. */
+  canEdit?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
@@ -93,7 +96,7 @@ export function StageRow({
           {task && (task.ownerName || task.dueDate) && (
             <span className={cn("text-[11px]", overdue ? "font-medium text-[var(--error)]" : "text-subtle")}>
               {task.ownerName ? task.ownerName : "Unassigned"}
-              {task.dueDate ? ` · due ${new Date(task.dueDate).toLocaleDateString()}${overdue ? " (overdue)" : ""}` : ""}
+              {task.dueDate ? ` · due ${new Date(task.dueDate).toLocaleDateString("en-GB")}${overdue ? " (overdue)" : ""}` : ""}
             </span>
           )}
         </span>
@@ -106,7 +109,7 @@ export function StageRow({
       </button>
       {open && (
         <div className="border-t border-default bg-surface-subtle">
-          <form action={taskAction} className="flex flex-wrap items-end gap-3 border-b border-default px-4 py-3">
+          {canEdit && <form action={taskAction} className="flex flex-wrap items-end gap-3 border-b border-default px-4 py-3">
             <User className="mb-2 h-4 w-4 shrink-0 text-subtle" aria-hidden />
             <label className="block">
               <span className="mb-1 block text-xs font-medium text-muted">Owner</span>
@@ -125,8 +128,8 @@ export function StageRow({
               {taskPending ? "Saving…" : "Assign"}
             </button>
             {taskState.error && <p role="alert" className="text-sm text-[var(--error)]">{taskState.error}</p>}
-          </form>
-          <form action={action} className="grid gap-3 px-4 py-4 sm:grid-cols-2">
+          </form>}
+          {canEdit ? <form action={action} className="grid gap-3 px-4 py-4 sm:grid-cols-2">
             <label className="block">
               <span className="mb-1 block text-xs font-medium text-muted">Status</span>
               <Select
@@ -174,8 +177,8 @@ export function StageRow({
                 >Save anyway</button>
               </div>
             )}
-          </form>
-          <StageAttachments candidateId={candidateId} candidateBranchId={candidateBranchId} stageKey={stage.key} attachments={attachments} />
+          </form> : <p className="px-4 py-3 text-sm text-muted">You can see this step but not change it.</p>}
+          <StageAttachments candidateId={candidateId} candidateBranchId={candidateBranchId} stageKey={stage.key} attachments={attachments} canEdit={canEdit} />
         </div>
       )}
     </div>

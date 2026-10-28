@@ -27,3 +27,24 @@ export function missingEssentials(f: { name?: string | null; passportNumber?: st
   if (!f.supplierId) out.push("company");
   return out;
 }
+
+/**
+ * What a later step's expiry date means on the employee. Medical, visa stamping and the labour card are done after arrival, often
+ * after the person has already been added; when one is recorded with an expiry date it is copied to the employee so renewals see it.
+ * Returns nothing for steps that do not map to an employee date.
+ */
+export function employeeFieldsFromStage(stage: string, expiry: Date | null, referenceNo: string | null): Record<string, Date | string> {
+  const out: Record<string, Date | string> = {};
+  if (!expiry) return out;
+  if (stage === "MEDICAL") out.medicalExpiry = expiry;
+  else if (stage === "ID_VISA") { out.visaExpiry = expiry; if (referenceNo) out.visaNumber = referenceNo; }
+  else if (stage === "CONTRACT") out.laborCardExpiry = expiry;
+  return out;
+}
+
+/** A passport number that cannot be one (too short, or something other than letters and digits), or null when it looks fine. Empty is fine: it can come later. */
+export function passportProblem(value: string | null | undefined): string | null {
+  const v = (value ?? "").trim();
+  if (!v) return null;
+  return /^[A-Za-z0-9]{5,20}$/.test(v.replace(/[\s-]/g, "")) ? null : "Check the passport number: it is usually 6 to 9 letters and digits, with no symbols.";
+}

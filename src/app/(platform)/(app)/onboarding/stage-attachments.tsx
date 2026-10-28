@@ -17,11 +17,13 @@ export function StageAttachments({
   candidateBranchId,
   stageKey,
   attachments,
+  canEdit = true,
 }: {
   candidateId: string;
   candidateBranchId: string;
   stageKey: string;
   attachments: StageAttachmentRow[];
+  canEdit?: boolean;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
   const [error, setError] = useState<string | null>(null);
@@ -29,7 +31,7 @@ export function StageAttachments({
 
   return (
     <div className="border-t border-default px-4 py-3">
-      <form
+      {canEdit && <form
         ref={formRef}
         action={async (fd) => {
           setError(null);
@@ -52,7 +54,7 @@ export function StageAttachments({
           {uploading ? "Attaching…" : "Attach"}
         </button>
         <span className="text-[11px] text-subtle">max {MAX_UPLOAD_LABEL}</span>
-      </form>
+      </form>}
       {error && <p role="alert" className="mt-1 text-xs text-[var(--error)]">{error}</p>}
       {attachments.length > 0 && (
         <ul className="mt-2 flex flex-wrap gap-1.5">
@@ -61,13 +63,13 @@ export function StageAttachments({
               <a href={`/api/attachments/${a.id}`} target="_blank" rel="noreferrer" className="max-w-[10rem] truncate text-primary hover:underline">
                 {a.filename}
               </a>
-              <DeleteButton
+              {canEdit && <DeleteButton
                 action={deleteAttachmentAction}
                 hiddenFields={{ attachmentId: a.id, revalidate: `/onboarding/${candidateId}` }}
                 confirmMessage={`Delete "${a.filename}"?`}
                 label="×"
                 className="text-subtle hover:text-[var(--error)]"
-              />
+              />}
             </li>
           ))}
         </ul>

@@ -27,7 +27,7 @@ export function NewAgency() {
       <DialogContent title="New recruitment agency" description="Agencies put candidates forward for onboarding. Contacts are added from a candidate's form.">
         <form action={action} className="mt-4 space-y-3">
           <label className="block"><span className={lbl}>Agency name *</span><input name="name" required autoFocus className="input w-full" /></label>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className="block"><span className={lbl}>Country</span><input name="country" className="input w-full" /></label>
             <label className="block"><span className={lbl}>Licence number</span><input name="licence" className="input w-full" /></label>
             <label className="block"><span className={lbl}>Phone</span><PhoneField name="phone" /></label>

@@ -29,6 +29,7 @@ export function AttachmentUploader({
   revalidate,
   docTypeOptions,
   attachments,
+  readOnly = false,
 }: {
   entityType: string;
   entityId: string;
@@ -36,6 +37,8 @@ export function AttachmentUploader({
   revalidate: string;
   docTypeOptions: { value: string; label: string }[];
   attachments: AttachmentRow[];
+  /** Only list the files: no upload form and no delete (a person who may only look). */
+  readOnly?: boolean;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
   const [error, setError] = useState<string | null>(null);
@@ -75,7 +78,7 @@ export function AttachmentUploader({
 
   return (
     <div className="space-y-4">
-      <form
+      {!readOnly && <form
         ref={formRef}
         action={async (formData) => {
           setError(null);
@@ -132,7 +135,7 @@ export function AttachmentUploader({
           Upload
         </button>
         {!isOther && note && <p className="w-full text-xs text-muted">{note}</p>}
-      </form>
+      </form>}
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
@@ -151,14 +154,14 @@ export function AttachmentUploader({
               <span className="shrink-0 text-xs text-muted">{a.docType}</span>
               {a.expiryDate && (
                 <span className="shrink-0 text-xs text-subtle">
-                  expires {new Date(a.expiryDate).toLocaleDateString()}
+                  expires {new Date(a.expiryDate).toLocaleDateString("en-GB")}
                 </span>
               )}
-              <DeleteButton
+              {!readOnly && <DeleteButton
                 action={deleteAttachmentAction}
                 hiddenFields={{ attachmentId: a.id, revalidate }}
                 confirmMessage={`Delete "${a.filename}"?`}
-              />
+              />}
             </li>
           ))}
         </ul>

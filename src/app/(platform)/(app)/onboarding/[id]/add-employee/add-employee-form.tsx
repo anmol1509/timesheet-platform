@@ -16,6 +16,7 @@ type FileRow = { id: string; name: string; docType: string; expiry: string };
 type Initial = {
   name: string; supplierId: string; projectId: string; trade: string; nationality: string; gender: string; bloodGroup: string; mobileNumber: string;
   dateOfBirth: string; passportNumber: string; emiratesId: string; joinDate: string; visaNumber: string; visaExpiry: string; medicalExpiry: string;
+  passportExpiry: string; emiratesIdExpiry: string; laborCardExpiry: string;
 };
 
 const lbl = "mb-1 block text-xs font-medium text-muted";
@@ -35,7 +36,7 @@ function Section({ title, hint, children }: { title: string; hint?: string; chil
         <span className="text-sm font-medium text-primary">{title}</span>
         {hint && <span className="text-xs text-muted">— {hint}</span>}
       </div>
-      <div className="grid gap-3 sm:grid-cols-2">{children}</div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">{children}</div>
     </section>
   );
 }
@@ -102,9 +103,9 @@ export function AddEmployeeForm({ candidateId, ready, canEditPay, proposedIds, s
         <label className="block"><span className={lbl}>Visa number</span><input name="visaNumber" defaultValue={initial.visaNumber} className="input w-full" /></label>
         <label className="block"><span className={lbl}>Visa expiry</span><DatePicker name="visaExpiry" defaultValue={initial.visaExpiry} className="w-full" /></label>
         <label className="block"><span className={lbl}>Medical expiry</span><DatePicker name="medicalExpiry" defaultValue={initial.medicalExpiry} className="w-full" /></label>
-        <label className="block"><span className={lbl}>Passport expiry</span><DatePicker name="passportExpiry" defaultValue="" className="w-full" /></label>
-        <label className="block"><span className={lbl}>Emirates ID expiry</span><DatePicker name="emiratesIdExpiry" defaultValue="" className="w-full" /></label>
-        <label className="block"><span className={lbl}>Labour card expiry</span><DatePicker name="laborCardExpiry" defaultValue="" className="w-full" /></label>
+        <label className="block"><span className={lbl}>Passport expiry</span><DatePicker name="passportExpiry" defaultValue={initial.passportExpiry} className="w-full" /></label>
+        <label className="block"><span className={lbl}>Emirates ID expiry</span><DatePicker name="emiratesIdExpiry" defaultValue={initial.emiratesIdExpiry} className="w-full" /></label>
+        <label className="block"><span className={lbl}>Labour card expiry</span><DatePicker name="laborCardExpiry" defaultValue={initial.laborCardExpiry} className="w-full" /></label>
       </Section>
 
       {canEditPay ? (
@@ -130,7 +131,7 @@ export function AddEmployeeForm({ candidateId, ready, canEditPay, proposedIds, s
         <section className="card p-5">
           <label className="flex items-start gap-2 text-sm text-primary"><input type="checkbox" name="copyFiles" value="1" defaultChecked className="mt-0.5" /> Copy these {files.length} file{files.length === 1 ? "" : "s"} to the employee&rsquo;s documents</label>
           <ul className="mt-2 divide-y divide-[var(--border)] text-sm">
-            {files.map((f) => <li key={f.id} className="flex justify-between gap-3 py-1.5"><span className="truncate text-secondary">{f.name}</span><span className="shrink-0 text-xs text-muted">{DOC_LABEL[f.docType] ?? f.docType}{f.expiry ? ` · expires ${f.expiry.split("-").reverse().join("-")}` : ""}</span></li>)}
+            {files.map((f) => <li key={f.id} className="flex justify-between gap-3 py-1.5"><span className="truncate text-secondary">{f.name}</span><span className="shrink-0 text-xs text-muted">{DOC_LABEL[f.docType] ?? f.docType}{f.expiry ? ` · expires ${f.expiry.split("-").reverse().join("/")}` : ""}</span></li>)}
           </ul>
         </section>
       )}

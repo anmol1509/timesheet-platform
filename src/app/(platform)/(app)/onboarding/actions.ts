@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch, requireWrite } from "@/lib/auth";
+import { employeeFieldsFromStage, passportProblem } from "@/lib/onboardingEmployee";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { contactsError } from "@/lib/validators";
@@ -102,6 +103,8 @@ export async function createCandidateAction(_prev: State, formData: FormData): P
   if (!branchId) {
     return { error: isSuperAdmin ? "Sign in as a company administrator before adding a candidate." : "Your account has no company assigned. Contact an admin." };
   }
+  const ppBad = passportProblem(fields.passportNumber);
+  if (ppBad) return { error: ppBad };
   const dupError = await findDuplicate(branchId, fields.passportNumber, fields.emiratesId);
   if (dupError) return { error: dupError };
   const bad = await linkProblem(branchId, fields.agencyId, fields.sponsorSupplierId);
@@ -138,6 +141,8 @@ export async function updateCandidateAction(_prev: State, formData: FormData): P
 
   const before = await prisma.candidateOnboarding.findUnique({ where: { id } });
   if (!before) return { error: "Candidate not found." };
+  const ppBad = passportProblem(fields.passportNumber);
+  if (ppBad) return { error: ppBad };
   const dupError = await findDuplicate(before.branchId, fields.passportNumber, fields.emiratesId, id);
   if (dupError) return { error: dupError };
   const bad = await linkProblem(before.branchId, fields.agencyId, fields.sponsorSupplierId, before);
@@ -206,6 +211,19 @@ export async function updateStageAction(_prev: State, formData: FormData): Promi
     await prisma.candidateOnboarding.update({ where: { id }, data: { readyToJoin } });
   }
 
+  // Papers that follow arrival (medical, visa stamping, labour card) are recorded after the person has often joined already: their
+  // expiry dates go to the employee too, or renewals would never see them.
+  if (candidate.joined && candidate.employeeId) {
+    const fields = employeeFieldsFromStage(stage.key, expiryDate, referenceNo);
+    if (Object.keys(fields).length > 0) {
+      const emp = await prisma.employee.update({ where: { id: candidate.employeeId }, data: fields }).catch(() => null);
+      if (emp) {
+        await logAudit({ entityType: "EMPLOYEE", entityId: emp.id, action: "UPDATE", after: { ...Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, v instanceof Date ? v.toISOString().slice(0, 10) : v])), source: `Candidate onboarding #${candidate.candidateNo}: ${stage.label}` }, userId: user.id, userName: user.name, branchId: candidate.branchId });
+        revalidatePath(`/employees/${emp.id}`);
+      }
+    }
+  }
+
   await logAudit({
     entityType: "CANDIDATE_ONBOARDING",
     entityId: id,
@@ -244,7 +262,7 @@ export async function createAgencyAction(_prev: CreateAgencyResult, formData: Fo
   }
 
   const existing = await findSupplierByName(name, branchId);
-  if (existing) return { error: "A supplier with that name already exists. If it is a recruitment agency, add it from Onboarding → Agencies (Add an existing supplier)." };
+  if (existing) return { error: "A supplier with that name already exists. If it is the agency you mean, use \u201cAdd an existing supplier\u2026\u201d on this page to mark it as an agency." };
 
   const code = await uniqueSupplierCode(name, branchId);
   const contactPhone = stringOrNull(formData.get("phone"));
