@@ -1685,6 +1685,10 @@ model Attachment {
   mimeType   String
   expiryDate DateTime?
   uploadedAt DateTime  @default(now())
+  // The number printed on the document (licence, permit, certificate number) and its issue date, read from the file
+  // and checked by the person; both optional.
+  docNumber  String?
+  issueDate  DateTime?
 
   // Copied from the owning entity at write time so dashboard queries can
   // filter by branch without joining through entityId.

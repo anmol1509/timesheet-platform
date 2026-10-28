@@ -47,8 +47,10 @@ export function AttachmentUploader({
   const [expiry, setExpiry] = useState("");
   // A company document's expiry is read from the file when it is chosen, for the person to check.
   const [plainExpiry, setPlainExpiry] = useState("");
+  const [readNumber, setReadNumber] = useState("");
+  const [readIssue, setReadIssue] = useState("");
   const [note, setNote] = useState<string | null>(null);
-  const resetOther = () => { setName(""); setTrack(false); setExpiry(""); setPlainExpiry(""); setNote(null); };
+  const resetOther = () => { setName(""); setTrack(false); setExpiry(""); setPlainExpiry(""); setReadNumber(""); setReadIssue(""); setNote(null); };
 
   async function onFile(file: File | undefined) {
     if (!file) return;
@@ -56,6 +58,7 @@ export function AttachmentUploader({
       if (entityType !== "SUPPLIER") return;
       setNote("Reading the file for its expiry date…");
       const read = await readCompanyDoc(file);
+      if (read) { setReadNumber(read.number); setReadIssue(read.issue); }
       if (read?.expiry) { setPlainExpiry(read.expiry); setNote("Expiry read from the file. Check it before uploading."); }
       else setNote(null);
       return;
@@ -96,6 +99,8 @@ export function AttachmentUploader({
         <input type="hidden" name="entityId" value={entityId} />
         <input type="hidden" name="entityBranchId" value={entityBranchId ?? ""} />
         <input type="hidden" name="revalidate" value={revalidate} />
+        <input type="hidden" name="docNumber" value={readNumber} />
+        <input type="hidden" name="issueDate" value={readIssue} />
 
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-muted">Type</span>

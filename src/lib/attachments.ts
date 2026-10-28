@@ -47,6 +47,10 @@ export async function uploadAttachmentAction(
   const docType = String(formData.get("docType") || "OTHER");
   const expiryRaw = String(formData.get("expiryDate") || "").trim();
   const expiryDate = expiryRaw ? new Date(expiryRaw) : null;
+  // The number printed on the document and its issue date, when given; anything that is not a date or is too long is dropped.
+  const docNumber = String(formData.get("docNumber") || "").trim().slice(0, 100) || null;
+  const issueRaw = String(formData.get("issueDate") || "").trim();
+  const issueDate = /^\d{4}-\d{2}-\d{2}$/.test(issueRaw) ? new Date(issueRaw) : null;
   const revalidate = String(formData.get("revalidate") || "");
   const file = formData.get("file");
 
@@ -100,6 +104,8 @@ export async function uploadAttachmentAction(
       fileData: buffer,
       mimeType: file.type || "application/octet-stream",
       expiryDate,
+      docNumber,
+      issueDate,
       branchId: entityBranchId,
       uploadedById: user.id,
     },
