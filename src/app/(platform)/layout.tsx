@@ -60,6 +60,7 @@ export default async function RootLayout({
 
   return (
     <html
+      data-app="1"
       lang="en"
       {...htmlAttributes({ ...prefs, ...look })}
       style={htmlStyle(look)}

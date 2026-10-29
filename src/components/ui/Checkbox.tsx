@@ -42,11 +42,14 @@ export function Checkbox({
       required={required}
       aria-label={ariaLabel}
       className={cn(
-        "relative flex h-4 w-4 shrink-0 items-center justify-center rounded-xs border border-strong bg-surface transition before:absolute before:-inset-3 before:content-[''] [@media(pointer:coarse)]:before:-inset-3.5 sm:before:-inset-1.5 hover:border-[var(--brand-primary)] data-[state=checked]:border-[var(--brand-primary)] data-[state=checked]:bg-[var(--brand-primary)] data-[state=indeterminate]:border-[var(--brand-primary)] data-[state=indeterminate]:bg-[var(--brand-primary)] disabled:cursor-not-allowed disabled:opacity-50",
+        "relative flex h-4 w-4 shrink-0 items-center justify-center rounded-xs border border-strong bg-surface transition duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] active:scale-[0.86] disabled:active:scale-100 before:absolute before:-inset-3 before:content-[''] [@media(pointer:coarse)]:before:-inset-3.5 sm:before:-inset-1.5 hover:border-[var(--brand-primary)] data-[state=checked]:border-[var(--brand-primary)] data-[state=checked]:bg-[var(--brand-primary)] data-[state=indeterminate]:border-[var(--brand-primary)] data-[state=indeterminate]:bg-[var(--brand-primary)] disabled:cursor-not-allowed disabled:opacity-50",
         className
       )}
     >
-      <CheckboxPrimitive.Indicator className="text-white">
+      <CheckboxPrimitive.Indicator
+        forceMount
+        className="text-white transition-transform duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] data-[state=unchecked]:scale-0 data-[state=checked]:scale-100 data-[state=indeterminate]:scale-100"
+      >
         {indeterminate ? <Minus className="h-3 w-3" /> : <Check className="h-3 w-3" />}
       </CheckboxPrimitive.Indicator>
     </CheckboxPrimitive.Root>
