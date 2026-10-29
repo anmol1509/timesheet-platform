@@ -16,6 +16,14 @@ const nextConfig: NextConfig = {
   async rewrites() {
     return [{ source: "/:key([a-f0-9]{32}).txt", destination: "/indexnow-key" }];
   },
+  // Versioned brand images never change under the same name, so browsers and the CDN can keep them for a year.
+  async headers() {
+    const immutable = [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }];
+    return [
+      { source: "/brand-assets/wordmark-v1.png", headers: immutable },
+      { source: "/brand-assets/mark-v1.png", headers: immutable },
+    ];
+  },
   async redirects() {
     return [{ source: "/tools/timesheet-template", destination: "/tools/construction-timesheet-template", permanent: true }];
   },

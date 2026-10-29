@@ -7,7 +7,7 @@ import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from "c
 import { ArrowRight, Building2, CalendarCheck, Check, ChevronDown, Cog, Lock, Mail, MessageSquareText, Phone, User, Users, X, type LucideIcon } from "lucide-react";
 import "flag-icons/css/flag-icons.min.css";
 import { COUNTRIES } from "@/lib/countries";
-import { BRAND_LOGO, BRAND_LOGO_ASPECT } from "@/lib/brand-assets";
+import { BRAND_LOGO_URL, BRAND_LOGO_ASPECT } from "@/lib/brand-urls";
 
 const BRAND = "var(--brand-primary, #5645d4)";
 const SUBMIT_GRADIENT = "linear-gradient(90deg, #5b3df0, #4129d6)";
@@ -182,7 +182,7 @@ function BrandPanel() {
       style={{ background: "radial-gradient(60% 45% at 0% 58%, #fff6d8 0%, rgba(255,246,216,0) 70%), radial-gradient(70% 50% at 100% 0%, #9ec7ff 0%, rgba(158,199,255,0) 70%), linear-gradient(150deg, #f7f3ff 0%, #e2e5ff 55%, #cfe0ff 100%)" }}
     >
       {/* eslint-disable-next-line @next/next/no-img-element -- inlined brand asset */}
-      <img src={BRAND_LOGO} alt="ManpowerSync" width={Math.round(36 * BRAND_LOGO_ASPECT)} height={36} className="h-9 w-auto" />
+      <img src={BRAND_LOGO_URL} alt="ManpowerSync" width={Math.round(36 * BRAND_LOGO_ASPECT)} height={36} className="h-9 w-auto" />
       <h2 className="mt-16 text-[2.7rem] leading-none font-extrabold tracking-tight text-slate-900">
         Book a <span style={{ color: "#4a2fe0" }}>demo</span>
       </h2>

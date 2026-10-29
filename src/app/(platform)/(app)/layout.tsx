@@ -10,8 +10,7 @@ import { AppAnalytics } from "./app-analytics";
 import { SIDEBAR_COOKIE } from "./sidebar-preference";
 import { MobileSidebar } from "./mobile-sidebar";
 import { CommandPalette } from "@/components/CommandPalette";
-import { NavAssistant } from "@/components/NavAssistant";
-import { ShortcutsSheet } from "@/components/ShortcutsSheet";
+import { LazyNavAssistant, LazyShortcutsSheet } from "@/components/LazyShell";
 import { NotificationsMenu } from "@/components/NotificationsMenu";
 import { AiCreditsBar } from "@/components/AiCreditsBar";
 import Link from "next/link";
@@ -131,8 +130,8 @@ export default async function AppLayout({
       <Suspense fallback={null}>
         <ProgressBar />
       </Suspense>
-      <ShortcutsSheet />
-      <NavAssistant isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} allowedModules={allowedModules} />
+      <LazyShortcutsSheet />
+      <LazyNavAssistant isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} allowedModules={allowedModules} />
       <AppShell
         isAdmin={isAdmin}
         isSuperAdmin={isSuperAdmin}

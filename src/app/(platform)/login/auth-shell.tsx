@@ -1,5 +1,5 @@
 import { FileText, BarChart3, Clock, Users, type LucideIcon } from "lucide-react";
-import { BRAND_LOGO, BRAND_LOGO_ASPECT } from "@/lib/brand-assets";
+import { BRAND_LOGO_URL, BRAND_LOGO_ASPECT } from "@/lib/brand-urls";
 import { AuthHeader } from "./auth-header";
 
 const FEATURES: { icon: LucideIcon; title: string; text: string }[] = [
@@ -92,7 +92,7 @@ export function AuthShell({
           <div className="flex flex-1 items-center justify-center px-6 py-8 sm:px-10 lg:px-16">
             <div className="w-full max-w-[440px]">
               {/* eslint-disable-next-line @next/next/no-img-element -- data URI, no loader needed */}
-              <img src={BRAND_LOGO} alt="ManpowerSync" height={72} width={Math.round(72 * BRAND_LOGO_ASPECT)} className="mb-[clamp(10px,2.6vh,26px)] h-[clamp(48px,8vh,72px)] w-auto" />
+              <img src={BRAND_LOGO_URL} alt="ManpowerSync" height={72} width={Math.round(72 * BRAND_LOGO_ASPECT)} className="mb-[clamp(10px,2.6vh,26px)] h-[clamp(48px,8vh,72px)] w-auto" />
               <h1 className="text-[clamp(26px,4.2vh,34px)] leading-[1.1] font-bold tracking-[-0.02em] text-[#14132b]">{title}</h1>
               {subtitle && <p className="mt-2 text-[15px] leading-6 text-secondary">{subtitle}</p>}
               <div className="mt-[clamp(14px,3.4vh,30px)]">{children}</div>

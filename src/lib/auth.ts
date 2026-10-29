@@ -23,6 +23,8 @@ export const getCurrentUser = cache(async () => {
   if (!session) return null;
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
+    // One query with the role and branch joined in, instead of three in a row.
+    relationLoadStrategy: "join",
     include: { accessRole: { select: { id: true, name: true, permissions: true } }, branch: { select: { suspendedAt: true } } },
   });
   // A company the owner has suspended is signed out too (the owner's own account is never locked out of it).
