@@ -729,7 +729,7 @@ export function NavLinks({
               style={{
                 display: "grid",
                 gridTemplateRows: open ? "1fr" : "0fr",
-                transition: "grid-template-rows var(--duration) var(--ease)",
+                transition: open ? "grid-template-rows 320ms var(--ease-out)" : "grid-template-rows 200ms var(--ease)",
               }}
             >
               <div className="overflow-hidden">
@@ -737,12 +737,24 @@ export function NavLinks({
                   className="mt-0.5 mb-1 ml-[1.125rem] flex flex-col gap-0.5 border-l border-default pl-3"
                   style={{
                     opacity: open ? 1 : 0,
-                    transform: open ? "translateY(0)" : "translateY(-4px)",
-                    transition: "opacity var(--duration) var(--ease), transform var(--duration) var(--ease)",
+                    transform: open ? "translateY(0)" : "translateY(-6px)",
+                    transition: open ? "opacity 260ms var(--ease-out) 60ms, transform 320ms var(--ease-out)" : "opacity 140ms var(--ease), transform 200ms var(--ease)",
                   }}
                   inert={!open}
                 >
-                  {entry.children.map((child) => renderLeaf(child, 1))}
+                  {entry.children.map((child, i) => (
+                    // Each page slides in a beat after the one above it.
+                    <div
+                      key={child.href}
+                      style={{
+                        opacity: open ? 1 : 0,
+                        transform: open ? "none" : "translateX(-8px)",
+                        transition: open ? `opacity 240ms var(--ease-out) ${70 + i * 35}ms, transform 300ms var(--ease-out) ${70 + i * 35}ms` : "none",
+                      }}
+                    >
+                      {renderLeaf(child, 1)}
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>

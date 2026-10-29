@@ -940,3 +940,22 @@ html[data-app] input[type="radio"]:checked {
 @media (prefers-reduced-motion: reduce) {
   html[data-app] input[type="checkbox"], html[data-app] input[type="radio"] { transition: none; }
 }
+
+/* Popovers grow away from the edge they hang from (a flyout beside the sidebar slides out from it). */
+@keyframes popover-in-right { from { opacity: 0; transform: translateX(-10px) scale(0.97); } to { opacity: 1; transform: none; } }
+@keyframes popover-in-left { from { opacity: 0; transform: translateX(10px) scale(0.97); } to { opacity: 1; transform: none; } }
+@keyframes popover-in-top { from { opacity: 0; transform: translateY(8px) scale(0.97); } to { opacity: 1; transform: none; } }
+@keyframes popover-out-right { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateX(-8px) scale(0.98); } }
+.rx-popover[data-side="right"][data-state="open"] { animation: popover-in-right 260ms var(--ease-out); }
+.rx-popover[data-side="left"][data-state="open"] { animation: popover-in-left 260ms var(--ease-out); }
+.rx-popover[data-side="top"][data-state="open"] { animation: popover-in-top 220ms var(--ease-out); }
+.rx-popover[data-side="right"][data-state="closed"] { animation: popover-out-right var(--duration-fast) var(--ease) forwards; }
+
+/* The phone menu slides in from the left. */
+@keyframes sheet-left-in { from { transform: translateX(-100%); } to { transform: none; } }
+@keyframes sheet-left-out { from { transform: none; } to { transform: translateX(-100%); } }
+.rx-sheet-left[data-state="open"] { animation: sheet-left-in 320ms var(--ease-out); }
+.rx-sheet-left[data-state="closed"] { animation: sheet-left-out 200ms var(--ease) forwards; }
+@media (prefers-reduced-motion: reduce) {
+  .rx-popover[data-side][data-state], .rx-sheet-left[data-state] { animation: none; }
+}
