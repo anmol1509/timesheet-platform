@@ -11,7 +11,7 @@ import { Button } from "./Button";
  * button, so a slow action can't be fired twice. If it throws, or resolves to
  * `{ error: "…" }` (the shape server actions here return), the message appears
  * in the dialog and nothing closes; otherwise it closes once the action is
- * done. Actions that only start a form submit (`requestSubmit()`) return at
+ * done, after a short tick. Actions that only start a form submit (`requestSubmit()`) return at
  * once and so close at once, as before.
  */
 export function ConfirmDialog({
@@ -31,6 +31,7 @@ export function ConfirmDialog({
 }) {
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
+  const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   function change(next: boolean) {
@@ -49,7 +50,13 @@ export function ConfirmDialog({
           ? (result as { error: string }).error
           : null;
       if (message) setError(message);
-      else setOpen(false);
+      else {
+        // Let the tick show before the dialog goes away.
+        setSuccess(true);
+        await new Promise((r) => setTimeout(r, 900));
+        setOpen(false);
+        setSuccess(false);
+      }
     } catch (e) {
       setError(e instanceof Error && e.message ? e.message : "That didn't work. Nothing was changed.");
     } finally {
@@ -71,7 +78,7 @@ export function ConfirmDialog({
             <Button variant="secondary" onClick={() => change(false)} disabled={pending}>
               Cancel
             </Button>
-            <Button variant={danger ? "danger" : "primary"} onClick={confirm} loading={pending}>
+            <Button variant={danger ? "danger" : "primary"} onClick={confirm} loading={pending} success={success} successLabel="Done">
               {confirmLabel}
             </Button>
           </DialogFooter>

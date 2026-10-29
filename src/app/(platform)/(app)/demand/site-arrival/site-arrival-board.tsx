@@ -10,6 +10,7 @@ import { Select } from "@/components/ui/Select";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/Dialog";
 import { cn } from "@/lib/cn";
 import { confirmSiteArrivalAction, recordMissingArrivalAction, revertSiteArrivalAction, disapproveSiteArrivalAction } from "../actions";
+import { Button } from "@/components/ui/Button";
 import { DatePicker } from "@/components/ui/DatePicker";
 
 export type ArrivalRow = {
@@ -245,14 +246,14 @@ export function SiteArrivalBoard({
                   options={siteOptions.map((s) => ({ value: s.id, label: s.name }))}
                 />
               </div>
-              <button
-                type="button"
+              <Button
+                size="sm"
                 onClick={tab === "unrecorded" ? () => recordMissing([...picked]) : confirm}
-                disabled={saving || picked.size === 0}
-                className="btn btn-primary btn-sm"
+                disabled={picked.size === 0}
+                loading={saving}
               >
                 {tab === "unrecorded" ? "Record arrival" : "Confirm on site"} {picked.size > 0 ? picked.size : ""}
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -482,14 +483,9 @@ function DisapproveForm({
         <button type="button" onClick={onClose} className="btn btn-secondary">
           Cancel
         </button>
-        <button
-          type="button"
-          onClick={submit}
-          disabled={!reason.trim() || pending}
-          className="btn btn-danger"
-        >
-          {pending ? "Saving…" : "Disapprove"}
-        </button>
+        <Button variant="danger" onClick={submit} disabled={!reason.trim()} loading={pending}>
+          Disapprove
+        </Button>
       </DialogFooter>
     </div>
   );
@@ -537,6 +533,7 @@ function ArrivalForm({
   const { row, mode } = target;
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [pending, startTransition] = useTransition();
+  const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   function submit() {
@@ -553,8 +550,11 @@ function ArrivalForm({
         const res = await confirmSiteArrivalAction(body);
         if (!res?.confirmed) return setError("Couldn't confirm this worker. Check the date and try again.");
       }
-      onDone();
-      onClose();
+      setDone(true);
+      setTimeout(() => {
+        onDone();
+        onClose();
+      }, 900);
     });
   }
 
@@ -570,9 +570,9 @@ function ArrivalForm({
       {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
       <DialogFooter>
         <button type="button" onClick={onClose} className="btn btn-secondary">Cancel</button>
-        <button type="button" onClick={submit} disabled={pending || !date} className="btn btn-primary">
-          {pending ? "Saving…" : mode === "record" ? "Record arrival" : "Confirm on site"}
-        </button>
+        <Button onClick={submit} disabled={!date} loading={pending} success={done} successLabel="Saved">
+          {mode === "record" ? "Record arrival" : "Confirm on site"}
+        </Button>
       </DialogFooter>
     </div>
   );
