@@ -11,6 +11,7 @@ import { STAGE_COLOR, STAGE_LABEL } from "@/lib/employeeStage";
 import { cn } from "@/lib/cn";
 import { demobiliseAction } from "./actions";
 import { DatePicker } from "@/components/ui/DatePicker";
+import { Dialog, DialogContent, DialogFooter } from "@/components/ui/Dialog";
 
 export type DeployedRow = {
   id: string;
@@ -82,6 +83,8 @@ export function DemobilisationBoard({
   const [outcome, setOutcome] = useState<"BENCH" | "OFF_BOOKS">("BENCH");
   const [reason, setReason] = useState("");
   const [message, setMessage] = useState<string | null>(null);
+  // One worker at a time: the row button opens a small form with that worker's own date, outcome and reason.
+  const [one, setOne] = useState<DeployedRow | null>(null);
   const [query, setQuery] = useState("");
 
   const visibleProjects = useMemo(
@@ -204,7 +207,15 @@ export function DemobilisationBoard({
             </label>
           </div>
 
+          {picked.size === 0 && (
+            <p className="card px-4 py-3 text-xs text-muted">
+              Use the button on a row to demobilise one worker, or tick several to demobilise them together.
+              {message && <span className="mt-1 block text-secondary">{message}</span>}
+            </p>
+          )}
+          {picked.size > 0 && (
           <div className="card space-y-3 p-4">
+            <p className="text-xs font-medium text-secondary">{picked.size} selected, one date and outcome for all</p>
             <div className="flex flex-wrap items-end gap-3">
               <label>
                 <span className="mb-1 block text-xs font-medium text-muted">Came off site on</span>
@@ -250,6 +261,7 @@ export function DemobilisationBoard({
             </p>
             {message && <p className="text-xs text-secondary">{message}</p>}
           </div>
+          )}
 
           <div className="card overflow-hidden">
             <div className="overflow-x-auto">
@@ -272,6 +284,7 @@ export function DemobilisationBoard({
                     <th className="px-4 py-3">Project</th>
                     <th className="px-4 py-3">Stage</th>
                     <th className="px-4 py-3">On the job</th>
+                    <th className="px-4 py-3" />
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border)]">
@@ -317,6 +330,11 @@ export function DemobilisationBoard({
                         </td>
                         <td className="tabular px-4 py-3 text-secondary">
                           {days === null ? "—" : `${days} day${days === 1 ? "" : "s"}`}
+                        </td>
+                        <td className="px-4 py-3 text-right whitespace-nowrap">
+                          <button type="button" disabled={saving} onClick={() => setOne(r)} className="btn btn-secondary btn-sm">
+                            Demobilise
+                          </button>
                         </td>
                       </tr>
                     );
@@ -399,6 +417,88 @@ export function DemobilisationBoard({
           </p>
         </div>
       )}
+      <DemobiliseOneModal
+        row={one}
+        onClose={() => setOne(null)}
+        onDone={(text) => {
+          setMessage(text);
+          router.refresh();
+        }}
+      />
+    </div>
+  );
+}
+
+/** Demobilises one worker with their own date, outcome and reason. The bulk bar above is only for workers ticked there. */
+function DemobiliseOneModal({ row, onClose, onDone }: { row: DeployedRow | null; onClose: () => void; onDone: (message: string) => void }) {
+  return (
+    <Dialog open={!!row} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent
+        title="Demobilise"
+        description={row ? `${row.name} (${row.employeeIdNo})${row.projectLabel ? `, ${row.projectLabel}` : ""}` : undefined}
+      >
+        {row && <DemobiliseOneForm key={row.id} row={row} onClose={onClose} onDone={onDone} />}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function DemobiliseOneForm({ row, onClose, onDone }: { row: DeployedRow; onClose: () => void; onDone: (message: string) => void }) {
+  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [outcome, setOutcome] = useState<"BENCH" | "OFF_BOOKS">("BENCH");
+  const [reason, setReason] = useState("");
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  function submit() {
+    setError(null);
+    const body = new FormData();
+    body.append("employeeId", row.id);
+    body.append("date", date);
+    body.append("outcome", outcome);
+    body.append("reason", reason);
+    startTransition(async () => {
+      const res = await demobiliseAction(body);
+      if (res.error) return setError(res.error);
+      const r = res.result!;
+      const parts = [`${row.name} demobilised`];
+      if (r.allocationsCleared) parts.push(`${r.allocationsCleared} demand allocation(s) reopened`);
+      if (r.bedsReleased) parts.push(`${r.bedsReleased} bed(s) freed`);
+      onDone(`${parts.join(", ")}.`);
+      onClose();
+    });
+  }
+
+  return (
+    <div className="mt-4 space-y-4">
+      <label className="block">
+        <span className="mb-1 block text-xs font-medium text-muted">Came off site on</span>
+        <DatePicker value={date} onChange={(v) => setDate(v)} className="w-full" />
+      </label>
+      <label className="block">
+        <span className="mb-1 block text-xs font-medium text-muted">Then</span>
+        <Select
+          value={outcome}
+          onChange={(v) => setOutcome(v as "BENCH" | "OFF_BOOKS")}
+          searchable={false}
+          options={[
+            { value: "BENCH", label: "Back to the bench" },
+            { value: "OFF_BOOKS", label: "Off the books" },
+          ]}
+        />
+        <span className="mt-1 block text-xs text-subtle">
+          {outcome === "BENCH" ? "Comes off the job and back onto the bench. Their bed is kept." : "Comes off the job and off the roster: marked inactive and their bed is freed."}
+        </span>
+      </label>
+      <label className="block">
+        <span className="mb-1 block text-xs font-medium text-muted">Reason {outcome === "OFF_BOOKS" && <span className="text-subtle">(kept on the record)</span>}</span>
+        <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Project completed, visa expired, absconded…" className="input w-full" />
+      </label>
+      {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
+      <DialogFooter>
+        <button type="button" onClick={onClose} className="btn btn-secondary">Cancel</button>
+        <button type="button" onClick={submit} disabled={pending || !date} className="btn btn-primary">{pending ? "Working…" : "Demobilise"}</button>
+      </DialogFooter>
     </div>
   );
 }
