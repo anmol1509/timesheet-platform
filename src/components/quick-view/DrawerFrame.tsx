@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import * as RadixDialog from "@radix-ui/react-dialog";
 import { ArrowRight, Check, ChevronLeft, ChevronRight, ExternalLink, X } from "lucide-react";
@@ -54,8 +55,18 @@ export function DrawerFrame({
   onClose: () => void;
   children: React.ReactNode;
 }) {
+  // The parent removes this panel the moment onClose runs, which would cut the slide-out short. Close first, then tell it.
+  const [open, setOpen] = useState(true);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (closeTimer.current) clearTimeout(closeTimer.current); }, []);
+  function close() {
+    if (closeTimer.current) return;
+    setOpen(false);
+    closeTimer.current = setTimeout(onClose, 240);
+  }
+
   return (
-    <RadixDialog.Root open onOpenChange={(o) => !o && onClose()}>
+    <RadixDialog.Root open={open} onOpenChange={(o) => !o && close()}>
       <RadixDialog.Portal>
         <RadixDialog.Overlay className="rx-overlay fixed inset-0 z-40 bg-[#101828]/30" />
         <RadixDialog.Content
@@ -101,7 +112,10 @@ export function DrawerFrame({
             </div>
           </header>
 
-          <div className="flex-1 overflow-y-auto px-5 py-4" role="tabpanel">{children}</div>
+          <div className="flex-1 overflow-y-auto px-5 py-4" role="tabpanel">
+            {/* Keyed so the content eases in when you open the panel, switch tab, or step to the next person. */}
+            <div key={`${tab}:${title}`} className="step-enter">{children}</div>
+          </div>
 
           {undo && (
             <div role="status" className="mx-5 mb-2 flex items-center justify-between rounded-xl bg-[#1e1b3a] px-3.5 py-2.5 text-sm font-medium text-white">
