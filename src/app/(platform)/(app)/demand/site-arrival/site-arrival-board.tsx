@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/Checkbox";
 import { Select } from "@/components/ui/Select";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/Dialog";
 import { cn } from "@/lib/cn";
-import { confirmSiteArrivalAction, revertSiteArrivalAction, disapproveSiteArrivalAction } from "../actions";
+import { confirmSiteArrivalAction, recordMissingArrivalAction, revertSiteArrivalAction, disapproveSiteArrivalAction } from "../actions";
 import { DatePicker } from "@/components/ui/DatePicker";
 
 export type ArrivalRow = {
@@ -21,6 +21,7 @@ export type ArrivalRow = {
   clientName: string | null;
   projectLabel: string | null;
   mobilisationDate: string | null;
+  joinDate?: string | null;
   siteArrivalDate: string | null;
   siteName: string | null;
 };
@@ -52,15 +53,20 @@ function daysWaiting(mobilisationDate: string | null) {
 export function SiteArrivalBoard({
   pending,
   arrived,
+  unrecorded,
+  initialTab,
   sites,
 }: {
   pending: ArrivalRow[];
   arrived: ArrivalRow[];
+  unrecorded: ArrivalRow[];
+  initialTab: "pending" | "arrived" | "unrecorded";
   sites: { id: string; name: string; projectId: string }[];
 }) {
   const router = useRouter();
   const [saving, startTransition] = useTransition();
-  const [tab, setTab] = useState<"pending" | "arrived">("pending");
+  const [tab, setTab] = useState<"pending" | "arrived" | "unrecorded">(initialTab);
+  const [error, setError] = useState<string | null>(null);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [arrivalDate, setArrivalDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [siteId, setSiteId] = useState("");
@@ -74,19 +80,21 @@ export function SiteArrivalBoard({
     !needle || [r.name, r.employeeIdNo, r.trade].some((p) => p?.toLowerCase().includes(needle));
   const shownPending = useMemo(() => pending.filter(matches), [pending, needle]); // eslint-disable-line react-hooks/exhaustive-deps
   const shownArrived = useMemo(() => arrived.filter(matches), [arrived, needle]); // eslint-disable-line react-hooks/exhaustive-deps
-  const rows = tab === "pending" ? shownPending : shownArrived;
+  const shownUnrecorded = useMemo(() => unrecorded.filter(matches), [unrecorded, needle]); // eslint-disable-line react-hooks/exhaustive-deps
+  const rows = tab === "pending" ? shownPending : tab === "unrecorded" ? shownUnrecorded : shownArrived;
+  const selectable = tab === "pending" ? shownPending : shownUnrecorded;
   const allPicked = useMemo(
-    () => shownPending.length > 0 && shownPending.every((r) => picked.has(r.id)),
-    [shownPending, picked]
+    () => selectable.length > 0 && selectable.every((r) => picked.has(r.id)),
+    [selectable, picked]
   );
 
   // A site belongs to one project, so offering every site would let someone
   // file a worker onto a site their project doesn't have. Only when the whole
   // selection shares a project is there a correct list to show.
   const sharedProjectId = useMemo(() => {
-    const ids = new Set(pending.filter((r) => picked.has(r.id)).map((r) => r.projectId));
+    const ids = new Set((tab === "unrecorded" ? unrecorded : pending).filter((r) => picked.has(r.id)).map((r) => r.projectId));
     return ids.size === 1 ? [...ids][0] : null;
-  }, [pending, picked]);
+  }, [pending, unrecorded, tab, picked]);
 
   const siteOptions = useMemo(
     () => (sharedProjectId ? sites.filter((s) => s.projectId === sharedProjectId) : []),
@@ -103,7 +111,24 @@ export function SiteArrivalBoard({
   }
 
   function toggleAll() {
-    setPicked(allPicked ? new Set() : new Set(shownPending.map((r) => r.id)));
+    setPicked(allPicked ? new Set() : new Set(selectable.map((r) => r.id)));
+  }
+
+  // Records the date for Active workers who never had one. Nothing else about them changes.
+  function recordMissing(ids: string[]) {
+    if (ids.length === 0) return;
+    setError(null);
+    const body = new FormData();
+    body.append("siteArrivalDate", arrivalDate);
+    if (siteId && siteOptions.some((s) => s.id === siteId)) body.append("siteId", siteId);
+    for (const id of ids) body.append("employeeId", id);
+    startTransition(async () => {
+      const res = await recordMissingArrivalAction(body);
+      if (res?.error) { setError(res.error); return; }
+      setPicked(new Set());
+      setSiteId("");
+      router.refresh();
+    });
   }
 
   function confirm() {
@@ -160,17 +185,20 @@ export function SiteArrivalBoard({
               [
                 ["pending", `Awaiting arrival (${pending.length})`],
                 ["arrived", `On site (${arrived.length})`],
+                ["unrecorded", `Arrival not recorded (${unrecorded.length})`],
               ] as const
             ).map(([key, label]) => (
               <button
                 key={key}
                 type="button"
-                onClick={() => setTab(key)}
+                onClick={() => { setTab(key); setPicked(new Set()); setError(null); }}
                 className={cn(
                   "rounded-control border px-3 py-1.5 text-xs font-medium transition",
                   tab === key
                     ? "border-[var(--brand-primary)] bg-brand-soft text-[var(--brand-primary)]"
-                    : "border-default bg-surface text-secondary hover:bg-surface-hover"
+                    : key === "unrecorded" && unrecorded.length > 0
+                      ? "border-[var(--warning-border)] bg-[var(--warning-soft)] text-primary hover:bg-surface-hover"
+                      : "border-default bg-surface text-secondary hover:bg-surface-hover"
                 )}
               >
                 {label}
@@ -190,11 +218,17 @@ export function SiteArrivalBoard({
         </div>
       </div>
 
+      {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
       <div className="card overflow-hidden">
-        {tab === "pending" && (
+        {tab === "unrecorded" && (
+          <p className="border-b border-default bg-[var(--warning-soft)] px-4 py-2.5 text-xs text-primary">
+            These workers are Active but nobody has recorded when they reached site, so attendance cannot be marked for them. Enter the date they actually arrived. Their status does not change.
+          </p>
+        )}
+        {(tab === "pending" || tab === "unrecorded") && (
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-default px-4 py-3">
             <span className="text-xs text-muted">
-              {picked.size > 0 ? `${picked.size} selected` : "Select who reached site"}
+              {picked.size > 0 ? `${picked.size} selected` : tab === "unrecorded" ? "Select who to record" : "Select who reached site"}
             </span>
             <div className="flex flex-wrap items-center gap-3">
               <label className="flex items-center gap-1.5">
@@ -225,11 +259,11 @@ export function SiteArrivalBoard({
               </div>
               <button
                 type="button"
-                onClick={confirm}
+                onClick={tab === "unrecorded" ? () => recordMissing([...picked]) : confirm}
                 disabled={saving || picked.size === 0}
                 className="btn btn-primary btn-sm"
               >
-                Confirm on site {picked.size > 0 ? picked.size : ""}
+                {tab === "unrecorded" ? "Record arrival" : "Confirm on site"} {picked.size > 0 ? picked.size : ""}
               </button>
             </div>
           </div>
@@ -239,12 +273,12 @@ export function SiteArrivalBoard({
           <table className="w-full min-w-[52rem] text-sm">
             <thead className="border-b border-default bg-surface-subtle text-left text-xs font-medium tracking-wide text-muted uppercase">
               <tr>
-                {tab === "pending" && (
+                {(tab === "pending" || tab === "unrecorded") && (
                   <th className="w-10 px-4 py-3">
                     <Checkbox
                       checked={allPicked}
                       onCheckedChange={toggleAll}
-                      ariaLabel="Select everyone awaiting arrival"
+                      ariaLabel={tab === "unrecorded" ? "Select everyone without an arrival date" : "Select everyone awaiting arrival"}
                     />
                   </th>
                 )}
@@ -252,9 +286,9 @@ export function SiteArrivalBoard({
                 <th className="px-4 py-3">Trade</th>
                 <th className="px-4 py-3">Client</th>
                 <th className="px-4 py-3">Project</th>
-                <th className="px-4 py-3">Due on site</th>
+                <th className="px-4 py-3">{tab === "unrecorded" ? "Joined" : "Due on site"}</th>
                 <th className="px-4 py-3">
-                  {tab === "pending" ? "Waiting" : "Arrived"}
+                  {tab === "pending" ? "Waiting" : tab === "unrecorded" ? "Arrival" : "Arrived"}
                 </th>
                 <th className="px-4 py-3" />
               </tr>
@@ -264,7 +298,7 @@ export function SiteArrivalBoard({
                 const late = tab === "pending" ? daysWaiting(r.mobilisationDate) : null;
                 return (
                   <tr key={r.id}>
-                    {tab === "pending" && (
+                    {(tab === "pending" || tab === "unrecorded") && (
                       <td className="px-4 py-3">
                         <Checkbox
                           checked={picked.has(r.id)}
@@ -294,10 +328,12 @@ export function SiteArrivalBoard({
                       {r.projectLabel || <span className="text-subtle">Not assigned</span>}
                     </td>
                     <td className="tabular px-4 py-3 text-secondary">
-                      {formatDate(r.mobilisationDate)}
+                      {formatDate(tab === "unrecorded" ? r.joinDate ?? null : r.mobilisationDate)}
                     </td>
                     <td className="px-4 py-3">
-                      {tab === "pending" ? (
+                      {tab === "unrecorded" ? (
+                        <Badge color="amber">Not recorded</Badge>
+                      ) : tab === "pending" ? (
                         late === null ? (
                           <span className="text-xs text-muted">Not yet due</span>
                         ) : (
@@ -315,7 +351,16 @@ export function SiteArrivalBoard({
                       )}
                     </td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">
-                      {tab === "arrived" ? (
+                      {tab === "unrecorded" ? (
+                        <button
+                          type="button"
+                          disabled={saving}
+                          onClick={() => recordMissing([r.id])}
+                          className="text-xs font-medium text-[var(--brand-primary)] hover:underline disabled:opacity-60"
+                        >
+                          Record
+                        </button>
+                      ) : tab === "arrived" ? (
                         <button
                           type="button"
                           disabled={saving}
@@ -357,7 +402,9 @@ export function SiteArrivalBoard({
           <p className="px-4 py-10 text-center text-sm text-muted">
             {needle
               ? `No worker matches “${query.trim()}”.`
-              : tab === "pending"
+              : tab === "unrecorded"
+                ? "Every active worker has an arrival date."
+                : tab === "pending"
                 ? "Everyone mobilised has been confirmed on site."
                 : "Nobody has been confirmed on site yet."}
           </p>

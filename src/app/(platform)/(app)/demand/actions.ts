@@ -580,6 +580,56 @@ export async function confirmSiteArrivalAction(formData: FormData) {
   return { confirmed, requested: employeeIds.length };
 }
 
+/**
+ * Records the arrival date of workers who are Active but never had one.
+ *
+ * Mobilisation confirms arrival, and the Site arrival screen only listed workers still waiting.
+ * Someone loaded in as Active, with no attendance days to date from, had no way to be given a date,
+ * so attendance refused them. Their status stays Active; only the date, and optionally the site,
+ * are written. A date in the future is refused: arrival is something that has happened.
+ */
+export async function recordMissingArrivalAction(formData: FormData) {
+  await requireWrite("demand");
+  assertContactsValid(formData);
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const employeeIds = formData.getAll("employeeId").map(String).filter(Boolean);
+  if (employeeIds.length === 0) return { recorded: 0, requested: 0 };
+  const rawDate = String(formData.get("siteArrivalDate") || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(rawDate)) return { recorded: 0, requested: employeeIds.length, error: "Choose the date they reached site." };
+  const siteArrivalDate = new Date(rawDate + "T00:00:00.000Z");
+  if (siteArrivalDate.getTime() > Date.now()) return { recorded: 0, requested: employeeIds.length, error: "An arrival date can't be in the future." };
+  const siteId = stringOrNull(formData.get("siteId"));
+
+  const employees = await prisma.employee.findMany({
+    where: { id: { in: employeeIds }, active: true, status: "ACTIVE", siteArrivalDate: null },
+    select: { id: true, branchId: true, projectId: true },
+  });
+  const allowed = employees.filter((e) => !isOutsideBranch(e.branchId, branchId, isSuperAdmin));
+  let siteProjectId: string | null = null;
+  if (siteId) {
+    const site = await prisma.site.findUnique({ where: { id: siteId }, select: { projectId: true, project: { select: { branchId: true } } } });
+    if (site && !isOutsideBranch(site.project.branchId, branchId, isSuperAdmin)) siteProjectId = site.projectId;
+  }
+  for (const e of allowed) {
+    await prisma.employee.update({ where: { id: e.id }, data: { siteArrivalDate, ...(siteProjectId && e.projectId === siteProjectId ? { siteId } : {}) } });
+    await logAudit({
+      entityType: "EMPLOYEE_SITE_ARRIVAL",
+      entityId: e.id,
+      action: "UPDATE",
+      before: { status: "ACTIVE", siteArrivalDate: null },
+      after: { status: "ACTIVE", siteArrivalDate: rawDate },
+      userId: user.id,
+      userName: user.name,
+      branchId,
+    });
+    revalidatePath(`/employees/${e.id}`);
+  }
+  revalidatePath("/demand/site-arrival");
+  revalidatePath("/attendance");
+  revalidatePath("/employees");
+  return { recorded: allowed.length, requested: employeeIds.length };
+}
+
 /** Reverses a site-arrival confirmation entered against the wrong worker. */
 export async function revertSiteArrivalAction(formData: FormData) {
   await requireWrite("demand");
