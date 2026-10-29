@@ -818,3 +818,48 @@ main .card > div > table > thead > tr:first-child > th:last-child {
   .btn-fx[data-state="loading"] .ab-fill { animation-duration: 0.01s; }
   .ab-swap > span { transition: none; transform: none; }
 }
+
+/* Failure: red, a cross and a short shake. */
+.btn-fx[data-state="error"] { pointer-events: none; }
+.btn-fx[data-state="error"][data-variant="primary"],
+.btn-fx[data-state="error"][data-variant="danger"] {
+  background-color: var(--error);
+  background-image: none;
+  box-shadow: 0 6px 14px -8px var(--error);
+}
+.btn-fx[data-state="error"][data-variant="secondary"],
+.btn-fx[data-state="error"][data-variant="ghost"] {
+  background-color: var(--error-soft);
+  border-color: var(--error-border);
+  color: var(--error);
+}
+.btn-fx[data-state="error"] .ab-fill { transform: scaleX(1); background: transparent; }
+@media (prefers-reduced-motion: no-preference) {
+  .btn-fx[data-state="error"] { animation: ab-shake 380ms cubic-bezier(0.36, 0.07, 0.19, 0.97) both; }
+  /* AI actions: the sparkle twinkles while the model is reading. */
+  .btn-fx[data-state="loading"] svg.lucide-sparkles { animation: ab-twinkle 0.9s ease-in-out infinite; }
+  /* Arrows lean forward on hover instead of popping. */
+  .btn:hover:not(:disabled) > svg.lucide-arrow-right,
+  .btn-fx:hover:not(:disabled) > svg.lucide-arrow-right { transform: translateX(3px); }
+}
+@keyframes ab-shake {
+  10%, 90% { transform: translateX(-1px); }
+  20%, 80% { transform: translateX(2px); }
+  30%, 50%, 70% { transform: translateX(-4px); }
+  40%, 60% { transform: translateX(4px); }
+}
+@keyframes ab-twinkle {
+  0%, 100% { transform: scale(1) rotate(0); opacity: 1; }
+  50% { transform: scale(1.25) rotate(12deg); opacity: 0.7; }
+}
+
+/* Press and hold to confirm: the fill runs for the hold time and snaps back if released early. */
+.btn-fx.is-holding .ab-fill { animation: ab-hold 700ms linear forwards; background: rgb(255 255 255 / 0.35); }
+@keyframes ab-hold { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+/* Switch: the thumb stretches while pressed. */
+@media (prefers-reduced-motion: no-preference) {
+  button[role="switch"] > span { transition: translate 160ms var(--ease), width 160ms var(--ease); }
+  button[role="switch"]:active:not(:disabled) > span { width: 1.125rem; }
+  button[role="switch"][data-state="checked"]:active:not(:disabled) > span { translate: 14px 0; }
+}
