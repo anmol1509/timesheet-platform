@@ -766,3 +766,55 @@ main .card > div > table > thead > tr:first-child > th:last-child {
     transform: scale(1.12);
   }
 }
+
+/* Button progress. Main buttons fill while they work and turn green with a tick;
+   other buttons swap their label for a spinner, then a tick. */
+.btn-fx[data-state="loading"]:disabled { opacity: 1; }
+.btn-fx[data-state="success"] { pointer-events: none; }
+.btn-fx .ab-fill {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: rgb(255 255 255 / 0.28);
+  transform-origin: left;
+  transform: scaleX(0);
+}
+.btn-fx[data-state="loading"] .ab-fill {
+  animation: ab-fill 3.2s cubic-bezier(0.2, 0.6, 0.2, 1) forwards;
+}
+.btn-fx[data-state="success"] .ab-fill {
+  transform: scaleX(1);
+  background: transparent;
+}
+.btn-fx[data-state="success"][data-variant="primary"],
+.btn-fx[data-state="success"][data-variant="danger"] {
+  background-color: var(--success);
+  background-image: none;
+  box-shadow: 0 6px 14px -8px var(--success);
+  transition: background-color 250ms var(--ease);
+}
+.btn-fx[data-state="success"][data-variant="secondary"],
+.btn-fx[data-state="success"][data-variant="ghost"] {
+  background-color: var(--success-soft);
+  border-color: var(--success-border);
+  color: var(--success);
+}
+@keyframes ab-fill { to { transform: scaleX(0.9); } }
+
+.ab-swap { display: inline-grid; }
+.ab-swap > span {
+  grid-area: 1 / 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 220ms var(--ease), transform 220ms var(--ease);
+}
+.ab-swap > span[data-on] { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  .btn-fx[data-state="loading"] .ab-fill { animation-duration: 0.01s; }
+  .ab-swap > span { transition: none; transform: none; }
+}

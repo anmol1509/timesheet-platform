@@ -18,6 +18,7 @@ import {
 } from "../../actions";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { HeldSuppliersList } from "@/components/HeldSuppliers";
+import { Button } from "@/components/ui/Button";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/Dialog";
 
 type Line = {
@@ -91,6 +92,7 @@ export function MobilisationBoard({
   );
   // One worker mobilised from their own row, with their own date.
   const [one, setOne] = useState<Worker | null>(null);
+  const [oneDone, setOneDone] = useState(false);
 
   const activeLine = lines.find((l) => l.id === activeLineId) ?? lines[0];
   const assignedIds = useMemo(
@@ -176,9 +178,13 @@ export function MobilisationBoard({
     body.append("employeeId", w.id);
     startTransition(async () => {
       await allocateEmployeesAction(body);
-      setOne(null);
-      setPicked((prev) => { const next = new Set(prev); next.delete(w.id); return next; });
-      router.refresh();
+      setOneDone(true);
+      setTimeout(() => {
+        setOne(null);
+        setOneDone(false);
+        setPicked((prev) => { const next = new Set(prev); next.delete(w.id); return next; });
+        router.refresh();
+      }, 900);
     });
   }
 
@@ -341,14 +347,9 @@ export function MobilisationBoard({
                     <span className="text-xs text-muted">On site from</span>
                     <DatePicker value={mobilisationDate} onChange={(v) => setMobilisationDate(v)} disabled={locked} />
                   </label>
-                  <button
-                    type="button"
-                    onClick={assign}
-                    disabled={locked || pending}
-                    className="btn btn-primary btn-sm"
-                  >
+                  <Button size="sm" onClick={assign} disabled={locked} loading={pending}>
                     Mobilise {picked.size}
-                  </button>
+                  </Button>
                 </>
               )}
             </div>
@@ -472,22 +473,22 @@ export function MobilisationBoard({
         </div>
       </div>
     </div>
-    <MobiliseOneModal worker={one} trade={activeLine.trade} pending={pending} onClose={() => setOne(null)} onConfirm={assignOne} />
+    <MobiliseOneModal worker={one} trade={activeLine.trade} pending={pending} done={oneDone} onClose={() => setOne(null)} onConfirm={assignOne} />
     </div>
   );
 }
 
-function MobiliseOneModal({ worker, trade, pending, onClose, onConfirm }: { worker: Worker | null; trade: string; pending: boolean; onClose: () => void; onConfirm: (w: Worker, date: string) => void }) {
+function MobiliseOneModal({ worker, trade, pending, done, onClose, onConfirm }: { worker: Worker | null; trade: string; pending: boolean; done: boolean; onClose: () => void; onConfirm: (w: Worker, date: string) => void }) {
   return (
     <Dialog open={!!worker} onOpenChange={(o) => !o && onClose()}>
       <DialogContent title="Mobilise" description={worker ? `${worker.name} (${worker.employeeIdNo}) as ${trade}` : undefined}>
-        {worker && <MobiliseOneForm key={worker.id} worker={worker} pending={pending} onClose={onClose} onConfirm={onConfirm} />}
+        {worker && <MobiliseOneForm key={worker.id} worker={worker} pending={pending} done={done} onClose={onClose} onConfirm={onConfirm} />}
       </DialogContent>
     </Dialog>
   );
 }
 
-function MobiliseOneForm({ worker, pending, onClose, onConfirm }: { worker: Worker; pending: boolean; onClose: () => void; onConfirm: (w: Worker, date: string) => void }) {
+function MobiliseOneForm({ worker, pending, done, onClose, onConfirm }: { worker: Worker; pending: boolean; done: boolean; onClose: () => void; onConfirm: (w: Worker, date: string) => void }) {
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   return (
     <div className="mt-4 space-y-4">
@@ -497,7 +498,7 @@ function MobiliseOneForm({ worker, pending, onClose, onConfirm }: { worker: Work
       </label>
       <DialogFooter>
         <button type="button" onClick={onClose} className="btn btn-secondary">Cancel</button>
-        <button type="button" disabled={pending || !date} onClick={() => onConfirm(worker, date)} className="btn btn-primary">{pending ? "Mobilising…" : "Mobilise"}</button>
+        <Button disabled={!date} loading={pending} success={done} successLabel="Mobilised" onClick={() => { onConfirm(worker, date); }}>Mobilise</Button>
       </DialogFooter>
     </div>
   );

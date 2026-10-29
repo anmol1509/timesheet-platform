@@ -11,6 +11,7 @@ import { STAGE_COLOR, STAGE_LABEL } from "@/lib/employeeStage";
 import { cn } from "@/lib/cn";
 import { demobiliseAction } from "./actions";
 import { DatePicker } from "@/components/ui/DatePicker";
+import { Button } from "@/components/ui/Button";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/Dialog";
 
 export type DeployedRow = {
@@ -244,14 +245,9 @@ export function DemobilisationBoard({
                   className="input w-full"
                 />
               </label>
-              <button
-                type="button"
-                onClick={submit}
-                disabled={saving || picked.size === 0}
-                className="btn btn-primary"
-              >
-                {saving ? "Working…" : `Demobilise ${picked.size || ""}`}
-              </button>
+              <Button onClick={submit} disabled={picked.size === 0} loading={saving}>
+                Demobilise {picked.size || ""}
+              </Button>
             </div>
 
             <p className="text-xs text-subtle">
@@ -448,6 +444,7 @@ function DemobiliseOneForm({ row, onClose, onDone }: { row: DeployedRow; onClose
   const [outcome, setOutcome] = useState<"BENCH" | "OFF_BOOKS">("BENCH");
   const [reason, setReason] = useState("");
   const [pending, startTransition] = useTransition();
+  const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   function submit() {
@@ -464,8 +461,11 @@ function DemobiliseOneForm({ row, onClose, onDone }: { row: DeployedRow; onClose
       const parts = [`${row.name} demobilised`];
       if (r.allocationsCleared) parts.push(`${r.allocationsCleared} demand allocation(s) reopened`);
       if (r.bedsReleased) parts.push(`${r.bedsReleased} bed(s) freed`);
-      onDone(`${parts.join(", ")}.`);
-      onClose();
+      setDone(true);
+      setTimeout(() => {
+        onDone(`${parts.join(", ")}.`);
+        onClose();
+      }, 900);
     });
   }
 
@@ -497,7 +497,7 @@ function DemobiliseOneForm({ row, onClose, onDone }: { row: DeployedRow; onClose
       {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
       <DialogFooter>
         <button type="button" onClick={onClose} className="btn btn-secondary">Cancel</button>
-        <button type="button" onClick={submit} disabled={pending || !date} className="btn btn-primary">{pending ? "Working…" : "Demobilise"}</button>
+        <Button onClick={submit} disabled={!date} loading={pending} success={done} successLabel="Demobilised">Demobilise</Button>
       </DialogFooter>
     </div>
   );

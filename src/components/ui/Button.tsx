@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Loader2 } from "lucide-react";
+import { Check, Loader2 } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 const VARIANTS = {
@@ -39,6 +39,11 @@ type BaseProps = {
   iconOnly?: boolean;
   /** Shows a spinner and disables the button, keeping its width so the layout doesn't jump. */
   loading?: boolean;
+  /** Shows a tick for a moment after the action worked. The caller sets it and clears it. */
+  success?: boolean;
+  /** Label while working and after success. Main buttons (primary, danger) keep their own label while working. */
+  loadingLabel?: string;
+  successLabel?: string;
   className?: string;
   children: React.ReactNode;
 };
@@ -60,6 +65,7 @@ export function Button(props: ButtonAsButton | ButtonAsLink) {
     children,
   } = props;
   const loading = "loading" in props ? !!props.loading : false;
+  const success = "success" in props ? !!props.success : false;
 
   const classes = cn(
     "btn-fx inline-flex shrink-0 items-center justify-center rounded-control font-medium whitespace-nowrap transition disabled:pointer-events-none disabled:cursor-not-allowed",
@@ -88,11 +94,41 @@ export function Button(props: ButtonAsButton | ButtonAsLink) {
     size: _size,
     iconOnly: _iconOnly,
     loading: _loading,
+    success: _success,
+    loadingLabel,
+    successLabel,
     className: _className,
     children: _children,
     href: _href,
     ...rest
   } = props as ButtonAsButton;
+
+  // Main buttons fill left to right while they work, then turn green with a tick.
+  // Secondary and quiet buttons swap their label for a spinner, then for a tick.
+  const fills = variant === "primary" || variant === "danger";
+  const state = success ? "success" : loading ? "loading" : "idle";
+  const tick = <Check className="h-4 w-4 shrink-0" strokeWidth={3} aria-hidden />;
+  const spinner = <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />;
+
+  let body: React.ReactNode = children;
+  if (iconOnly) {
+    body = success ? tick : loading ? spinner : children;
+  } else if (fills) {
+    body = (
+      <>
+        <i className="ab-fill" aria-hidden />
+        {success ? <span className="inline-flex items-center gap-1.5">{tick}{successLabel ?? "Done"}</span> : children}
+      </>
+    );
+  } else {
+    body = (
+      <span className="ab-swap">
+        <span data-on={state === "idle" || undefined}>{children}</span>
+        <span data-on={state === "loading" || undefined} aria-hidden={state !== "loading"}>{spinner}{loadingLabel ?? children}</span>
+        <span data-on={state === "success" || undefined} aria-hidden={state !== "success"}>{tick}{successLabel ?? "Done"}</span>
+      </span>
+    );
+  }
 
   return (
     <button
@@ -101,16 +137,10 @@ export function Button(props: ButtonAsButton | ButtonAsLink) {
       disabled={rest.disabled || loading}
       aria-busy={loading || undefined}
       data-variant={variant}
-      className={cn(classes, loading && "relative")}
+      data-state={state}
+      className={classes}
     >
-      {loading ? (
-        <>
-          <span className="invisible inline-flex items-center gap-[inherit]">{children}</span>
-          <Loader2 className="absolute h-4 w-4 animate-spin" aria-hidden />
-        </>
-      ) : (
-        children
-      )}
+      {body}
     </button>
   );
 }
