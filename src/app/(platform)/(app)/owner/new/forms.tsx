@@ -1,8 +1,8 @@
 "use client";
 
+import { CopyButton } from "@/components/ui/CopyButton";
 import Link from "next/link";
 import { useActionState, useState } from "react";
-import { Check, Copy } from "lucide-react";
 import { createCustomerAction, registerExistingAction, type OwnerState } from "../actions";
 import { creditsValueAed } from "@/lib/owner";
 
@@ -12,11 +12,10 @@ const L = "block text-xs text-muted";
 const I = "input mt-1 h-9 w-full text-sm";
 
 function CopyLink({ link }: { link: string }) {
-  const [done, setDone] = useState(false);
   return (
     <div className="flex items-center gap-2">
       <input readOnly value={link} className="input h-9 min-w-0 flex-1 text-xs" onFocus={(e) => e.currentTarget.select()} aria-label="One-time sign-in link" />
-      <button type="button" className="btn btn-secondary btn-sm inline-flex items-center gap-1.5" onClick={() => { void navigator.clipboard.writeText(link).then(() => setDone(true)); }}>{done ? <Check className="h-3.5 w-3.5" aria-hidden /> : <Copy className="h-3.5 w-3.5" aria-hidden />}{done ? "Copied" : "Copy"}</button>
+      <CopyButton text={link} />
     </div>
   );
 }

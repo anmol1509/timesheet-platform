@@ -1,7 +1,8 @@
 "use client";
 
+import { CopyButton } from "@/components/ui/CopyButton";
 import { useState, useTransition } from "react";
-import { Check, Copy, Plus, ShieldAlert } from "lucide-react";
+import { Plus, ShieldAlert } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/Dialog";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { Badge } from "@/components/Badge";
@@ -29,27 +30,6 @@ const ENDPOINTS: { path: string; scope: string; what: string; params: string }[]
   { path: "/payroll/runs/{id}/lines", scope: "payroll:read", what: "Each worker's pay line in a run.", params: "" },
 ];
 
-function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) {
-  const [done, setDone] = useState(false);
-  return (
-    <button
-      type="button"
-      className="btn btn-secondary btn-sm gap-1.5"
-      onClick={async () => {
-        try {
-          await navigator.clipboard.writeText(text);
-          setDone(true);
-          setTimeout(() => setDone(false), 1800);
-        } catch {
-          /* clipboard blocked: the text is selectable on screen */
-        }
-      }}
-    >
-      {done ? <Check className="h-3.5 w-3.5" aria-hidden /> : <Copy className="h-3.5 w-3.5" aria-hidden />}
-      {done ? "Copied" : label}
-    </button>
-  );
-}
 
 function CreateForm({ onClose }: { onClose: () => void }) {
   const [state, setState] = useState<State>({ error: null });

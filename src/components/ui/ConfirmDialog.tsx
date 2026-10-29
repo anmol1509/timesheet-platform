@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogFooter } from "./Dialog";
 import { Button } from "./Button";
 
 /**
- * Confirm-then-act dialog.
+ * Confirm-then-act dialog. Destructive ones (`danger`) are press and hold.
  *
  * The dialog stays open while `onConfirm` runs and shows a spinner on the
  * button, so a slow action can't be fired twice. If it throws, or resolves to
@@ -14,6 +14,8 @@ import { Button } from "./Button";
  * done, after a short tick. Actions that only start a form submit (`requestSubmit()`) return at
  * once and so close at once, as before.
  */
+const HOLD_MS = 700;
+
 export function ConfirmDialog({
   trigger,
   title = "Are you sure?",
@@ -33,11 +35,34 @@ export function ConfirmDialog({
   const [pending, setPending] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Destructive confirms are press and hold: a red fill crosses the button and the action runs when it completes.
+  const [holding, setHolding] = useState(false);
+  const [hint, setHint] = useState(false);
+  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (holdTimer.current) clearTimeout(holdTimer.current); }, []);
+
+  function startHold() {
+    if (pending || holdTimer.current) return;
+    setHint(false);
+    setHolding(true);
+    holdTimer.current = setTimeout(() => {
+      holdTimer.current = null;
+      setHolding(false);
+      void confirm();
+    }, HOLD_MS);
+  }
+  function endHold() {
+    if (!holdTimer.current) return;
+    clearTimeout(holdTimer.current);
+    holdTimer.current = null;
+    setHolding(false);
+    setHint(true);
+  }
 
   function change(next: boolean) {
     if (pending) return; // don't let Esc or a backdrop click hide a running action
     setOpen(next);
-    if (!next) setError(null);
+    if (!next) { setError(null); setHint(false); }
   }
 
   async function confirm() {
@@ -74,13 +99,37 @@ export function ConfirmDialog({
               {error}
             </p>
           )}
+          {danger && (
+            <p role="status" className={`mt-3 text-xs ${hint ? "text-[var(--error)]" : "text-subtle"}`}>
+              {hint ? `Keep holding ${confirmLabel} until it fills.` : `Press and hold ${confirmLabel} to confirm.`}
+            </p>
+          )}
           <DialogFooter>
             <Button variant="secondary" onClick={() => change(false)} disabled={pending}>
               Cancel
             </Button>
-            <Button variant={danger ? "danger" : "primary"} onClick={confirm} loading={pending} success={success} successLabel="Done">
-              {confirmLabel}
-            </Button>
+            {danger ? (
+              <Button
+                variant="danger"
+                className={holding ? "is-holding" : undefined}
+                loading={pending}
+                success={success}
+                successLabel="Done"
+                onPointerDown={(e) => { if (e.button === 0) startHold(); }}
+                onPointerUp={endHold}
+                onPointerLeave={endHold}
+                onPointerCancel={endHold}
+                onContextMenu={(e) => e.preventDefault()}
+                onKeyDown={(e) => { if ((e.key === "Enter" || e.key === " ") && !e.repeat) { e.preventDefault(); startHold(); } }}
+                onKeyUp={(e) => { if (e.key === "Enter" || e.key === " ") endHold(); }}
+              >
+                {confirmLabel}
+              </Button>
+            ) : (
+              <Button variant="primary" onClick={confirm} loading={pending} success={success} successLabel="Done">
+                {confirmLabel}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

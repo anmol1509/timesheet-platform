@@ -1,7 +1,8 @@
 "use client";
 
+import { CopyButton } from "@/components/ui/CopyButton";
 import { useState, useTransition } from "react";
-import { Check, Copy, Plus, RotateCw, ShieldAlert } from "lucide-react";
+import { Plus, RotateCw, ShieldAlert } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/Dialog";
 import { Badge } from "@/components/Badge";
 import { WEBHOOK_EVENTS } from "@/lib/webhooks/events";
@@ -26,13 +27,7 @@ export type DeliveryRow = { id: string; endpointId: string; type: string; status
 const stamp = (iso: string | null) => (iso ? new Date(iso).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "—");
 
 function Copy1({ text }: { text: string }) {
-  const [done, setDone] = useState(false);
-  return (
-    <button type="button" className="btn btn-secondary btn-sm gap-1.5" onClick={async () => { try { await navigator.clipboard.writeText(text); setDone(true); setTimeout(() => setDone(false), 1800); } catch { /* selectable on screen */ } }}>
-      {done ? <Check className="h-3.5 w-3.5" aria-hidden /> : <Copy className="h-3.5 w-3.5" aria-hidden />}
-      {done ? "Copied" : "Copy secret"}
-    </button>
-  );
+  return <CopyButton text={text} label="Copy secret" />;
 }
 
 function SecretView({ secret, url, onClose }: { secret: string; url?: string; onClose: () => void }) {

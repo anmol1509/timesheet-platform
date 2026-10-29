@@ -1,5 +1,8 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Check, Loader2 } from "lucide-react";
+import { Check, Loader2, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 const VARIANTS = {
@@ -46,9 +49,17 @@ type BaseProps = {
   loading?: boolean;
   /** Shows a tick for a moment after the action worked. The caller sets it and clears it. */
   success?: boolean;
+  /** Shows a cross and shakes. The caller sets it and clears it. */
+  error?: boolean;
+  /**
+   * When neither `success` nor `error` is given, the button works it out itself once `loading` ends: an error message that
+   * appeared next to it means it failed, otherwise it worked. Pass `false` for buttons that should just go back to normal.
+   */
+  autoOutcome?: boolean;
   /** Label while working and after success. Main buttons (primary, danger) keep their own label while working. */
   loadingLabel?: string;
   successLabel?: string;
+  errorLabel?: string;
   className?: string;
   children: React.ReactNode;
 };
@@ -61,6 +72,8 @@ type ButtonAsLink = BaseProps & {
   disabled?: boolean;
 };
 
+const ERROR_SELECTOR = '[role="alert"], [class*="--error)"], [class*="text-red"]';
+
 export function Button(props: ButtonAsButton | ButtonAsLink) {
   const {
     variant = "primary",
@@ -70,7 +83,44 @@ export function Button(props: ButtonAsButton | ButtonAsLink) {
     children,
   } = props;
   const loading = "loading" in props ? !!props.loading : false;
-  const success = "success" in props ? !!props.success : false;
+  const successProp = "success" in props ? props.success : undefined;
+  const errorProp = "error" in props ? props.error : undefined;
+  const autoOutcome = "autoOutcome" in props ? props.autoOutcome !== false : true;
+
+  const ref = useRef<HTMLButtonElement>(null);
+  const [auto, setAuto] = useState<"success" | "error" | null>(null);
+  const before = useRef<{ was: boolean; text: string } | null>(null);
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  // Without being told, read the outcome from the page once loading ends: a new or changed error message nearby means it failed.
+  useEffect(() => {
+    if (!autoOutcome || successProp !== undefined || errorProp !== undefined) return;
+    const scope = () => {
+      const el = ref.current;
+      return el?.closest("form, [role=dialog], section, li, tr") ?? el?.parentElement?.parentElement ?? el?.parentElement ?? null;
+    };
+    const snapshot = () => Array.from(scope()?.querySelectorAll(ERROR_SELECTOR) ?? []).map((e) => e.textContent?.trim() ?? "").join("|");
+    if (loading) {
+      before.current = { was: true, text: snapshot() };
+      return;
+    }
+    const prev = before.current;
+    if (!prev?.was) return;
+    before.current = null;
+    timers.current.push(
+      setTimeout(() => {
+        if (!ref.current?.isConnected) return;
+        const now = snapshot();
+        const failed = now !== prev.text && now.replace(/\|/g, "") !== "";
+        setAuto(failed ? "error" : "success");
+        timers.current.push(setTimeout(() => setAuto(null), failed ? 1100 : 1400));
+      }, 120)
+    );
+  }, [loading, autoOutcome, successProp, errorProp]);
+  useEffect(() => () => timers.current.forEach(clearTimeout), []);
+
+  const success = successProp ?? auto === "success";
+  const failed = !success && (errorProp ?? auto === "error");
 
   const classes = cn(
     "btn-fx inline-flex shrink-0 items-center justify-center rounded-control font-medium whitespace-nowrap transition disabled:pointer-events-none disabled:cursor-not-allowed",
@@ -100,29 +150,39 @@ export function Button(props: ButtonAsButton | ButtonAsLink) {
     iconOnly: _iconOnly,
     loading: _loading,
     success: _success,
+    error: _error,
+    autoOutcome: _autoOutcome,
     loadingLabel,
     successLabel,
+    errorLabel,
     className: _className,
     children: _children,
     href: _href,
     ...rest
   } = props as ButtonAsButton;
 
-  // Main buttons fill left to right while they work, then turn green with a tick.
-  // Secondary and quiet buttons swap their label for a spinner, then for a tick.
+  // Main buttons fill left to right while they work, then turn green with a tick (or red with a cross and a shake).
+  // Secondary and quiet buttons swap their label for a spinner, then for a tick or a cross.
   const fills = variant === "primary" || variant === "danger";
-  const state = success ? "success" : loading ? "loading" : "idle";
+  const state = success ? "success" : failed ? "error" : loading ? "loading" : "idle";
   const tick = <Check className="h-4 w-4 shrink-0" strokeWidth={3} aria-hidden />;
+  const cross = <X className="h-4 w-4 shrink-0" strokeWidth={3} aria-hidden />;
   const spinner = <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />;
 
   let body: React.ReactNode = children;
   if (iconOnly) {
-    body = success ? tick : loading ? spinner : children;
+    body = success ? tick : failed ? cross : loading ? spinner : children;
   } else if (fills) {
     body = (
       <>
         <i className="ab-fill" aria-hidden />
-        {success ? <span className="inline-flex items-center gap-1.5">{tick}{successLabel ?? "Done"}</span> : children}
+        {success ? (
+          <span className="inline-flex items-center gap-1.5">{tick}{successLabel ?? "Done"}</span>
+        ) : failed ? (
+          <span className="inline-flex items-center gap-1.5">{cross}{errorLabel ?? "Failed"}</span>
+        ) : (
+          children
+        )}
       </>
     );
   } else {
@@ -131,12 +191,14 @@ export function Button(props: ButtonAsButton | ButtonAsLink) {
         <span data-on={state === "idle" || undefined}>{children}</span>
         <span data-on={state === "loading" || undefined} aria-hidden={state !== "loading"}>{spinner}{loadingLabel ?? children}</span>
         <span data-on={state === "success" || undefined} aria-hidden={state !== "success"}>{tick}{successLabel ?? "Done"}</span>
+        <span data-on={state === "error" || undefined} aria-hidden={state !== "error"}>{cross}{errorLabel ?? "Failed"}</span>
       </span>
     );
   }
 
   return (
     <button
+      ref={ref}
       type={rest.type ?? "button"}
       {...rest}
       disabled={rest.disabled || loading}
