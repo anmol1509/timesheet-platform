@@ -62,7 +62,7 @@ export function Button(props: ButtonAsButton | ButtonAsLink) {
   const loading = "loading" in props ? !!props.loading : false;
 
   const classes = cn(
-    "inline-flex shrink-0 items-center justify-center rounded-control font-medium whitespace-nowrap transition disabled:pointer-events-none disabled:cursor-not-allowed",
+    "btn-fx inline-flex shrink-0 items-center justify-center rounded-control font-medium whitespace-nowrap transition disabled:pointer-events-none disabled:cursor-not-allowed",
     VARIANTS[variant],
     iconOnly ? ICON_SIZES[size] : SIZES[size],
     className
@@ -71,13 +71,13 @@ export function Button(props: ButtonAsButton | ButtonAsLink) {
   if ("href" in props && props.href) {
     if (props.disabled) {
       return (
-        <span aria-disabled className={cn(classes, "pointer-events-none opacity-50")}>
+        <span aria-disabled data-variant={variant} className={cn(classes, "pointer-events-none opacity-50")}>
           {children}
         </span>
       );
     }
     return (
-      <Link href={props.href} className={classes}>
+      <Link href={props.href} data-variant={variant} className={classes}>
         {children}
       </Link>
     );
@@ -100,6 +100,7 @@ export function Button(props: ButtonAsButton | ButtonAsLink) {
       {...rest}
       disabled={rest.disabled || loading}
       aria-busy={loading || undefined}
+      data-variant={variant}
       className={cn(classes, loading && "relative")}
     >
       {loading ? (

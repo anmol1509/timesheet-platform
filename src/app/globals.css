@@ -706,3 +706,63 @@ main .card > div > table > thead > tr:first-child > th:last-child {
 .paper-thumb .tpl-body th, .paper-thumb .tpl-body td { border: 1px solid #333; padding: 3px 6px; text-align: left; }
 .paper-thumb .tpl-body th { background: #e5e7eb; }
 .paper-thumb .tpl-body h1, .paper-thumb .tpl-body h2, .paper-thumb .tpl-body h3 { font-weight: 700; margin: 0 0 8px; }
+
+/* Button motion. Shared by the .btn classes and the <Button> component (data-variant).
+   Hover lifts the button, the primary one also gets a light sweep across it, and
+   pressing squeezes it. Only on devices that can hover; off under reduced motion. */
+.btn,
+.btn-fx {
+  position: relative;
+}
+.btn-primary,
+.btn-fx[data-variant="primary"] {
+  overflow: hidden;
+  isolation: isolate;
+}
+.btn-primary::after,
+.btn-fx[data-variant="primary"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent 35%, rgb(255 255 255 / 0.32) 50%, transparent 65%);
+  transform: translateX(-130%);
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .btn-primary:hover:not(:disabled)::after,
+  .btn-fx[data-variant="primary"]:hover:not(:disabled)::after {
+    transform: translateX(130%);
+    transition: transform 700ms cubic-bezier(0.22, 0.7, 0.2, 1);
+  }
+  .btn-primary:hover:not(:disabled),
+  .btn-fx[data-variant="primary"]:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 18px -6px color-mix(in srgb, var(--brand-primary) 70%, transparent), inset 0 1px 0 rgb(255 255 255 / 0.18);
+  }
+  .btn-secondary:hover:not(:disabled),
+  .btn-fx[data-variant="secondary"]:hover:not(:disabled) {
+    transform: translateY(-1px);
+    border-color: color-mix(in srgb, var(--brand-primary) 45%, var(--border-strong));
+    color: var(--brand-primary);
+    box-shadow: 0 6px 14px -8px rgb(15 23 42 / 0.28);
+  }
+  .btn-danger:hover:not(:disabled),
+  .btn-fx[data-variant="danger"]:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 18px -6px color-mix(in srgb, var(--error) 70%, transparent);
+  }
+  .btn:active:not(:disabled),
+  .btn-fx:active:not(:disabled) {
+    transform: translateY(0) scale(0.97);
+    transition-duration: 80ms;
+  }
+  .btn > svg,
+  .btn-fx > svg {
+    transition: transform 220ms cubic-bezier(0.22, 0.7, 0.2, 1);
+  }
+  .btn:hover:not(:disabled) > svg:not(.animate-spin),
+  .btn-fx:hover:not(:disabled) > svg:not(.animate-spin) {
+    transform: scale(1.12);
+  }
+}
