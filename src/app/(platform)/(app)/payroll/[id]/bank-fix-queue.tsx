@@ -8,6 +8,7 @@ import { MaskedInput } from "@/components/ui/MaskedInput";
 import { Hint } from "@/components/Hint";
 import { fixBankDetailsAction } from "../actions";
 
+import { Button } from "@/components/ui/Button";
 export type BankGapRow = { employeeId: string; name: string; idNo: string; gaps: string[]; defaults: { personCode: string; routingCode: string; iban: string; bankName: string } };
 
 /**
@@ -107,7 +108,7 @@ export function BankFixQueue({ runId, canEdit, rows }: { runId: string; canEdit:
             <input name="bankName" defaultValue={cur.defaults.bankName} className="input mt-1 h-10 w-full text-sm" />
           </label>
           <div className="flex flex-wrap items-center gap-2 border-t border-default pt-3 sm:col-span-2">
-            <button type="submit" disabled={pending || !canEdit} className="btn btn-primary">{pending ? "Saving…" : left > 1 ? "Save and next ›" : "Save and finish"}</button>
+            <Button size="btn" type="submit" disabled={pending || !canEdit} loading={pending}>{left > 1 ? "Save and next ›" : "Save and finish"}</Button>
             <button type="button" disabled={pending || !canEdit} className="btn btn-secondary" onClick={() => save("CASH")}>Paid in cash</button>
             <button type="button" disabled={pending || left <= 1} className="btn btn-secondary" onClick={skip}>Skip</button>
             {error && <p role="alert" className="w-full text-xs text-[var(--error)]">{error}</p>}

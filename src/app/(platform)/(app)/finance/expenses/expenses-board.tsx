@@ -15,6 +15,7 @@ import { NumberInput } from "@/components/ui/NumberInput";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
 import type { ExtractedReceiptFields } from "@/app/api/expenses/extract-receipt/route";
 
+import { Button } from "@/components/ui/Button";
 type State = { error: string | null; ok?: boolean };
 export type ExpenseRow = { id: string; date: string; category: string; description: string; total: number; paidTo: string | null; method: string | null; project: string | null; status: string; by: string; note: string | null; outOfPocket: boolean; reimbursed: boolean; branchId: string; files: AttachmentRow[] };
 const STATUS: Record<string, { label: string; color: BadgeColor }> = { PENDING: { label: "Pending", color: "amber" }, APPROVED: { label: "Approved", color: "green" }, REJECTED: { label: "Rejected", color: "red" } };
@@ -117,7 +118,7 @@ function NewExpenseForm({ projects, onDone }: { projects: { id: string; name: st
       </div>
       <label className="flex items-center gap-2 text-sm text-secondary"><input type="checkbox" name="outOfPocket" value="1" className="h-4 w-4" /> Paid out of pocket (owed back to the person who submits it)</label>
       <div className="flex flex-wrap items-center gap-3">
-        <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? "Saving…" : dup ? "Keep both: submit anyway" : "Submit expense"}</button>
+        <Button size="btn" type="submit" disabled={pending} loading={pending}>{dup ? "Keep both: submit anyway" : "Submit expense"}</Button>
         {state.error && <p role="alert" className={dup ? "text-sm text-[var(--warning)]" : "text-sm text-[var(--danger-text,#b42318)]"}>{state.error.replace("DUPLICATE: ", "")}</p>}
       </div>
     </form>

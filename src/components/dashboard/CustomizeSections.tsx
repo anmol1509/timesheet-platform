@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogFooter } from "@/components/ui/Dialog";
 import { Switch } from "@/components/ui/Switch";
 import { saveModuleSectionsAction } from "@/app/(platform)/(app)/dashboards/section-actions";
 
+import { Button } from "@/components/ui/Button";
 /** Customize for a module dashboard: switch its sections on or off. Saved to the person's account. */
 export function CustomizeSections({
   module,
@@ -55,20 +56,15 @@ export function CustomizeSections({
           </ul>
           <DialogFooter>
             <button type="button" className="btn btn-secondary" onClick={() => setOpen(false)}>Cancel</button>
-            <button
-              type="button"
-              className="btn btn-primary"
-              disabled={pending}
-              onClick={() =>
+            <Button size="btn" type="button" disabled={pending} onClick={() =>
                 startTransition(async () => {
                   await saveModuleSectionsAction(module, [...off]);
                   setOpen(false);
                   router.refresh();
                 })
-              }
-            >
-              {pending ? "Saving…" : "Save"}
-            </button>
+              } loading={pending}>
+              Save
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

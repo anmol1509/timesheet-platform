@@ -5,6 +5,7 @@ import { SegmentedControl } from "@/components/ui/RadioGroup";
 import { Select } from "@/components/ui/Select";
 import { updateCampOwnershipAction } from "../actions";
 
+import { Button } from "@/components/ui/Button";
 type SupplierOption = { id: string; name: string };
 
 export function CampOwnershipEditor({
@@ -65,10 +66,7 @@ export function CampOwnershipEditor({
           triggerClassName="min-w-[180px]"
         />
       )}
-      <button
-        type="button"
-        disabled={pending}
-        onClick={() => {
+      <Button size="btn" className="px-2 py-1 text-xs" type="button" disabled={pending} onClick={() => {
           const formData = new FormData();
           formData.append("campId", campId);
           formData.append("ownerType", draftType);
@@ -77,11 +75,9 @@ export function CampOwnershipEditor({
             await updateCampOwnershipAction(formData);
             setEditing(false);
           });
-        }}
-        className="btn btn-primary px-2 py-1 text-xs"
-      >
-        {pending ? "Saving…" : "Save"}
-      </button>
+        }} loading={pending}>
+        Save
+      </Button>
       <button
         type="button"
         onClick={() => setEditing(false)}

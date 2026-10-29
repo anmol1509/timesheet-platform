@@ -20,6 +20,9 @@ const SIZES = {
   sm: "h-8 gap-1.5 px-2.5 text-xs",
   md: "h-9 gap-1.5 px-3.5 text-sm",
   lg: "h-10 gap-2 px-4 text-sm",
+  /** Match the plain .btn and .btn btn-sm buttons used across the app. */
+  btn: "h-9 gap-1.5 px-[0.9rem] text-[0.8125rem] font-[550]",
+  "btn-sm": "h-8 gap-1.5 px-[0.7rem] text-xs font-[550]",
 } as const;
 
 const ICON_SIZES = {
@@ -27,6 +30,8 @@ const ICON_SIZES = {
   sm: "h-8 w-8",
   md: "h-9 w-9",
   lg: "h-10 w-10",
+  btn: "h-9 w-9",
+  "btn-sm": "h-8 w-8",
 } as const;
 
 export type ButtonVariant = keyof typeof VARIANTS;

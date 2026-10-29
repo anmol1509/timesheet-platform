@@ -9,6 +9,7 @@ import { categoriesFor } from "@/lib/letterPresets";
 import { deleteTemplateAction, duplicateTemplateAction, findPreviewEmployeesAction, previewValuesAction, resetToPresetAction, saveTemplateAction } from "../actions";
 import { Select } from "@/components/ui/Select";
 
+import { Button } from "@/components/ui/Button";
 type State = { error: string | null; ok?: boolean };
 type Props = { id: string; audience: Audience; name: string; category: string; title: string; html: string; hasPreset: boolean; usedBy: number };
 
@@ -118,7 +119,7 @@ export function TemplateEditor(p: Props) {
         </div>
 
         <div className="sticky bottom-0 z-10 -mx-1 flex flex-wrap items-center gap-2 border-t border-default bg-surface/95 px-1 py-3 backdrop-blur">
-          <button type="submit" className="btn btn-primary" disabled={saving || !dirty || unknown.length > 0}>{saving ? "Saving…" : "Save changes"}</button>
+          <Button size="btn" type="submit" disabled={saving || !dirty || unknown.length > 0} loading={saving}>Save changes</Button>
           {dirty ? <span className="text-xs text-[var(--warning)]">Unsaved changes</span> : state.ok ? <span className="text-xs text-[var(--success)]">Saved</span> : null}
           {state.error && <span role="alert" className="text-xs text-[var(--danger-text,#b42318)]">{state.error}</span>}
           <span className="ml-auto flex flex-wrap gap-2">

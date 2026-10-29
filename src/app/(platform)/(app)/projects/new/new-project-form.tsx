@@ -7,6 +7,7 @@ import { PersonField } from "@/components/form/PersonField";
 import { Select } from "@/components/ui/Select";
 import { DatePicker } from "@/components/ui/DatePicker";
 
+import { Button } from "@/components/ui/Button";
 export function NewProjectForm({
   clients,
 }: {
@@ -92,13 +93,9 @@ export function NewProjectForm({
               </Field>
             </div>
 
-            <button
-              type="submit"
-              disabled={pending}
-              className="btn btn-primary"
-            >
-              {pending ? "Saving…" : "Add Project"}
-            </button>
+            <Button size="btn" type="submit" disabled={pending} loading={pending}>
+              Add Project
+            </Button>
           </>
         )}
       </form>

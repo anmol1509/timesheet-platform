@@ -10,6 +10,7 @@ import { cancelChangeAction, requestChangeAction, uploadDocumentAction } from ".
 import { DatePicker } from "@/components/ui/DatePicker";
 import { Select } from "@/components/ui/Select";
 
+import { Button } from "@/components/ui/Button";
 type State = { error: string | null; ok?: boolean };
 export type PendingRow = { id: string; kind: string; status: string; note: string | null; changes: { label: string; value: string }[] };
 type Vals = Record<string, string>;
@@ -36,7 +37,7 @@ function ChangeForm({ kind, title, hint, values, fields, pending: hasPending }: 
         ))}
       </div>
       <div className="flex flex-wrap items-center gap-3">
-        <button type="submit" className="btn btn-secondary" disabled={busy || hasPending}>{busy ? "Sending…" : "Request this change"}</button>
+        <Button variant="secondary" size="btn" type="submit" disabled={busy || hasPending} loading={busy}>Request this change</Button>
         {hasPending && <span className="text-xs text-muted">You have a change waiting for approval below.</span>}
         {state.error && <p role="alert" className="text-sm text-[var(--error)]">{state.error}</p>}
         {state.ok && <span className="text-sm text-[var(--success)]">Sent for approval</span>}
@@ -104,7 +105,7 @@ export function ProfileForms({ contact, bank, maskedIban, requests, docTypes, do
             <F t="Expiry date"><DatePicker name="expiryDate" className="w-full" /></F>
             <F t="File (PDF, JPG, PNG) *"><input type="file" name="file" required accept="application/pdf,image/jpeg,image/png" className="file-input w-full" /></F>
           </div>
-          <div className="flex flex-wrap items-center gap-3"><button type="submit" className="btn btn-secondary" disabled={uploading}>{uploading ? "Uploading…" : "Upload document"}</button>{docState.error && <p role="alert" className="text-sm text-[var(--error)]">{docState.error}</p>}{docState.ok && <span className="text-sm text-[var(--success)]">Uploaded</span>}</div>
+          <div className="flex flex-wrap items-center gap-3"><Button variant="secondary" size="btn" type="submit" disabled={uploading} loading={uploading}>Upload document</Button>{docState.error && <p role="alert" className="text-sm text-[var(--error)]">{docState.error}</p>}{docState.ok && <span className="text-sm text-[var(--success)]">Uploaded</span>}</div>
         </form>
       </section>
     </>

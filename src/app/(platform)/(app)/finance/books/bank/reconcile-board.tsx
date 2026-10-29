@@ -144,7 +144,7 @@ export function ReconcileBoard({ accountId, accountName, canWrite, ledgerBalance
           </div>
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => setAdding(null)}>Cancel</Button>
-            <Button type="button" disabled={pending || !counter} onClick={() => adding && run(async () => { const r = await addEntryForStatementLineAction(adding.id, counter, narration); if (!r.error) setAdding(null); return r; })}>{pending ? "Saving…" : "Post and match"}</Button>
+            <Button type="button" disabled={pending || !counter} onClick={() => adding && run(async () => { const r = await addEntryForStatementLineAction(adding.id, counter, narration); if (!r.error) setAdding(null); return r; })} loading={pending}>Post and match</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

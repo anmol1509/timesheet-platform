@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { cn } from "@/lib/cn";
 import { sendTestEmailAction } from "./actions";
 
+import { Button } from "@/components/ui/Button";
 export type EmailSample = { key: string; label: string; subject: string; html: string };
 
 /** Every email the app sends, as it will look, with a button to send the admin a real test. */
@@ -23,7 +24,7 @@ export function EmailPreviews({ samples, email }: { samples: EmailSample[]; emai
         <div className="card flex flex-wrap items-center justify-between gap-3 p-3">
           <p className="min-w-0 text-sm text-secondary"><span className="text-xs font-medium tracking-wide text-muted uppercase">Subject</span><br /><span className="text-primary">{current?.subject}</span></p>
           <div className="flex items-center gap-3">
-            <button type="button" className="btn btn-secondary btn-sm" disabled={pending} onClick={() => { setResult(null); start(async () => setResult(await sendTestEmailAction())); }}>{pending ? "Sending…" : "Send me a test"}</button>
+            <Button variant="secondary" size="btn-sm" type="button" disabled={pending} onClick={() => { setResult(null); start(async () => setResult(await sendTestEmailAction())); }} loading={pending}>Send me a test</Button>
           </div>
           {result?.error && <p role="alert" className="w-full text-xs text-[var(--error)]">{result.error}</p>}
           {result?.ok && <p className="w-full text-xs text-[var(--success)]">Sent to {email}. Check your inbox.</p>}

@@ -8,6 +8,7 @@ import { NumberInput } from "@/components/ui/NumberInput";
 import { TemplatePicker } from "@/components/TimesheetTemplatePicker";
 import { IssuerPicker, type IssuerPickerData } from "@/components/IssuerPicker";
 
+import { Button } from "@/components/ui/Button";
 type Entry = {
   id: string;
   employeeIdNo: string;
@@ -181,20 +182,12 @@ export function ReviewClient({
             </p>
           </div>
           <div className="flex gap-2">
-            <button
-              onClick={() => handleDownload("xlsx")}
-              disabled={generating !== null}
-              className="btn btn-secondary"
-            >
-              {generating === "xlsx" ? "Generating…" : "Download XLSX"}
-            </button>
-            <button
-              onClick={() => handleDownload("pdf")}
-              disabled={generating !== null}
-              className="btn btn-primary"
-            >
-              {generating === "pdf" ? "Generating…" : "Download PDF"}
-            </button>
+            <Button variant="secondary" size="btn" onClick={() => handleDownload("xlsx")} disabled={generating !== null} loading={generating === "xlsx"}>
+              Download XLSX
+            </Button>
+            <Button size="btn" onClick={() => handleDownload("pdf")} disabled={generating !== null} loading={generating === "pdf"}>
+              Download PDF
+            </Button>
           </div>
         </div>
         <div className="mt-4">

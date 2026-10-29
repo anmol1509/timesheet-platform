@@ -20,6 +20,7 @@ import { DatePicker } from "@/components/ui/DatePicker";
 import { cn } from "@/lib/cn";
 import { deleteDocumentsAction } from "./actions";
 
+import { Button } from "@/components/ui/Button";
 export type DocRow = {
   id: string;
   filename: string;
@@ -491,7 +492,7 @@ function UploadForm({ employees, onDone }: { employees: EmployeeOption[]; onDone
         <DatePicker value={expiryDate} onChange={(v) => setExpiryDate(v)} />
       </label>
       <input ref={fileRef} type="file" required className="file-input" />
-      <button type="submit" disabled={pending || !employeeId} className="btn btn-primary">{pending ? "Uploading…" : "Upload"}</button>
+      <Button size="btn" type="submit" disabled={pending || !employeeId} loading={pending}>Upload</Button>
       {error && <p className="w-full text-xs text-[var(--error)]">{error}</p>}
     </form>
   );

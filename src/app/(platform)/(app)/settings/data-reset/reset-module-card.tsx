@@ -173,14 +173,9 @@ function ResetDialog({
               <button type="button" onClick={handleClose} className="btn btn-secondary">
                 Cancel
               </button>
-              <button
-                type="button"
-                onClick={handleSubmit}
-                disabled={!canSubmit || pending}
-                className="btn btn-danger"
-              >
-                {pending ? "Deleting…" : `Delete all ${label}`}
-              </button>
+              <Button variant="danger" size="btn" type="button" onClick={handleSubmit} disabled={!canSubmit || pending} loading={pending}>
+                {`Delete all ${label}`}
+              </Button>
             </DialogFooter>
           </div>
         )}

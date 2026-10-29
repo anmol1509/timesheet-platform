@@ -20,6 +20,7 @@ import { DocumentChecklist, type ChecklistItem } from "@/app/(platform)/(app)/em
 import { createSupplierWizardAction } from "./actions";
 import { suggestSupplierCodeAction } from "../actions";
 
+import { Button } from "@/components/ui/Button";
 const STEPS = ["Documents", "Details", "Review"] as const;
 const DOC_TYPES = [
   { value: "TRADE_LICENSE", label: "Trade licence" },
@@ -359,9 +360,9 @@ export function SupplierWizard() {
       <div className="flex items-center justify-between border-t border-[var(--border)] pt-4">
         <button type="button" className="btn btn-secondary" disabled={step === 0 || pending} onClick={() => setStep((s) => Math.max(0, s - 1))}>Previous</button>
         {step < STEPS.length - 1 ? (
-          <button type="button" className="btn btn-primary" disabled={reading} onClick={next}>{reading ? "Reading documents…" : "Next"}</button>
+          <Button size="btn" type="button" disabled={reading} onClick={next} loading={reading}>Next</Button>
         ) : (
-          <button type="button" className="btn btn-primary" disabled={pending} onClick={create}>{pending ? "Creating…" : "Create supplier"}</button>
+          <Button size="btn" type="button" disabled={pending} onClick={create} loading={pending}>Create supplier</Button>
         )}
       </div>
     </div>

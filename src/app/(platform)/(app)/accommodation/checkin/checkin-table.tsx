@@ -16,6 +16,7 @@ import { checkInAndAssignAction, createCheckInAction, switchCampAction, switchTo
 import { ExternalCampFields, type Party } from "../external-camp-fields";
 import { DatePicker } from "@/components/ui/DatePicker";
 
+import { Button } from "@/components/ui/Button";
 type EmployeeRow = {
   id: string;
   name: string;
@@ -543,9 +544,9 @@ function CheckInForm({ employees, camps, suppliers, clients, onChecked, onDone }
 
       {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
       <DialogFooter>
-        <button type="button" onClick={handleSubmit} disabled={!canSubmit || pending} className="btn btn-primary">
-          {pending ? "Checking in…" : campType === "OWN" && assignNow ? "Check in & assign beds" : "Check in"}
-        </button>
+        <Button size="btn" type="button" onClick={handleSubmit} disabled={!canSubmit || pending} loading={pending}>
+          {campType === "OWN" && assignNow ? "Check in & assign beds" : "Check in"}
+        </Button>
       </DialogFooter>
     </div>
   );
@@ -654,9 +655,9 @@ function SwitchCampForm({ row, camps, suppliers, clients, onClose }: { row: Empl
         <button type="button" onClick={onClose} className="btn btn-secondary">
           Cancel
         </button>
-        <button type="button" disabled={(external ? !effectivePartyId || campName.trim() === "" : !campId) || pending} onClick={submit} className="btn btn-primary">
-          {pending ? "Switching…" : "Switch"}
-        </button>
+        <Button size="btn" type="button" disabled={(external ? !effectivePartyId || campName.trim() === "" : !campId) || pending} onClick={submit} loading={pending}>
+          Switch
+        </Button>
       </DialogFooter>
     </div>
   );

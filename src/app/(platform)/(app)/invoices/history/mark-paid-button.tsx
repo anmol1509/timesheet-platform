@@ -51,7 +51,7 @@ export function MarkPaidButton({
             {error && <p role="alert" className="text-sm text-error">{error}</p>}
             <DialogFooter>
               <Button type="button" variant="secondary" onClick={() => setOpen(false)} disabled={pending}>Cancel</Button>
-              <Button type="submit" disabled={pending}>{pending ? "Saving…" : "Mark paid"}</Button>
+              <Button type="submit" disabled={pending} loading={pending}>Mark paid</Button>
             </DialogFooter>
           </form>
         </DialogContent>

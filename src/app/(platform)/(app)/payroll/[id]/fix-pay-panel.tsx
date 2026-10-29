@@ -9,6 +9,7 @@ import { DatePicker } from "@/components/ui/DatePicker";
 import { structuresFor } from "@/lib/payFields";
 import { fixInactiveFromRunAction, setPayFromRunAction, type FixPayEntry } from "./fix-pay-actions";
 
+import { Button } from "@/components/ui/Button";
 type Structure = "FLAT" | "ITEMISED" | "HOURLY";
 export type FixRow = {
   id: string; name: string; idNo: string; trade: string; reason: string; kind: "PAY" | "INACTIVE";
@@ -117,7 +118,7 @@ export function FixPayPanel({ runId, payType, canEdit, rows }: { runId: string; 
           <p className="mb-2 text-xs font-medium text-primary">Same pay for several workers: tick them below, set the pay once, and apply.</p>
           <div className="flex flex-wrap items-end gap-3">
             <Inputs d={bulk} set={(p) => setBulk((b) => ({ ...b, ...p }))} structures={structures} disabled={pending} />
-            <button type="button" className="btn btn-primary" disabled={pending || selected.size === 0} onClick={applyToSelected}>{pending ? "Saving…" : `Apply to ${selected.size} selected`}</button>
+            <Button size="btn" type="button" disabled={pending || selected.size === 0} onClick={applyToSelected} loading={pending}>{`Apply to ${selected.size} selected`}</Button>
           </div>
         </div>
       )}

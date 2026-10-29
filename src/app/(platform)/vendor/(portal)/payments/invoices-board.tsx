@@ -12,6 +12,7 @@ import { MonthInput } from "@/components/ui/MonthInput";
 import { readFields } from "@/components/readFields";
 import { NumberInput } from "@/components/ui/NumberInput";
 
+import { Button } from "@/components/ui/Button";
 type State = { error: string | null; ok?: boolean };
 export type InvoiceRow = {
   id: string; billNo: string; billDate: string; dueDate: string; periodMonth: string | null; description: string | null;
@@ -69,7 +70,7 @@ function InvoiceForm({ row, onDone }: { row?: InvoiceRow; onDone: () => void }) 
         {readNote && <span className="mt-1 block text-xs text-muted">{readNote}</span>}
       </label>
       <div className="flex flex-wrap items-center gap-3">
-        <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? "Sending…" : dup ? "Submit anyway" : row ? "Resubmit invoice" : "Submit invoice"}</button>
+        <Button size="btn" type="submit" disabled={pending} loading={pending}>{dup ? "Submit anyway" : row ? "Resubmit invoice" : "Submit invoice"}</Button>
         {state.error && <p role="alert" className={dup ? "text-sm text-[var(--warning)]" : "text-sm text-[var(--error)]"}>{state.error.replace("DUPLICATE: ", "")}</p>}
       </div>
       <p className="text-xs text-subtle">Our team reviews every invoice before it is approved for payment. You&apos;ll see the decision here.</p>

@@ -7,6 +7,7 @@ import { PhoneField } from "@/components/ui/PhoneField";
 import { Dialog, DialogContent } from "@/components/ui/Dialog";
 import { createAgencyAction, type CreateAgencyResult } from "../actions";
 
+import { Button } from "@/components/ui/Button";
 const lbl = "mb-1 block text-xs font-medium text-muted";
 
 /** Adds a brand-new recruitment agency. */
@@ -34,7 +35,7 @@ export function NewAgency() {
             <label className="block"><span className={lbl}>Email</span><input name="email" type="email" className="input w-full" /></label>
           </div>
           <div className="flex items-center gap-3 pt-1">
-            <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? "Adding…" : "Add agency"}</button>
+            <Button size="btn" type="submit" disabled={pending} loading={pending}>Add agency</Button>
             {state.error && <p role="alert" className="text-sm text-[var(--error)]">{state.error}</p>}
           </div>
         </form>

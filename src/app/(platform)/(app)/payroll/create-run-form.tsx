@@ -5,6 +5,7 @@ import { createRunAction } from "./actions";
 import { MonthInput } from "@/components/ui/MonthInput";
 import { Select } from "@/components/ui/Select";
 
+import { Button } from "@/components/ui/Button";
 type Company = { id: string; name: string };
 type State = { error: string | null };
 
@@ -24,7 +25,7 @@ export function CreateRunForm({ defaultMonth, companies, bare, defaultCompanyId 
         <span className="mb-1 block text-xs font-medium text-muted">Month to pay *</span>
         <MonthInput name="month" defaultValue={defaultMonth} required />
       </label>
-      <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? "Working it out…" : "Start payroll run"}</button>
+      <Button size="btn" type="submit" disabled={pending} loading={pending}>Start payroll run</Button>
       {state.error && <p role="alert" className="text-sm text-[var(--error)]">{state.error}</p>}
       <p className="w-full text-xs text-muted">We work out everyone&apos;s pay from attendance or timesheets. You can check and change it before anything is final.</p>
     </form>

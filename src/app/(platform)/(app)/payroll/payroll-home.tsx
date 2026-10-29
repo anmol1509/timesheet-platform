@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/Dialog";
 import { cn } from "@/lib/cn";
 import { createRunAction } from "./actions";
 
+import { Button } from "@/components/ui/Button";
 export type RunRow = {
   key: string;
   /** Null for a month that has not been started for this company yet. */
@@ -90,7 +91,7 @@ export function PayRuns({ rows, canCreate }: { rows: RunRow[]; canCreate: boolea
                     {r.id ? (
                       <Link href={`/payroll/${r.id}`} className={cn("btn btn-sm", r.status === "APPROVED" || r.status === "SUBMITTED" ? "btn-primary" : "btn-secondary")}>Open</Link>
                     ) : canCreate ? (
-                      <button type="button" disabled={pending} onClick={() => startRun(r)} className="btn btn-primary btn-sm">{pending ? "Starting…" : "Start run"}</button>
+                      <Button size="btn-sm" type="button" disabled={pending} onClick={() => startRun(r)} loading={pending}>Start run</Button>
                     ) : null}
                   </td>
                 </tr>

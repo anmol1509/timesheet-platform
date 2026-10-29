@@ -9,6 +9,7 @@ import { Select } from "@/components/ui/Select";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { NumberInput } from "@/components/ui/NumberInput";
 
+import { Button } from "@/components/ui/Button";
 export default function NewClientPage() {
   const [state, formAction, pending] = useActionState(createClientAction, {
     error: null,
@@ -106,13 +107,9 @@ export default function NewClientPage() {
           </Field>
         </div>
 
-        <button
-          type="submit"
-          disabled={pending}
-          className="btn btn-primary"
-        >
-          {pending ? "Saving…" : "Add Client"}
-        </button>
+        <Button size="btn" type="submit" disabled={pending} loading={pending}>
+          Add Client
+        </Button>
       </form>
     </div>
   );

@@ -22,6 +22,7 @@ import { DocumentChecklist, type ChecklistItem } from "@/app/(platform)/(app)/em
 import { suggestSupplierCodeAction } from "../../suppliers/actions";
 import { attachCompanyFileAction, createOwnCompanyWizardAction } from "./actions";
 
+import { Button } from "@/components/ui/Button";
 type DocType = { key: string; label: string; hasExpiry: boolean };
 const STEPS = ["Documents", "Details", "Owners & sponsors", "Review"] as const;
 
@@ -642,9 +643,9 @@ export function CompanyWizard({ companyTypes, requiredCompanyTypes, partyTypes, 
       <div className="flex items-center justify-between border-t border-[var(--border)] pt-4">
         <button type="button" className="btn btn-secondary" disabled={step === 0 || pending} onClick={() => setStep((s) => Math.max(0, s - 1))}>Previous</button>
         {step < STEPS.length - 1 ? (
-          <button type="button" className="btn btn-primary" disabled={reading} onClick={next}>{reading ? "Reading documents…" : "Next"}</button>
+          <Button size="btn" type="button" disabled={reading} onClick={next} loading={reading}>Next</Button>
         ) : (
-          <button type="button" className="btn btn-primary" disabled={pending || reading} onClick={create}>{pending ? "Creating…" : "Create company"}</button>
+          <Button size="btn" type="button" disabled={pending || reading} onClick={create} loading={pending}>Create company</Button>
         )}
       </div>
     </div>

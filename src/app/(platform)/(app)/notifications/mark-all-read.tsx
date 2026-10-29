@@ -3,11 +3,12 @@
 import { useTransition } from "react";
 import { markAllNotificationsReadAction } from "./actions";
 
+import { Button } from "@/components/ui/Button";
 export function MarkAllRead() {
   const [pending, start] = useTransition();
   return (
-    <button type="button" className="btn btn-secondary" disabled={pending} onClick={() => start(() => markAllNotificationsReadAction())}>
-      {pending ? "Marking…" : "Mark all read"}
-    </button>
+    <Button variant="secondary" size="btn" type="button" disabled={pending} onClick={() => start(() => markAllNotificationsReadAction())} loading={pending}>
+      Mark all read
+    </Button>
   );
 }

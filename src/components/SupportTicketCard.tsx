@@ -6,6 +6,7 @@ import { LifeBuoy, CheckCircle2 } from "lucide-react";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/Dialog";
 import { submitSupportTicketAction, type SupportTicketState } from "@/app/(platform)/(app)/support/actions";
 
+import { Button } from "@/components/ui/Button";
 function SupportTicketForm({ onSent }: { onSent: () => void }) {
   const pathname = usePathname();
   const [state, action, pending] = useActionState<SupportTicketState, FormData>(
@@ -31,9 +32,9 @@ function SupportTicketForm({ onSent }: { onSent: () => void }) {
       <p className="text-xs text-subtle">Sent to info@manpowersync.com with your name and the page you&apos;re on.</p>
       {state.error && <p role="alert" className="text-sm text-[var(--error)]">{state.error}</p>}
       <div className="flex justify-end gap-2 pt-1">
-        <button type="submit" disabled={pending} className="btn btn-primary">
-          {pending ? "Sending…" : "Send to support"}
-        </button>
+        <Button size="btn" type="submit" disabled={pending} loading={pending}>
+          Send to support
+        </Button>
       </div>
     </form>
   );

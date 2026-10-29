@@ -15,6 +15,7 @@ import { Select } from "@/components/ui/Select";
 import { MaskedInput } from "@/components/ui/MaskedInput";
 import { readFields } from "@/components/readFields";
 
+import { Button } from "@/components/ui/Button";
 type State = { error: string | null; ok?: boolean };
 export type SubmissionRow = { id: string; name: string; trade: string; status: string; note: string | null; submittedAt: string };
 
@@ -84,7 +85,7 @@ function WorkerForm({ trades, onDone }: { trades: string[]; onDone: () => void }
         {readNote && <p className="text-xs text-muted">{readNote}</p>}
       </fieldset>
       <div className="flex flex-wrap items-center gap-3">
-        <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? "Sending…" : "Send for approval"}</button>
+        <Button size="btn" type="submit" disabled={pending} loading={pending}>Send for approval</Button>
         {state.error && <p role="alert" className="text-sm text-[var(--error)]">{state.error}</p>}
       </div>
       <p className="text-xs text-subtle">The worker joins your list once our team approves. You&apos;ll see the decision here.</p>

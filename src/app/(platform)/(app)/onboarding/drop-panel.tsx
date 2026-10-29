@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Ban, RotateCcw } from "lucide-react";
 import { dropCandidateAction, reinstateCandidateAction } from "./actions";
 
+import { Button } from "@/components/ui/Button";
 type State = { error: string | null; ok?: boolean };
 
 /**
@@ -40,7 +41,7 @@ export function DropPanel({ candidateId, joined, droppedAt, droppedReason, canEd
     <form action={action} className="flex flex-wrap items-start gap-2 rounded-lg border border-default bg-surface-subtle px-4 py-3">
       <input type="hidden" name="id" value={candidateId} />
       <input name="reason" required maxLength={200} placeholder="Why? e.g. withdrew, failed trade test, didn't arrive" aria-label="Reason for dropping" className="input min-w-0 flex-1" autoFocus />
-      <button type="submit" className="btn btn-primary btn-sm" disabled={pending}>{pending ? "Dropping…" : "Drop candidate"}</button>
+      <Button size="btn-sm" type="submit" disabled={pending} loading={pending}>Drop candidate</Button>
       <button type="button" className="btn btn-secondary btn-sm" onClick={() => setOpen(false)}>Cancel</button>
       {state.error && <p role="alert" className="w-full text-sm text-[var(--error)]">{state.error}</p>}
     </form>

@@ -14,6 +14,7 @@ import { DatePicker } from "@/components/ui/DatePicker";
 import { ADVANCE_METHODS } from "@/lib/advances";
 import { ReceiptButton } from "./receipt-button";
 
+import { Button } from "@/components/ui/Button";
 type State = { error: string | null; ok?: boolean };
 export type LoanRow = {
   id: string; ref: string; employeeId: string; employee: string; employeeIdNo: string; type: string; principal: number; repaid: number; instalment: number; startMonth: string;
@@ -100,7 +101,7 @@ function NewAdvanceForm({ employees, onDone }: { employees: { id: string; label:
       <PlanFields mode={mode} setMode={setMode} rows={rows} setRows={setRows} principal={total} allowLater />
       <p className="text-xs text-muted">It goes for approval first. Nothing is deducted until it is approved and you record the day the money was handed over.</p>
       <div className="flex items-center gap-3">
-        <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? "Sending…" : "Request approval"}</button>
+        <Button size="btn" type="submit" disabled={pending} loading={pending}>Request approval</Button>
         {state.error && <p role="alert" className="text-sm text-[var(--error)]">{state.error}</p>}
       </div>
     </form>
@@ -140,7 +141,7 @@ function GivenForm({ row, onDone }: { row: LoanRow; onDone: () => void }) {
       <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Attach proof (signed voucher, transfer slip… optional, up to 5)</span><input type="file" name="files" multiple accept="application/pdf,image/*" className="input w-full" onChange={(e) => void readProof(e.target.files?.[0])} /></label>
       <p className="text-xs text-muted">Deduction from payroll follows the plan&apos;s months once this is recorded, even for an earlier pay month (salary paid late). The day cannot be changed afterwards.</p>
       <div className="flex items-center gap-3">
-        <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? "Saving…" : "Record as given"}</button>
+        <Button size="btn" type="submit" disabled={pending} loading={pending}>Record as given</Button>
         {state.error && <p role="alert" className="text-sm text-[var(--error)]">{state.error}</p>}
       </div>
     </form>
@@ -165,7 +166,7 @@ function SetPlanForm({ row, onDone }: { row: LoanRow; onDone: () => void }) {
       <input type="hidden" name="id" value={row.id} />
       <PlanFields mode={mode} setMode={setMode} rows={rows} setRows={setRows} principal={row.principal} />
       <div className="flex items-center gap-3">
-        <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? "Saving…" : "Save months"}</button>
+        <Button size="btn" type="submit" disabled={pending} loading={pending}>Save months</Button>
         {state.error && <p role="alert" className="text-sm text-[var(--error)]">{state.error}</p>}
       </div>
     </form>

@@ -5,6 +5,7 @@ import { Check, Sparkles, UserPlus, UserX } from "lucide-react";
 import { cn } from "@/lib/cn";
 import type { PlacementIssue, PlacementRow, WorkerChoice } from "@/lib/importer/types";
 
+import { Button } from "@/components/ui/Button";
 const KIND_TEXT: Record<PlacementIssue["kind"], string> = {
   several: "More than one worker has this name.",
   close: "No worker has exactly this name, but these look close.",
@@ -114,9 +115,9 @@ export function WorkerMatchPanel({ issues, applied, busy, onApply }: {
       </ul>
       <div className="flex items-center justify-end gap-3">
         {!ready && <span className="text-xs text-muted">Choose an option for each name.</span>}
-        <button type="button" disabled={busy || !ready} className="btn btn-primary" onClick={() => onApply(toChoices(draft))}>
-          {busy ? "Updating…" : "Apply choices"}
-        </button>
+        <Button size="btn" type="button" disabled={busy || !ready} onClick={() => onApply(toChoices(draft))} loading={busy}>
+          Apply choices
+        </Button>
       </div>
     </div>
   );

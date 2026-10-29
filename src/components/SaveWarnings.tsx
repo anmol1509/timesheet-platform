@@ -2,6 +2,7 @@
 
 import { AlertTriangle } from "lucide-react";
 
+import { Button } from "@/components/ui/Button";
 /**
  * What a save found that is probably a mistake but isn't certain: the person either goes back and fixes it, or saves
  * anyway. Used wherever a form's server action answers with `warnings`.
@@ -15,7 +16,7 @@ export function SaveWarnings({ warnings, onSaveAnyway, onDismiss, busy }: { warn
       </ul>
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <button type="button" className="btn btn-secondary" onClick={onDismiss} disabled={busy}>Go back and fix</button>
-        <button type="button" className="btn btn-primary" onClick={onSaveAnyway} disabled={busy}>{busy ? "Saving…" : "Save anyway"}</button>
+        <Button size="btn" type="button" onClick={onSaveAnyway} disabled={busy} loading={busy}>Save anyway</Button>
       </div>
     </div>
   );

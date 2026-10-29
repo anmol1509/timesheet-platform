@@ -6,6 +6,7 @@ import { cn } from "@/lib/cn";
 import { ACCENTS, BACKGROUNDS, CORNERS, DEFAULT_PREFERENCES, DENSITIES, FONTS, HEX_RE, LAYOUTS, NAV_STYLES, TEXT_SIZES, htmlAttributes, htmlStyle, type Preferences } from "@/lib/preferences";
 import { saveCompanyLookAction, savePreferencesAction } from "./actions";
 
+import { Button } from "@/components/ui/Button";
 const THEME_CARDS = [
   { value: "light", label: "Light", icon: Sun, bg: "#f6f7fb", fg: "#0f172a", side: "#ffffff" },
   { value: "dark", label: "Dark", icon: Moon, bg: "#0b0d12", fg: "#f0f2f5", side: "#14161c" },
@@ -242,11 +243,11 @@ export function AppearanceForm({ initial, startPages, companyDefault, canSetComp
       )}
 
       <div className="flex flex-wrap items-center gap-3">
-        <button type="button" className="btn btn-primary" disabled={pending || !dirty} onClick={() => start(async () => {
+        <Button size="btn" type="button" disabled={pending || !dirty} onClick={() => start(async () => {
           const r = await savePreferencesAction(p);
           if (r.error) setMsg({ ok: false, text: r.error });
           else { setSaved(p); window.dispatchEvent(new CustomEvent("theme-changed", { detail: p.theme })); setMsg({ ok: true, text: "Saved. It is applied on each device when you sign in." }); }
-        })}>{pending ? "Saving…" : "Save"}</button>
+        })} loading={pending}>Save</Button>
         <button type="button" className="btn btn-secondary" disabled={pending} onClick={() => change({ ...(company ?? DEFAULT_PREFERENCES), startPage: p.startPage })}>{company ? "Back to the company default" : "Back to the defaults"}</button>
         {dirty && !msg && <span className="text-sm text-muted">Previewing. Save to keep it.</span>}
         {msg && <p role={msg.ok ? "status" : "alert"} className={cn("text-sm", msg.ok ? "text-success" : "text-error")}>{msg.text}</p>}

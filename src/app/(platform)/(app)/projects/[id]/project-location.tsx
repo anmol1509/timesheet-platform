@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { updateProjectLocationAction } from "../actions";
 import { NumberInput } from "@/components/ui/NumberInput";
 
+import { Button } from "@/components/ui/Button";
 export function ProjectLocation({
   projectId,
   address,
@@ -56,13 +57,9 @@ export function ProjectLocation({
         </label>
       </div>
       <div className="flex items-center gap-3">
-        <button
-          type="submit"
-          disabled={pending}
-          className="btn btn-primary"
-        >
-          {pending ? "Saving…" : "Save changes"}
-        </button>
+        <Button size="btn" type="submit" disabled={pending} loading={pending}>
+          Save changes
+        </Button>
         {saved && !pending && <span className="text-sm text-[var(--success)]">Saved.</span>}
       </div>
     </form>

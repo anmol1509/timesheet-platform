@@ -99,7 +99,7 @@ export function ImportWizard({ chart, openingDate }: { chart: ChartAccount[]; op
             <div><dt className="text-xs text-muted">Mapped</dt><dd className="font-medium text-primary">{matched} to existing, {rows.length - matched} new accounts</dd></div>
           </dl>
           {diff !== 0 && <p className="text-sm text-warning">Debits and credits differ by {aed(Math.abs(diff))}. That would be parked in Opening balance equity, so check the export is complete before importing.</p>}
-          <Button type="button" disabled={saving} onClick={apply}>{saving ? "Importing…" : `Import ${rows.length} balances`}</Button>
+          <Button type="button" disabled={saving} onClick={apply} loading={saving}>{`Import ${rows.length} balances`}</Button>
           <p className="text-xs text-muted">This replaces any opening balances you saved before. Later months follow from invoices, bills, payments and vouchers here; your old transactions are not needed.</p>
         </div>
       )}

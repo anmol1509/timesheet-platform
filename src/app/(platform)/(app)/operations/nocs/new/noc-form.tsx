@@ -8,6 +8,7 @@ import { LetterPreview } from "@/components/LetterPreview";
 import { createNocAction } from "../actions";
 import { DatePicker } from "@/components/ui/DatePicker";
 
+import { Button } from "@/components/ui/Button";
 type RequestOption = {
   id: string;
   requestNo: number;
@@ -170,14 +171,9 @@ export function NocForm({
         </div>
       </div>
 
-      <button
-        type="button"
-        onClick={handleSubmit}
-        disabled={pending || !demandRequestId || !templateId || selectedEmployees.size === 0}
-        className="btn btn-primary"
-      >
-        {pending ? "Generating…" : "Create NOC"}
-      </button>
+      <Button size="btn" type="button" onClick={handleSubmit} disabled={pending || !demandRequestId || !templateId || selectedEmployees.size === 0} loading={pending}>
+        Create NOC
+      </Button>
     </div>
 
     <aside className="lg:sticky lg:top-4 lg:self-start">

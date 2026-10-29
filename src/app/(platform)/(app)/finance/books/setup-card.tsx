@@ -25,8 +25,8 @@ export function SetupCard({ isAdmin }: { isAdmin: boolean }) {
             <div className="mt-1"><DatePicker value={date} onChange={setDate} ariaLabel="Accounting starts on" fromYear={2015} toYear={new Date().getUTCFullYear() + 1} /></div>
           </label>
           {error && <p role="alert" className="text-left text-sm text-error">{error}</p>}
-          <Button type="button" disabled={pending} onClick={() => start(async () => { const r = await setupBooksAction(date); if (r.error) setError(r.error); })}>
-            {pending ? "Setting up…" : "Start accounting"}
+          <Button type="button" disabled={pending} onClick={() => start(async () => { const r = await setupBooksAction(date); if (r.error) setError(r.error); })} loading={pending}>
+            Start accounting
           </Button>
         </div>
       ) : (

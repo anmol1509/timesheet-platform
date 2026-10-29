@@ -6,6 +6,7 @@ import { DatePicker } from "@/components/ui/DatePicker";
 import { Select } from "@/components/ui/Select";
 import { CHECKOUT_REASONS, checkoutKind, checkoutProblem, daysBetween, todayKey } from "@/lib/checkoutReasons";
 
+import { Button } from "@/components/ui/Button";
 const fmt = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 
 /** The checkout form: why, and on what date. A later date schedules the checkout instead of doing it now. */
@@ -79,9 +80,9 @@ export function CheckoutForm({ employeeId, name, bedLabel, checkInDate, planned,
       {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
       <div className="flex justify-end gap-2">
         <button type="button" className="btn btn-secondary" onClick={onCancel} disabled={pending}>Cancel</button>
-        <button type="button" className="btn btn-danger" onClick={submit} disabled={pending || !!problem}>
-          {pending ? "Saving…" : kind === "future" ? "Schedule checkout" : "Check out"}
-        </button>
+        <Button variant="danger" size="btn" type="button" onClick={submit} disabled={pending || !!problem} loading={pending}>
+          {kind === "future" ? "Schedule checkout" : "Check out"}
+        </Button>
       </div>
     </div>
   );

@@ -8,6 +8,7 @@ import type { Divergence } from "@/lib/attendanceTimesheetSync";
 import { applyDivergencesAction } from "./actions";
 import { MonthInput } from "@/components/ui/MonthInput";
 
+import { Button } from "@/components/ui/Button";
 function formatDate(iso: string) {
   return new Date(iso + "T00:00:00.000Z").toLocaleDateString("en-GB", {
     day: "2-digit",
@@ -123,19 +124,13 @@ export function SyncReview({
         </label>
         <div className="ml-auto flex items-center gap-3">
           {result && <span className="text-xs text-muted">{result}</span>}
-          <button
-            type="button"
-            onClick={apply}
-            disabled={applying || fixable.length === 0}
-            className="btn btn-primary btn-sm"
-            title={
+          <Button size="btn-sm" type="button" onClick={apply} disabled={applying || fixable.length === 0} title={
               fixable.length === 0
                 ? "Nothing here can be written. The sheets have gone to the client"
                 : "Writes attendance into every sheet still open"
-            }
-          >
-            {applying ? "Syncing…" : `Sync ${fixable.length || ""} day(s)`}
-          </button>
+            } loading={applying}>
+            {`Sync ${fixable.length || ""} day(s)`}
+          </Button>
         </div>
       </div>
 

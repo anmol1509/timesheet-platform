@@ -9,6 +9,7 @@ import { Select } from "@/components/ui/Select";
 import { setRenewalExpiryAction } from "../renewals/actions";
 import { setEmployeeBankAction, setEmployeePayAction } from "./fix-actions";
 
+import { Button } from "@/components/ui/Button";
 type Structure = "FLAT" | "ITEMISED" | "HOURLY";
 export type ReadinessRow = { key: string; label: string; ok: boolean; problem?: string; blocking: boolean };
 export type PayDefaults = { structures: Structure[]; structure: string; rate: string; housing: string; food: string; transport: string; other: string };
@@ -49,7 +50,7 @@ function PayFix({ employeeId, d }: { employeeId: string; d: PayDefaults }) {
         ))}
       </div>
       <div className="flex items-center gap-3">
-        <button type="button" className="btn btn-primary btn-sm" disabled={pending || !v.structure} onClick={() => run(() => setEmployeePayAction(employeeId, { structure: v.structure as Structure, rate: num(v.rate), housing: num(v.housing), food: num(v.food), transport: num(v.transport), other: num(v.other) }))}>{pending ? "Saving…" : "Save pay"}</button>
+        <Button size="btn-sm" type="button" disabled={pending || !v.structure} onClick={() => run(() => setEmployeePayAction(employeeId, { structure: v.structure as Structure, rate: num(v.rate), housing: num(v.housing), food: num(v.food), transport: num(v.transport), other: num(v.other) }))} loading={pending}>Save pay</Button>
         {error && <p role="alert" className="text-xs text-[var(--error)]">{error}</p>}
       </div>
     </div>
@@ -72,7 +73,7 @@ function BankFix({ employeeId, d }: { employeeId: string; d: BankDefaults }) {
       <label className="block text-xs text-muted sm:col-span-2">IBAN<MaskedInput kind="iban" name="wpsIban" defaultValue={d.iban} className="input mt-1 h-9 w-full text-sm" /></label>
       <label className="block text-xs text-muted sm:col-span-2">Bank name (optional)<input name="bankName" defaultValue={d.bankName} className="input mt-1 h-9 w-full text-sm" /></label>
       <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
-        <button type="submit" disabled={pending} className="btn btn-primary btn-sm">{pending ? "Saving…" : "Save bank details"}</button>
+        <Button size="btn-sm" type="submit" disabled={pending} loading={pending}>Save bank details</Button>
         <button type="button" disabled={pending} className="btn btn-secondary btn-sm" onClick={(e) => submit(e, "CASH")}>Paid in cash instead</button>
         {error && <p role="alert" className="w-full text-xs text-[var(--error)]">{error}</p>}
       </div>
@@ -87,7 +88,7 @@ export function ExpiryFix({ employeeId, field, current }: { employeeId: string; 
   return (
     <div className="mt-2 flex flex-wrap items-end gap-2">
       <label className="block w-44"><span className="mb-1 block text-xs font-medium text-muted">New expiry date</span><DatePicker value={date} onChange={setDate} /></label>
-      <button type="button" className="btn btn-primary btn-sm" disabled={pending || !date} onClick={() => run(() => setRenewalExpiryAction({ employeeId, field, expiry: date }))}>{pending ? "Saving…" : "Save date"}</button>
+      <Button size="btn-sm" type="button" disabled={pending || !date} onClick={() => run(() => setRenewalExpiryAction({ employeeId, field, expiry: date }))} loading={pending}>Save date</Button>
       {error && <p role="alert" className="w-full text-xs text-[var(--error)]">{error}</p>}
     </div>
   );

@@ -45,7 +45,7 @@ export function RecurringDialog({ accounts, row }: { accounts: Opt[]; row?: Recu
             if (r.warning) window.alert(r.warning);
             setOpen(false); setError(null);
             if (!row) setF((c) => ({ ...c, name: "", amount: "" }));
-          })}>{pending ? "Saving…" : "Save"}</Button>
+          })} loading={pending}>Save</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

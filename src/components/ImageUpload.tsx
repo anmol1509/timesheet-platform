@@ -5,6 +5,7 @@ import { Camera, Trash2 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { pdfPageToImage } from "@/lib/pdfPageToImage";
 
+import { Button } from "@/components/ui/Button";
 type ActionResult = { error?: string | null; id?: string; url?: string } | void;
 
 /** Resizes to fit `max`px on the longest side in the browser, so uploads stay
@@ -131,10 +132,10 @@ export function ImageUpload({
         <p className="text-sm font-medium text-primary">{label}</p>
         {hint && <p className="mt-0.5 text-xs text-muted">{hint}</p>}
         <div className="mt-2 flex flex-wrap gap-2">
-          <button type="button" className="btn btn-secondary" disabled={pending} onClick={() => inputRef.current?.click()}>
+          <Button variant="secondary" size="btn" type="button" disabled={pending} onClick={() => inputRef.current?.click()} loading={pending}>
             <Camera className="h-4 w-4" aria-hidden />
-            {pending ? "Saving…" : shown ? "Change" : "Upload"}
-          </button>
+            {shown ? "Change" : "Upload"}
+          </Button>
           {removeAction && (currentUrl || preview) && (
             <button type="button" className="btn btn-secondary" disabled={pending} onClick={onRemove}>
               <Trash2 className="h-4 w-4" aria-hidden />

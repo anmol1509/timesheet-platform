@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { convertQuotationToProjectAction } from "../actions";
 
+import { Button } from "@/components/ui/Button";
 export function ConvertToProjectForm({ quotationId }: { quotationId: string }) {
   const [pending, startTransition] = useTransition();
   const [createLpos, setCreateLpos] = useState(true);
@@ -31,14 +32,9 @@ export function ConvertToProjectForm({ quotationId }: { quotationId: string }) {
           label="Also create an LPO per line item (using this quotation's rates)"
         />
       </div>
-      <button
-        type="button"
-        disabled={pending}
-        onClick={submit}
-        className="btn btn-primary"
-      >
-        {pending ? "Creating…" : "Create project"}
-      </button>
+      <Button size="btn" type="button" disabled={pending} onClick={submit} loading={pending}>
+        Create project
+      </Button>
     </div>
   );
 }

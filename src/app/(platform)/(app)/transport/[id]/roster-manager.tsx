@@ -10,6 +10,7 @@ import {
 import { Checkbox } from "@/components/ui/Checkbox";
 import { DeleteButton } from "@/components/DeleteButton";
 
+import { Button } from "@/components/ui/Button";
 type EmployeeInfo = {
   id: string;
   name: string;
@@ -188,14 +189,9 @@ export function RosterManager({
                   </span>
                 );
               })}
-              <button
-                type="button"
-                disabled={pending}
-                onClick={assignSelected}
-                className="btn btn-primary btn-sm"
-              >
-                {pending ? "Assigning…" : `Assign ${selected.size} to roster`}
-              </button>
+              <Button size="btn-sm" type="button" disabled={pending} onClick={assignSelected} loading={pending}>
+                {`Assign ${selected.size} to roster`}
+              </Button>
             </div>
           )}
         </div>

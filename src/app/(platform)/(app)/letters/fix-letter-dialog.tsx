@@ -13,6 +13,7 @@ import { fixLetterGapsAction, uploadLetterOneOffImageAction } from "./actions";
 import { uploadLetterImageAction } from "../settings/company/actions";
 import { uploadSupplierLetterImageAction } from "../suppliers/actions";
 
+import { Button } from "@/components/ui/Button";
 export type OneOff = { id: string; url: string } | null;
 
 type Props = {
@@ -149,7 +150,7 @@ export function FixLetterDialog(p: Props) {
         <div className="mt-4 flex justify-end gap-2">
           <button type="button" className="btn btn-secondary" onClick={() => p.onOpenChange(false)}>Close</button>
           {fixable.length > 0 && (
-            <button type="button" className="btn btn-primary" disabled={pending || filled.length === 0} onClick={save}>{pending ? "Saving…" : `Save ${filled.length || ""} detail${filled.length === 1 ? "" : "s"} & update letter`.replace("  ", " ")}</button>
+            <Button size="btn" type="button" disabled={pending || filled.length === 0} onClick={save} loading={pending}>{`Save ${filled.length || ""} detail${filled.length === 1 ? "" : "s"} & update letter`.replace("  ", " ")}</Button>
           )}
         </div>
       </DialogContent>

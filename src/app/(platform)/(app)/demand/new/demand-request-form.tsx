@@ -8,6 +8,7 @@ import { createDemandRequestAction } from "../actions";
 import { DraftBar } from "@/components/DraftBar";
 import { NumberInput } from "@/components/ui/NumberInput";
 
+import { Button } from "@/components/ui/Button";
 type Client = { id: string; name: string };
 type Project = { id: string; name: string; code: string; clientId: string };
 type TradeRow = {
@@ -174,14 +175,9 @@ export function DemandRequestForm({
         </button>
       </div>
 
-      <button
-        type="button"
-        onClick={handleSubmit}
-        disabled={pending || !clientId || !projectId}
-        className="btn btn-primary"
-      >
-        {pending ? "Raising…" : "Raise Demand"}
-      </button>
+      <Button size="btn" type="button" onClick={handleSubmit} disabled={pending || !clientId || !projectId} loading={pending}>
+        Raise Demand
+      </Button>
     </div>
   );
 }

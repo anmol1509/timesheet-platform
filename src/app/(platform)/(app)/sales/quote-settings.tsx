@@ -8,6 +8,7 @@ import { NumberInput } from "@/components/ui/NumberInput";
 import type { QuoteSettings } from "@/lib/quotationMath";
 import { saveQuoteSettingsAction } from "./settings-actions";
 
+import { Button } from "@/components/ui/Button";
 /** Quotation defaults, edited by an admin. Everything here is optional and only feeds suggestions and conversions. */
 export function QuoteSettingsDialog({ settings }: { settings: QuoteSettings }) {
   const router = useRouter();
@@ -83,7 +84,7 @@ export function QuoteSettingsDialog({ settings }: { settings: QuoteSettings }) {
           </div>
           <DialogFooter>
             <button type="button" className="btn btn-secondary" onClick={() => setOpen(false)}>Cancel</button>
-            <button type="button" className="btn btn-primary" disabled={pending} onClick={save}>{pending ? "Saving…" : "Save"}</button>
+            <Button size="btn" type="button" disabled={pending} onClick={save} loading={pending}>Save</Button>
           </DialogFooter>
         </DialogContent>
       )}

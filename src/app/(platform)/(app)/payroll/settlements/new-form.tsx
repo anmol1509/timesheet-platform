@@ -6,6 +6,7 @@ import { DatePicker } from "@/components/ui/DatePicker";
 import { EXIT_REASONS } from "@/lib/exitReasons";
 import { createSettlementAction } from "./actions";
 
+import { Button } from "@/components/ui/Button";
 type State = { error: string | null; ok?: boolean };
 
 export function NewSettlementForm({ employees }: { employees: { id: string; label: string; exitDate: string }[] }) {
@@ -30,7 +31,7 @@ export function NewSettlementForm({ employees }: { employees: { id: string; labe
         </label>
       </div>
       <div className="flex items-center gap-3">
-        <button type="submit" className="btn btn-primary" disabled={pending || !employeeId}>{pending ? "Working it out…" : "Work out the settlement"}</button>
+        <Button size="btn" type="submit" disabled={pending || !employeeId} loading={pending}>Work out the settlement</Button>
         {state.error && <p role="alert" className="text-sm text-[var(--error)]">{state.error}</p>}
       </div>
     </form>

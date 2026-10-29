@@ -4,6 +4,7 @@ import { useRef, useState, useTransition } from "react";
 import { Wand2 } from "lucide-react";
 import { suggestSupplierCodeAction } from "./actions";
 
+import { Button } from "@/components/ui/Button";
 /** Supplier code input with an "Auto" button that fills in the name's acronym.
  * The name comes from the form's own `name` field unless `fixedName` is given
  * (the edit form has no name field). */
@@ -49,10 +50,10 @@ export function SupplierCodeField({
           placeholder="e.g. SBAA"
           className="input w-full uppercase"
         />
-        <button type="button" onClick={auto} disabled={pending} className="btn btn-secondary btn-sm shrink-0">
+        <Button variant="secondary" size="btn-sm" className="shrink-0" type="button" onClick={auto} disabled={pending} loading={pending}>
           <Wand2 className="h-4 w-4" aria-hidden />
-          {pending ? "…" : "Auto"}
-        </button>
+          Auto
+        </Button>
       </div>
       <p className="mt-1 text-xs text-muted">
         {hint ?? "S + initials of the name (Gulf Skills Contracting → SGSC). Leave blank to generate on save, or edit it."}

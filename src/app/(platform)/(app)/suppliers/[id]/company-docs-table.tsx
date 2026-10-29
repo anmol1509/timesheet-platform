@@ -15,6 +15,7 @@ import { deleteAttachmentAction, uploadAttachmentAction } from "@/lib/attachment
 import { MAX_UPLOAD_LABEL } from "@/lib/constants";
 import { cn } from "@/lib/cn";
 
+import { Button } from "@/components/ui/Button";
 export type DocFile = { id: string; docType: string; filename: string; expiryDate: string | null; uploadedAt: string; docNumber?: string | null; issueDate?: string | null };
 export type DocRow = {
   key: string;
@@ -327,7 +328,7 @@ function RowUploader({ row, supplierId, revalidate, onDone }: { row: DocRow; sup
             </label>
           </>
         )}
-        <button type="button" className="btn btn-primary" disabled={pending || reading || !file} onClick={save}>{pending ? "Saving…" : reading ? "Reading…" : "Save"}</button>
+        <Button size="btn" type="button" disabled={pending || reading || !file} onClick={save} loading={pending}>{reading ? "Reading…" : "Save"}</Button>
       </div>
       {isOther && <OtherDocFields name={name} onName={setName} track={track} onTrack={setTrack} expiry={expiry} onExpiry={setExpiry} note={null} />}
       {note && <p className="flex items-center gap-1.5 text-xs text-muted">{reading && <Loader2 className="h-3 w-3 animate-spin" aria-hidden />}{note}</p>}

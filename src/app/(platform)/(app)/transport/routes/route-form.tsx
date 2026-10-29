@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { Select } from "@/components/ui/Select";
 import { createRouteAction, updateRouteAction } from "./actions";
 
+import { Button } from "@/components/ui/Button";
 type Vehicle = { id: string; plateNumber: string };
 type Project = { id: string; name: string; code: string };
 type StopRow = { id: string; location: string; pickupTime: string; notes: string };
@@ -182,14 +183,9 @@ export function RouteForm({
         </button>
       </div>
 
-      <button
-        type="button"
-        onClick={handleSubmit}
-        disabled={pending || !name || !vehicleId}
-        className="btn btn-primary"
-      >
-        {pending ? "Saving…" : route ? "Save changes" : "Create Route"}
-      </button>
+      <Button size="btn" type="button" onClick={handleSubmit} disabled={pending || !name || !vehicleId} loading={pending}>
+        {route ? "Save changes" : "Create Route"}
+      </Button>
     </div>
   );
 }

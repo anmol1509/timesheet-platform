@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { FlaskConical } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
+import { Button } from "@/components/ui/Button";
 export function SampleCard({ loaded }: { loaded: boolean }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -41,11 +42,11 @@ export function SampleCard({ loaded }: { loaded: boolean }) {
           confirmLabel="Yes, remove it"
           onConfirm={() => call("DELETE")}
           trigger={(open) => (
-            <button type="button" onClick={open} disabled={busy} className="btn btn-secondary">{busy ? "Removing…" : "Remove sample data"}</button>
+            <Button variant="secondary" size="btn" type="button" onClick={open} disabled={busy} loading={busy}>Remove sample data</Button>
           )}
         />
       ) : (
-        <button type="button" onClick={() => call("POST")} disabled={busy} className="btn btn-secondary">{busy ? "Loading…" : "Load sample data"}</button>
+        <Button variant="secondary" size="btn" type="button" onClick={() => call("POST")} disabled={busy} loading={busy}>Load sample data</Button>
       )}
     </section>
   );

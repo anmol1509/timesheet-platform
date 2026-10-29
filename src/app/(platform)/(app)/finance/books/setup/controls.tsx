@@ -48,7 +48,7 @@ export function OpeningBalancesEditor({ rows, canEdit, openingDate }: { rows: Ro
           <Button type="button" size="sm" disabled={pending} onClick={() => start(async () => {
             const r = await saveOpeningBalancesAction(rows.map((x) => ({ accountId: x.id, debit: num(at(x.id).debit), credit: num(at(x.id).credit) })));
             setMsg(r.error ? { ok: false, text: r.error } : { ok: true, text: `Saved as at ${openingDate}.` });
-          })}>{pending ? "Saving…" : "Save opening balances"}</Button>
+          })} loading={pending}>Save opening balances</Button>
         )}
       </div>
       {msg && <p role={msg.ok ? "status" : "alert"} className={`text-sm ${msg.ok ? "text-success" : "text-error"}`}>{msg.text}</p>}
@@ -83,7 +83,7 @@ export function RefreshControl() {
       <Button type="button" size="sm" variant="secondary" disabled={pending} onClick={() => start(async () => {
         const r = await refreshPostingsAction();
         setMsg(r.error ? r.error : `${r.created} new, ${r.updated} updated, ${r.removed} removed.${r.unmapped?.length ? ` Not posted (no account): ${r.unmapped.join(", ")}.` : ""}`);
-      })}>{pending ? "Posting…" : "Post everything now"}</Button>
+      })} loading={pending}>Post everything now</Button>
       {msg && <p role="status" className="text-sm text-secondary">{msg}</p>}
     </div>
   );
@@ -155,7 +155,7 @@ export function ProvisionSettings({ initial, policy, canEdit }: { initial: { gra
           <Button type="button" size="sm" disabled={pending} onClick={() => start(async () => {
             const r = await saveProvisionSettingsAction({ ...on, policy: fromText(t) });
             setMsg(r.error ? { ok: false, text: r.error } : { ok: true, text: r.warning ?? "Saved. Months that aren't locked are recalculated." });
-          })}>{pending ? "Saving…" : "Save"}</Button>
+          })} loading={pending}>Save</Button>
           {msg && <p role={msg.ok ? "status" : "alert"} className={`text-sm ${msg.ok ? "text-success" : "text-error"}`}>{msg.text}</p>}
         </div>
       )}
@@ -197,7 +197,7 @@ function RuleRow({ rule, canEdit }: { rule: CustomRule | null; canEdit: boolean 
         )}
         {canEdit && (
           <div className="flex gap-2">
-            <Button type="button" size="sm" disabled={pending} onClick={() => save(rule ? active : true)}>{pending ? "Saving…" : rule ? "Save" : "Add"}</Button>
+            <Button type="button" size="sm" disabled={pending} onClick={() => save(rule ? active : true)} loading={pending}>{rule ? "Save" : "Add"}</Button>
             {rule && <Button type="button" size="sm" variant="ghost" disabled={pending} onClick={() => save(!active)}>{active ? "Switch off" : "Switch on"}</Button>}
           </div>
         )}
@@ -244,7 +244,7 @@ export function DefaultBanks({ banks, receipt, payment, canEdit }: { banks: { id
           <Button type="button" size="sm" disabled={pending} onClick={() => start(async () => {
             const res = await saveDefaultBanksAction({ receipt: r, payment: p });
             setMsg(res.error ? { ok: false, text: res.error } : { ok: true, text: res.warning ?? "Saved. Postings without their own bank now use these." });
-          })}>{pending ? "Saving…" : "Save"}</Button>
+          })} loading={pending}>Save</Button>
           {msg && <p role={msg.ok ? "status" : "alert"} className={`text-sm ${msg.ok ? "text-success" : "text-error"}`}>{msg.text}</p>}
         </div>
       )}
@@ -298,7 +298,7 @@ export function ExchangeRates({ currencies, rates, canEdit }: { currencies: stri
             const r = await saveExchangeRateAction({ currency, date, rate: Number(rate) });
             setMsg(r.error ? { ok: false, text: r.error } : { ok: true, text: r.warning ?? "Saved. Foreign accounts are revalued at month ends." });
             if (!r.error) setRate("");
-          })}>{pending ? "Saving…" : "Save rate"}</Button>
+          })} loading={pending}>Save rate</Button>
         </div>
       )}
       {msg && <p role={msg.ok ? "status" : "alert"} className={`text-sm ${msg.ok ? "text-success" : "text-error"}`}>{msg.text}</p>}

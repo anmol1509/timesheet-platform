@@ -4,6 +4,7 @@ import { useActionState, useState, useTransition } from "react";
 import { Badge, type BadgeColor } from "@/components/Badge";
 import { withdrawOfferAction, sendToSuppliersAction } from "../offer-actions";
 
+import { Button } from "@/components/ui/Button";
 type State = { error: string | null; ok?: boolean };
 export type OfferRow = {
   id: string; supplier: string; status: string; note: string | null; sentAt: string; respondedAt: string | null;
@@ -38,7 +39,7 @@ export function SupplierOffers({ demandId, offers, available, canEdit }: { deman
           <ul className="grid max-h-48 gap-1.5 overflow-y-auto sm:grid-cols-2">
             {available.map((s) => <li key={s.id}><label className="flex items-center gap-2 text-sm text-secondary"><input type="checkbox" name="supplierId" value={s.id} className="h-4 w-4" />{s.name}</label></li>)}
           </ul>
-          <div className="flex items-center gap-3"><button type="submit" className="btn btn-primary" disabled={sending}>{sending ? "Sending…" : "Send request"}</button>{state.error && <p role="alert" className="text-sm text-[var(--error)]">{state.error}</p>}</div>
+          <div className="flex items-center gap-3"><Button size="btn" type="submit" disabled={sending} loading={sending}>Send request</Button>{state.error && <p role="alert" className="text-sm text-[var(--error)]">{state.error}</p>}</div>
         </form>
       )}
       {canEdit && available.length === 0 && offers.length === 0 && <p className="mt-3 text-xs text-subtle">No suppliers have portal access yet. Turn it on for a supplier on its record.</p>}

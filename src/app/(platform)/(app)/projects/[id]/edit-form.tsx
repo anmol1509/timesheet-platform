@@ -13,6 +13,7 @@ import { PhoneField } from "@/components/ui/PhoneField";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { NumberInput } from "@/components/ui/NumberInput";
 
+import { Button } from "@/components/ui/Button";
 type Project = {
   id: string;
   name: string;
@@ -186,13 +187,9 @@ export function EditProjectForm({
       </Section>
 
       <div className="flex items-center gap-3">
-        <button
-          type="submit"
-          disabled={pending}
-          className="btn btn-primary"
-        >
-          {pending ? "Saving…" : "Save changes"}
-        </button>
+        <Button size="btn" type="submit" disabled={pending} loading={pending}>
+          Save changes
+        </Button>
         {error && <span className="text-sm text-[var(--error)]">{error}</span>}
         {saved && !pending && (
           <span className="text-sm text-[var(--success)]">Saved.</span>

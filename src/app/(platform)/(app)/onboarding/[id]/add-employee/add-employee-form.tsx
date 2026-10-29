@@ -11,6 +11,7 @@ import { SaveWarnings } from "@/components/SaveWarnings";
 import { TRADES } from "@/lib/trades";
 import { addCandidateAsEmployeeAction, type AddEmployeeState } from "../../add-employee-actions";
 
+import { Button } from "@/components/ui/Button";
 type Opt = { id: string; name: string };
 type FileRow = { id: string; name: string; docType: string; expiry: string };
 type Initial = {
@@ -149,7 +150,7 @@ export function AddEmployeeForm({ candidateId, ready, canEditPay, proposedIds, s
       {state.error && <p role="alert" className="rounded-control border border-[var(--error-border)] bg-[var(--error-soft)] px-3 py-2 text-sm text-[var(--error)]">{state.error}</p>}
 
       <div className="flex items-center gap-3">
-        <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? "Adding…" : "Add to employees"}</button>
+        <Button size="btn" type="submit" disabled={pending} loading={pending}>Add to employees</Button>
         <Link href={`/onboarding/${candidateId}`} className="text-sm text-muted hover:text-primary">Cancel</Link>
       </div>
     </form>

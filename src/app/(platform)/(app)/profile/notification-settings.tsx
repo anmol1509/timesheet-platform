@@ -5,6 +5,7 @@ import { cn } from "@/lib/cn";
 import { EMAIL_CATEGORIES, MAX_INSTANT_PER_HOUR, PAUSE_CHOICES, SUMMARY_HOUR, isPaused, type Delivery, type EmailPrefs } from "@/lib/emailPrefs";
 import { saveEmailPrefsAction, sendTestEmailAction } from "../notifications/actions";
 
+import { Button } from "@/components/ui/Button";
 const HOURS = Array.from({ length: 24 }, (_, h) => ({ value: h, label: `${h % 12 === 0 ? 12 : h % 12}:00 ${h < 12 ? "AM" : "PM"}` }));
 const CHOICES: { value: Delivery; label: string }[] = [{ value: "INSTANT", label: "Instant" }, { value: "SUMMARY", label: "Daily summary" }, { value: "OFF", label: "Off" }];
 const when = (iso: string) => new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Dubai" });
@@ -123,7 +124,7 @@ export function NotificationSettings({ initial, email }: { initial: EmailPrefs; 
       </div>
 
       <div className="flex flex-wrap items-center gap-3 border-t border-default pt-5">
-        <button type="button" className="btn btn-primary" disabled={pending || !dirty} onClick={save}>{pending ? "Working…" : "Save"}</button>
+        <Button size="btn" type="button" disabled={pending || !dirty} onClick={save} loading={pending}>Save</Button>
         <button type="button" className="btn btn-secondary" disabled={pending} onClick={test}>Send me a test email</button>
         {msg && <p role={msg.tone === "error" ? "alert" : "status"} className={cn("text-sm", msg.tone === "error" ? "text-[var(--error)]" : "text-[var(--success)]")}>{msg.text}</p>}
         <p className="ml-auto text-xs text-muted">Emails go to {email}</p>

@@ -42,7 +42,7 @@ export function AddAsset({ accounts, minDate }: { accounts: Opt[]; minDate: stri
             const r = await saveAssetAction({ name: f.name, category: f.category, cost: num(f.cost), salvage: num(f.salvage), purchaseDate: f.date, lifeMonths: Math.round(num(f.years) * 12), paidFromAccountId: f.paidFrom || undefined });
             if (r.error) { setError(r.error); return; }
             setOpen(false); setError(null); setF((c) => ({ ...c, name: "", cost: "" }));
-          })}>{pending ? "Saving…" : "Add"}</Button>
+          })} loading={pending}>Add</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -75,7 +75,7 @@ export function AssetRowActions({ id, name, moneyAccounts, sold = false }: { id:
               const r = await disposeAssetAction({ id, date, amount: num(amount), accountId: acct || undefined });
               if (r.error) { setError(r.error); return; }
               setOpen(false);
-            })}>{pending ? "Saving…" : "Save"}</Button>
+            })} loading={pending}>Save</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>}

@@ -6,6 +6,7 @@ import { Check, Copy } from "lucide-react";
 import { createCustomerAction, registerExistingAction, type OwnerState } from "../actions";
 import { creditsValueAed } from "@/lib/owner";
 
+import { Button } from "@/components/ui/Button";
 const initial: OwnerState = { error: null };
 const L = "block text-xs text-muted";
 const I = "input mt-1 h-9 w-full text-sm";
@@ -88,7 +89,7 @@ export function NewCustomerForm({ templates, defaultTemplate }: { templates: { i
       </section>
 
       {state.error && <p role="alert" className="rounded-lg border border-[var(--error-border)] bg-[var(--error-soft)] px-4 py-3 text-sm text-[var(--error)]">{state.error}</p>}
-      <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? "Setting up…" : "Add customer"}</button>
+      <Button size="btn" type="submit" disabled={pending} loading={pending}>Add customer</Button>
     </form>
   );
 }
@@ -104,7 +105,7 @@ export function RegisterExistingForm({ branches }: { branches: { id: string; cod
         <label className={L}>Contact email<input name="contactEmail" type="email" required className={I} /></label>
       </div>
       <div className="flex items-center gap-3">
-        <button type="submit" className="btn btn-secondary" disabled={pending}>{pending ? "Adding…" : "Add to the list"}</button>
+        <Button variant="secondary" size="btn" type="submit" disabled={pending} loading={pending}>Add to the list</Button>
         {state.error && <p role="alert" className="text-xs text-[var(--error)]">{state.error}</p>}
         {state.ok && <p className="text-xs text-[var(--success)]">Added. <Link href={`/owner/${state.customerId}`} className="underline">Open it</Link></p>}
       </div>

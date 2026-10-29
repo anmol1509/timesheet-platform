@@ -6,6 +6,7 @@ import { TemplatePicker } from "@/components/TimesheetTemplatePicker";
 import { IssuerPicker, type IssuerPickerData } from "@/components/IssuerPicker";
 import { Checkbox } from "@/components/ui/Checkbox";
 
+import { Button } from "@/components/ui/Button";
 type Row = { employeeIdNo: string; name: string; trade: string | null; hours: number; companyId: string; company: string; approved: boolean };
 
 export function EmployeeSheetPicker({ month, rows, issuer }: { month: string; rows: Row[]; issuer: IssuerPickerData }) {
@@ -176,10 +177,10 @@ export function EmployeeSheetPicker({ month, rows, issuer }: { month: string; ro
             </div>
             <IssuerPicker data={issuer} value={issuerId} onChange={setIssuerId} compact />
             <div className="flex flex-wrap items-center gap-3">
-              <button type="button" className="btn btn-primary flex gap-1.5" disabled={picked.size === 0 || busy} onClick={() => generateHours("pdf")}>
+              <Button size="btn" className="flex gap-1.5" type="button" disabled={picked.size === 0 || busy} onClick={() => generateHours("pdf")} loading={busy}>
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileArchive className="h-4 w-4" />}
-                {busy ? "Generating…" : `PDF for ${picked.size} selected`}
-              </button>
+                {`PDF for ${picked.size} selected`}
+              </Button>
               <button type="button" className="btn btn-secondary" disabled={picked.size === 0 || busy} onClick={() => generateHours("xlsx")}>Excel</button>
               {error && <p role="alert" className="whitespace-pre-line text-sm text-[var(--error)]">{error}</p>}
             </div>
@@ -195,10 +196,10 @@ export function EmployeeSheetPicker({ month, rows, issuer }: { month: string; ro
           <Checkbox checked={waiveGas} onCheckedChange={() => setWaiveGas((v) => !v)} label={<span className="text-sm">Waive gas charge</span>} />
         </div>
         <div className="flex items-center gap-3">
-          <button type="button" className="btn btn-primary flex gap-1.5" disabled={picked.size === 0 || busy} onClick={generate}>
+          <Button size="btn" className="flex gap-1.5" type="button" disabled={picked.size === 0 || busy} onClick={generate} loading={busy}>
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileArchive className="h-4 w-4" />}
-            {busy ? "Generating…" : `Generate for ${picked.size} selected`}
-          </button>
+            {`Generate for ${picked.size} selected`}
+          </Button>
           {error && <p role="alert" className="whitespace-pre-line text-sm text-[var(--error)]">{error}</p>}
         </div>
           </>

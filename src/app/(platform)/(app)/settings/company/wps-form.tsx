@@ -5,6 +5,7 @@ import { useActionState } from "react";
 import { Select } from "@/components/ui/Select";
 import { updateWpsAction } from "./actions";
 
+import { Button } from "@/components/ui/Button";
 export type BankOption = { id: string; label: string; complete: boolean };
 
 export function WpsForm({
@@ -42,7 +43,7 @@ export function WpsForm({
         </span>
       </label>
       <div className="flex items-center gap-3">
-        <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? "Saving…" : "Save payroll details"}</button>
+        <Button size="btn" type="submit" disabled={pending} loading={pending}>Save payroll details</Button>
         {state.error && <p role="alert" className="text-sm text-[var(--danger-text,#b42318)]">{state.error}</p>}
         {state.ok && <p role="status" className="text-sm text-[var(--success-text,#067647)]">Saved.</p>}
       </div>

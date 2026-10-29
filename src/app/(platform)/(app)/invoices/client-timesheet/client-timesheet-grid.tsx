@@ -16,6 +16,7 @@ import {
 import type { DailyHourCell } from "@/lib/parseTimesheet";
 import { DatePicker } from "@/components/ui/DatePicker";
 
+import { Button } from "@/components/ui/Button";
 type Entry = {
   id: string;
   employeeIdNo: string;
@@ -344,7 +345,7 @@ export function ClientTimesheetGrid({ month, entries, showClient = false }: { mo
           <div className="flex items-center gap-3 rounded-2xl bg-[#1e1b3a] py-2.5 pr-2.5 pl-4 text-sm text-white shadow-modal">
             <span><b>{dirtyIds.length} {dirtyIds.length === 1 ? "row" : "rows"} changed</b><span className="ml-2 hidden text-white/70 sm:inline">⌘S to save</span></span>
             <button type="button" onClick={() => setEdited({})} disabled={pending} className="rounded-lg border border-white/30 px-3 py-1.5 text-xs font-medium hover:bg-white/10 disabled:opacity-50">Discard</button>
-            <button type="button" onClick={saveAll} disabled={pending} className="btn btn-primary">{pending ? "Saving…" : `Save ${dirtyIds.length} ${dirtyIds.length === 1 ? "row" : "rows"}`}</button>
+            <Button size="btn" type="button" onClick={saveAll} disabled={pending} loading={pending}>{`Save ${dirtyIds.length} ${dirtyIds.length === 1 ? "row" : "rows"}`}</Button>
           </div>
         </div>
       )}
@@ -429,14 +430,9 @@ function BatchEditPanel({ entryIds, onClose }: { entryIds: string[]; onClose: ()
 
           Add range
         </button>
-        <button
-          type="button"
-          disabled={pending || validRanges.length === 0}
-          onClick={handleApply}
-          className="btn btn-primary"
-        >
-          {pending ? "Applying…" : "Update"}
-        </button>
+        <Button size="btn" type="button" disabled={pending || validRanges.length === 0} onClick={handleApply} loading={pending}>
+          Update
+        </Button>
         <button
           type="button"
           onClick={onClose}

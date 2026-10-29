@@ -6,6 +6,7 @@ import { Select } from "@/components/ui/Select";
 import { ROLE_PRESETS } from "@/lib/permissions";
 import { saveRoleAction } from "./actions";
 
+import { Button } from "@/components/ui/Button";
 type Branch = { id: string; code: string; name: string };
 type Role = { id: string; name: string; description: string | null; permissions: string[]; branchId: string | null };
 
@@ -88,9 +89,9 @@ export function RoleEditor({
       </p>
 
       <div className="flex items-center gap-3">
-        <button type="submit" className="btn btn-primary" disabled={pending}>
-          {pending ? "Saving…" : role ? "Save changes" : "Create role"}
-        </button>
+        <Button size="btn" type="submit" disabled={pending} loading={pending}>
+          {role ? "Save changes" : "Create role"}
+        </Button>
         {state.error && <p role="alert" className="text-sm text-[var(--danger-text,#b42318)]">{state.error}</p>}
         {state.ok && !onDone && <p role="status" className="text-sm text-[var(--success-text,#067647)]">Saved.</p>}
       </div>

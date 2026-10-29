@@ -16,6 +16,7 @@ import { ExternalCampFields, type Party } from "../external-camp-fields";
 import { SegmentedControl } from "@/components/ui/RadioGroup";
 import { DatePicker } from "@/components/ui/DatePicker";
 
+import { Button } from "@/components/ui/Button";
 type BedOption = { id: string; label: string; employeeId: string | null };
 type RoomOption = { id: string; name: string; beds: BedOption[] };
 type CampChoice = { id: string; name: string; rooms: RoomOption[] };
@@ -325,7 +326,7 @@ function MoveForm({ workers, camps, suppliers, clients, onClose, onDone }: { wor
         <p className="max-w-md text-xs text-muted">{one.bedId || many ? "The old bed becomes free and the move is added to the worker's history." : "The worker is placed and the placement is added to their history."}</p>
         <div className="flex gap-2">
           <button type="button" onClick={onClose} className="btn btn-secondary">Cancel</button>
-          <button type="button" disabled={!ready || pending} onClick={submit} className="btn btn-primary">{pending ? "Saving…" : many ? `Move ${workers.length} here` : one.bedId || external ? "Move here" : "Allocate"}</button>
+          <Button size="btn" type="button" disabled={!ready || pending} onClick={submit} loading={pending}>{many ? `Move ${workers.length} here` : one.bedId || external ? "Move here" : "Allocate"}</Button>
         </div>
       </div>
     </div>
