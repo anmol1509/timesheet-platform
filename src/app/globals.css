@@ -959,3 +959,10 @@ html[data-app] input[type="radio"]:checked {
 @media (prefers-reduced-motion: reduce) {
   .rx-popover[data-side][data-state], .rx-sheet-left[data-state] { animation: none; }
 }
+
+/* Full-height side sheet (Sheet): slides in from the right edge. */
+@keyframes sheet-right-in { from { transform: translateX(100%); } to { transform: none; } }
+@keyframes sheet-right-out { from { transform: none; } to { transform: translateX(100%); } }
+.rx-sheet-right[data-state="open"] { animation: sheet-right-in 380ms var(--ease-out); }
+.rx-sheet-right[data-state="closed"] { animation: sheet-right-out 240ms cubic-bezier(0.4, 0, 1, 1) forwards; }
+@media (prefers-reduced-motion: reduce) { .rx-sheet-right[data-state] { animation: none; } }

@@ -1,5 +1,6 @@
 "use client";
 
+import { useLast } from "@/lib/useLast";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -144,6 +145,7 @@ export function MatrixViews({ view, documents, employees, policies, companySuppl
   const docById = useMemo(() => new Map(documents.map((d) => [d.id, d])), [documents]);
   const orderForPreview = openDoc ? [...documents].filter((d) => d.employeeId === docById.get(openDoc)?.employeeId).map((d) => d.id) : [];
   const current = openDoc ? docById.get(openDoc) ?? null : null;
+  const shownDoc = useLast(current);
   const idx = current ? orderForPreview.indexOf(current.id) : -1;
 
   function applyView(v: SavedView) {
@@ -324,17 +326,17 @@ export function MatrixViews({ view, documents, employees, policies, companySuppl
       <Dialog.Root open={!!current} onOpenChange={(o) => !o && setOpenDoc(null)}>
         <Dialog.Portal>
           <Dialog.Overlay className="rx-overlay fixed inset-0 z-40 bg-[#101828]/30" />
-          <Dialog.Content aria-describedby={undefined} className="fixed top-3 right-3 bottom-3 z-50 flex w-[min(34rem,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-[20px] border border-default bg-surface shadow-modal outline-none">
-            {current && (
+          <Dialog.Content aria-describedby={undefined} className="rx-drawer fixed top-3 right-3 bottom-3 z-50 flex w-[min(34rem,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-[20px] border border-default bg-surface shadow-modal outline-none">
+            {shownDoc && (
               <Preview
                 now={now}
-                doc={current}
+                doc={shownDoc}
                 index={idx}
                 total={orderForPreview.length}
                 onPrev={idx > 0 ? () => setOpenDoc(orderForPreview[idx - 1]) : undefined}
                 onNext={idx >= 0 && idx < orderForPreview.length - 1 ? () => setOpenDoc(orderForPreview[idx + 1]) : undefined}
-                onPrint={() => window.open(`/api/documents/print?ids=${current.id}`, "_blank")}
-                onDelete={async () => { await deleteDocumentsAction([current.id]); setOpenDoc(null); router.refresh(); }}
+                onPrint={() => window.open(`/api/documents/print?ids=${shownDoc.id}`, "_blank")}
+                onDelete={async () => { await deleteDocumentsAction([shownDoc.id]); setOpenDoc(null); router.refresh(); }}
                 onRenewed={() => router.refresh()}
               />
             )}

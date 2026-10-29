@@ -1,5 +1,6 @@
 "use client";
 
+import { useLast } from "@/lib/useLast";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -189,6 +190,8 @@ export function DocumentBrowser({ documents, employees, suppliers, projects, can
   }
 
   const openDoc = openId ? filtered.find((d) => d.id === openId) ?? documents.find((d) => d.id === openId) ?? null : null;
+
+  const shownDoc = useLast(openDoc);
   const openIndex = openDoc ? filtered.findIndex((d) => d.id === openDoc.id) : -1;
   const hasFilters = !!(type || project || supplierIds.length || within || query || employeeFilter);
 
@@ -309,17 +312,17 @@ export function DocumentBrowser({ documents, employees, suppliers, projects, can
       <Dialog.Root open={!!openDoc} onOpenChange={(o) => !o && setOpenId(null)}>
         <Dialog.Portal>
           <Dialog.Overlay className="rx-overlay fixed inset-0 z-40 bg-[#101828]/30" />
-          <Dialog.Content aria-describedby={undefined} className="fixed top-3 right-3 bottom-3 z-50 flex w-[min(34rem,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-[20px] border border-default bg-surface shadow-modal outline-none">
-            {openDoc && (
+          <Dialog.Content aria-describedby={undefined} className="rx-drawer fixed top-3 right-3 bottom-3 z-50 flex w-[min(34rem,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-[20px] border border-default bg-surface shadow-modal outline-none">
+            {shownDoc && (
               <Preview
                 now={now}
-                doc={openDoc}
+                doc={shownDoc}
                 index={openIndex}
                 total={filtered.length}
                 onPrev={openIndex > 0 ? () => setOpenId(filtered[openIndex - 1].id) : undefined}
                 onNext={openIndex >= 0 && openIndex < filtered.length - 1 ? () => setOpenId(filtered[openIndex + 1].id) : undefined}
-                onPrint={() => printIds([openDoc.id])}
-                onDelete={() => removeIds([openDoc.id])}
+                onPrint={() => printIds([shownDoc.id])}
+                onDelete={() => removeIds([shownDoc.id])}
                 onRenewed={() => router.refresh()}
               />
             )}
