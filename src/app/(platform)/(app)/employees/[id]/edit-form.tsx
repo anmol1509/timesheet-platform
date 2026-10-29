@@ -24,6 +24,7 @@ import { Hint } from "@/components/Hint";
 import type { GlossaryKey } from "@/lib/payrollGlossary";
 import { MAX_OT_MULTIPLIER } from "@/lib/payFields";
 
+import { Button } from "@/components/ui/Button";
 type Doc = { id: string; type: string; filename: string; expiryDate: Date | null; uploadedAt: Date };
 
 type Employee = {
@@ -888,9 +889,9 @@ export function EditForm({
               />
             </div>
           )}
-          <button type="submit" disabled={pending} className="btn btn-primary">
-            {pending ? "Saving…" : "Save changes"}
-          </button>
+          <Button size="btn" type="submit" disabled={pending} loading={pending}>
+            Save changes
+          </Button>
           {dirty && !pending && !saved && (
             <span className="text-sm text-[var(--warning)]">Unsaved changes</span>
           )}

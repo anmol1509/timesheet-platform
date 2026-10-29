@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { m } from "motion/react";
 import { Presence } from "@/components/motion";
 
+import { Button } from "@/components/ui/Button";
 /**
  * Warns before unsaved edits are thrown away.
  *
@@ -65,9 +66,9 @@ export function FormSaveBar({
           className="sticky bottom-0 z-10 -mx-6 overflow-hidden"
         >
           <div className="mt-2 flex items-center gap-3 border-t border-default bg-surface/95 px-6 py-3 backdrop-blur">
-            <button type="submit" disabled={pending} className="btn btn-primary">
-              {pending ? "Saving…" : label}
-            </button>
+            <Button size="btn" type="submit" disabled={pending} loading={pending} success={saved && !pending && !dirty} successLabel="Saved">
+              {label}
+            </Button>
             {dirty && !pending && !saved && (
               <span className="text-sm text-[var(--warning)]">Unsaved changes</span>
             )}

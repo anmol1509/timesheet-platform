@@ -6,6 +6,7 @@ import { Select } from "@/components/ui/Select";
 import { EMPTY_PERSON, PersonPicker, type PersonOption, type PickerChoice } from "@/components/PersonPicker";
 import { addPartyLinkAction } from "./party-actions";
 
+import { Button } from "@/components/ui/Button";
 const ROLES = [
   { value: "SPONSOR", label: "Sponsor" },
   { value: "MANAGER", label: "Manager" },
@@ -40,7 +41,7 @@ export function AddLinkForm({ supplierId, people, linked }: { supplierId: string
       <div className="grid grid-cols-1 items-start gap-2 sm:grid-cols-[9rem_1fr_auto]">
         <Select value={role} onChange={(r) => { setRole(r); setChoice({ kind: "none" }); }} searchable={false} options={ROLES} />
         <PersonPicker options={people} choice={choice} onChoice={setChoice} person={person} onPerson={setPerson} hideIds={hide} />
-        <button type="button" className="btn btn-primary" disabled={pending} onClick={add}>{pending ? "Adding…" : "Add"}</button>
+        <Button size="btn" type="button" disabled={pending} onClick={add} loading={pending}>Add</Button>
       </div>
       {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
     </div>

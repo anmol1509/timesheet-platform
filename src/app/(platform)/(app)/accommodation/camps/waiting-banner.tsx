@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { TriangleAlert } from "lucide-react";
 import { autoAssignWaitingAction } from "../checkin-actions";
 
+import { Button } from "@/components/ui/Button";
 /** Workers who are checked in but have no bed yet, with one button to fill beds in order. */
 export function WaitingBanner({ waiting, enough, canAssign }: { waiting: number; enough: boolean; canAssign: boolean }) {
   const router = useRouter();
@@ -30,20 +31,15 @@ export function WaitingBanner({ waiting, enough, canAssign }: { waiting: number;
         <>
           <Link href="/accommodation/bed-allocation" className="btn btn-secondary btn-sm">Review</Link>
           {canAssign && (
-            <button
-              type="button"
-              disabled={pending}
-              className="btn btn-primary btn-sm"
-              onClick={() =>
+            <Button size="btn-sm" type="button" disabled={pending} onClick={() =>
                 start(async () => {
                   const r = await autoAssignWaitingAction();
                   setNote("error" in r ? r.error : r.waiting > 0 ? `${r.assigned} placed, ${r.waiting} still waiting (no vacant bed).` : `${r.assigned} placed in order.`);
                   router.refresh();
                 })
-              }
-            >
-              {pending ? "Assigning…" : `Auto-assign ${waiting}`}
-            </button>
+              } loading={pending}>
+              {`Auto-assign ${waiting}`}
+            </Button>
           )}
         </>
       )}

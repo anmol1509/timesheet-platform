@@ -7,6 +7,7 @@ import { ComboSelect } from "@/components/ui/ComboSelect";
 import { TRADES } from "@/lib/trades";
 import { ENQUIRY_SOURCES } from "@/lib/formLists";
 
+import { Button } from "@/components/ui/Button";
 export function NewEnquiryForm({ clients }: { clients: { id: string; name: string }[] }) {
   const [pending, startTransition] = useTransition();
 
@@ -43,13 +44,9 @@ export function NewEnquiryForm({ clients }: { clients: { id: string; name: strin
           className="input w-full"
         />
       </label>
-      <button
-        type="submit"
-        disabled={pending}
-        className="btn btn-primary"
-      >
-        {pending ? "Creating…" : "Create Enquiry"}
-      </button>
+      <Button size="btn" type="submit" disabled={pending} loading={pending}>
+        Create Enquiry
+      </Button>
     </form>
   );
 }

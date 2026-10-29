@@ -7,6 +7,7 @@ import { Select } from "@/components/ui/Select";
 import { Combobox } from "@/components/ui/Combobox";
 import { MonthInput } from "@/components/ui/MonthInput";
 
+import { Button } from "@/components/ui/Button";
 type RowState = {
   id: string;
   employeeIdNo: string;
@@ -273,13 +274,9 @@ export function ManualEntryForm({
         Excel upload.
       </p>
 
-      <button
-        type="submit"
-        disabled={pending}
-        className="btn btn-primary"
-      >
-        {pending ? "Saving…" : "Save Timesheet Entries"}
-      </button>
+      <Button size="btn" type="submit" disabled={pending} loading={pending}>
+        Save Timesheet Entries
+      </Button>
     </form>
   );
 }

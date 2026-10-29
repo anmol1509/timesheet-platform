@@ -57,7 +57,7 @@ export function PartyEntry({ type, partyId, moneyAccounts, minDate }: { type: "C
               const r = await createPartyEntryAction({ type, partyId, kind: kind!, date, amount: num(amount), vat: num(vat), narration, moneyAccountId: kind === "MONEY" ? money : undefined });
               if (r.error) { setError(r.error); return; }
               setDone(`${names[kind!]} ${r.number} posted.`); setKind(null); setAmount(""); setVat("");
-            })}>{pending ? "Saving…" : "Post"}</Button>
+            })} loading={pending}>Post</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

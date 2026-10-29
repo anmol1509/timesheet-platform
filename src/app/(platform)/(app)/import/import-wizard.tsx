@@ -21,6 +21,7 @@ import type { Analysis, BatchStatus, BatchSummary } from "@/lib/importer/wire";
 import { ImportHeldNotice } from "@/components/HeldSuppliers";
 import type { CopilotResult } from "@/lib/importer/copilot";
 
+import { Button } from "@/components/ui/Button";
 type Step = "upload" | "map" | "review" | "running" | "done";
 const STEPS: { key: Step; label: string }[] = [
   { key: "upload", label: "Upload" },
@@ -447,9 +448,9 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
 
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-xs text-muted">Nothing is saved yet. Next you&rsquo;ll see exactly what would happen.</p>
-            <button type="button" onClick={() => preview()} disabled={busy || !canContinue(kind, analysis, columns, campName || campTitle || "")} className="btn btn-primary">
-              {busy ? "Checking…" : "Check and preview"}
-            </button>
+            <Button size="btn" type="button" onClick={() => preview()} disabled={busy || !canContinue(kind, analysis, columns, campName || campTitle || "")} loading={busy}>
+              Check and preview
+            </Button>
           </div>
         </div>
       )}
@@ -741,20 +742,15 @@ function SupplierDecisions({ kind, items, existing, existingClients, existingPro
       </ul>
       <div className="flex items-center justify-end gap-3">
         {!ready && <span className="text-xs text-muted">Choose an option for each supplier.</span>}
-        <button
-          type="button"
-          disabled={busy || !ready}
-          className="btn btn-primary"
-          onClick={() =>
+        <Button size="btn" type="button" disabled={busy || !ready} onClick={() =>
             onApply(Object.fromEntries(items.map((n) => {
               const d = draft[n.key] ?? { action: "" as const, name: n.name, supplierId: "" };
               const decision: SupplierDecision = d.action === "add" ? { action: "add", name: d.name.trim() } : d.action === "existing" ? { action: "existing", supplierId: d.supplierId } : { action: "ignore" };
               return [n.key, decision];
             })))
-          }
-        >
-          {busy ? "Checking…" : "Apply and re-check"}
-        </button>
+          } loading={busy}>
+          Apply and re-check
+        </Button>
       </div>
     </div>
   );
@@ -844,17 +840,12 @@ function FixPanel({ fixables, busy, onApply }: { fixables: Fixable[]; busy: bool
       })}
       <div className="flex items-center justify-end gap-3">
         {entered.length > 0 && <span className="text-xs text-muted">{entered.length} to apply</span>}
-        <button
-          type="button"
-          disabled={busy || entered.length === 0}
-          onClick={() => {
+        <Button size="btn" type="button" disabled={busy || entered.length === 0} onClick={() => {
             onApply(entered.map((f) => ({ type: f.type, id: f.id, month: f.month, date: f.date, field: f.field, value: (draft[idOf(f)] ?? "").trim() })));
             setDraft({});
-          }}
-          className="btn btn-primary"
-        >
-          {busy ? "Checking…" : "Apply and re-check"}
-        </button>
+          }} loading={busy}>
+          Apply and re-check
+        </Button>
       </div>
     </div>
   );

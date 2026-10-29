@@ -13,6 +13,7 @@ import { ContactPicker, type AgencyContactOption } from "./contact-picker";
 import { AgencyPicker, type AgencyOption } from "./agency-picker";
 import { createCandidateAction, updateCandidateAction } from "./actions";
 
+import { Button } from "@/components/ui/Button";
 const TRADE_OPTIONS = [{ value: "", label: "Not set" }, ...TRADES.map((t) => ({ value: t, label: t }))];
 
 type Option = { id: string; name: string };
@@ -243,9 +244,9 @@ export function CandidateForm({
 
       {!readOnly && (
         <div className="flex items-center gap-3 border-t border-default pt-4">
-          <button type="submit" className="btn btn-primary" disabled={pending}>
-            {pending ? "Saving…" : candidate ? "Save changes" : "Add candidate"}
-          </button>
+          <Button size="btn" type="submit" disabled={pending} loading={pending}>
+            {candidate ? "Save changes" : "Add candidate"}
+          </Button>
           <Feedback state={state} saved={!!candidate} />
         </div>
       )}

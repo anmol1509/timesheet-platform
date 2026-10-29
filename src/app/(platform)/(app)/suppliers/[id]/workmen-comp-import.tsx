@@ -6,6 +6,7 @@ import { uploadAttachmentAction } from "@/lib/attachments";
 import { createEmployeesFromInsuranceAction, linkWorkmenCompCoverageAction } from "../actions";
 import type { ExtractedEmployeesResult } from "@/app/api/documents/extract-employees/route";
 
+import { Button } from "@/components/ui/Button";
 type RowState = {
   id: string;
   employeeIdNo: string;
@@ -239,14 +240,9 @@ export function WorkmenCompImport({
 
               Add row
             </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={pending || rows.length === 0}
-              className="btn btn-primary"
-            >
-              {pending ? "Saving…" : `Save ${rows.length} Employees`}
-            </button>
+            <Button size="btn" type="button" onClick={handleSave} disabled={pending || rows.length === 0} loading={pending}>
+              {`Save ${rows.length} Employees`}
+            </Button>
           </div>
         </div>
       )}

@@ -12,6 +12,7 @@ import { recomputeRunAction, saveLineAction } from "../actions";
 import { ReceiptButton } from "../loans/receipt-button";
 import type { PayDaysView } from "@/lib/payDaysData";
 
+import { Button } from "@/components/ui/Button";
 const aed = (n: number) => n.toLocaleString("en-AE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const dash = (n: number, sign = "") => (n === 0 ? "—" : `${sign}${aed(n)}`);
 const showShort = (v: PayDaysView) => !v.hourly && v.shortRule.mode !== "OFF";
@@ -267,7 +268,7 @@ export function DaysButton({ runId, employeeId, name }: { runId: string; employe
                       <span className="flex items-center gap-2 text-xs text-muted"><input type="checkbox" checked={adj.bankWaived === "1"} onChange={(e) => { setSaved(false); setAdj((p) => (p ? { ...p, bankWaived: e.target.checked ? "1" : "0" } : p)); }} /> Waive (take nothing)</span>
                     </label>
                     <div className="flex items-center gap-3 pt-1">
-                      <button type="button" className="btn btn-primary h-8 px-3 text-xs" disabled={pending || !adjDirty} onClick={saveAdjustments}>{pending ? "Saving…" : "Save changes"}</button>
+                      <Button size="btn" className="h-8 px-3 text-xs" type="button" disabled={pending || !adjDirty} onClick={saveAdjustments} loading={pending}>Save changes</Button>
                       {saved && !adjDirty && <span className="text-xs text-[var(--success)]">Saved. Net pay is now AED {aed(view.lineNet)}.</span>}
                       {view.adjust.deduction > 0 && !adjDirty && <span className="ml-auto text-xs"><ReceiptButton id={view.adjust.lineId} base={`/api/payroll/docs/deduction-notice/${view.adjust.lineId}`} label="Deduction notice" hint="A notice to the employee for the deduction saved on this pay line, with an acknowledgement. The wording comes from your Salary Deduction Notice template (Letters › Templates)." /></span>}
                     </div>

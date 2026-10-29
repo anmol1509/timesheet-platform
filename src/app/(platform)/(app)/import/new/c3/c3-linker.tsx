@@ -5,6 +5,7 @@ import { useMemo, useState, useTransition } from "react";
 import { cn } from "@/lib/cn";
 import { applyC3Action, inspectC3Action, previewC3Action, undoC3Action, type C3Change, type C3Inspect, type C3Row } from "./actions";
 
+import { Button } from "@/components/ui/Button";
 type Step = "upload" | "map" | "review" | "done";
 const STEPS: { key: Step; label: string }[] = [
   { key: "upload", label: "Upload" },
@@ -142,7 +143,7 @@ export function C3Linker() {
           </div>
           <input type="file" accept=".xls,.xlsx,.csv" className="input" onChange={(e) => { setFile(e.target.files?.[0] ?? null); setError(null); }} aria-label="C3 sheet" />
           <div className="flex items-center gap-3">
-            <button type="button" className="btn btn-primary" disabled={pending || !file} onClick={inspect}>{pending ? "Reading…" : "Continue"}</button>
+            <Button size="btn" type="button" disabled={pending || !file} onClick={inspect} loading={pending}>Continue</Button>
             <span className="text-xs text-muted">Nothing is saved until the last step.</span>
           </div>
         </section>
@@ -180,7 +181,7 @@ export function C3Linker() {
           )}
           <div className="flex items-center gap-3">
             <button type="button" className="btn btn-secondary" onClick={() => setStep("upload")}>Back</button>
-            <button type="button" className="btn btn-primary" disabled={pending || cols.c3 < 0 || (cols.name < 0 && cols.code < 0)} onClick={review}>{pending ? "Matching…" : "Match workers"}</button>
+            <Button size="btn" type="button" disabled={pending || cols.c3 < 0 || (cols.name < 0 && cols.code < 0)} onClick={review} loading={pending}>Match workers</Button>
             {(cols.c3 < 0 || (cols.name < 0 && cols.code < 0)) && <span className="text-xs text-muted">Choose the C3 ID column and the name or employee ID column.</span>}
           </div>
         </section>
@@ -235,7 +236,7 @@ export function C3Linker() {
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <button type="button" className="btn btn-secondary" onClick={() => setStep("map")}>Back</button>
-            <button type="button" className="btn btn-primary" disabled={pending || links.length === 0} onClick={save}>{pending ? "Importing…" : `Import ${links.length} link${links.length === 1 ? "" : "s"}`}</button>
+            <Button size="btn" type="button" disabled={pending || links.length === 0} onClick={save} loading={pending}>{`Import ${links.length} link${links.length === 1 ? "" : "s"}`}</Button>
             <span className="text-xs text-muted">{rows.length - links.length} left as skipped. A worker who has a different C3 ID will have it replaced; you can undo this afterwards.</span>
           </div>
         </section>
@@ -252,7 +253,7 @@ export function C3Linker() {
           <div className="flex flex-wrap items-center gap-3">
             <Link href="/employees" className="btn btn-primary">Go to employees</Link>
             <button type="button" className="btn btn-secondary" onClick={again}>Import another file</button>
-            {result.saved > 0 && !undone && <button type="button" className="btn btn-secondary" disabled={pending} onClick={undo}>{pending ? "Undoing…" : "Undo this import"}</button>}
+            {result.saved > 0 && !undone && <Button variant="secondary" size="btn" type="button" disabled={pending} onClick={undo} loading={pending}>Undo this import</Button>}
           </div>
         </section>
       )}

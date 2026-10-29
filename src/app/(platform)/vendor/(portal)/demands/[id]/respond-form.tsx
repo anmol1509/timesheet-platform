@@ -5,6 +5,7 @@ import { useActionState, useState } from "react";
 import { acceptOfferAction, declineOfferAction } from "../actions";
 import { NumberInput } from "@/components/ui/NumberInput";
 
+import { Button } from "@/components/ui/Button";
 type State = { error: string | null; ok?: boolean };
 
 /** Accept with a quote per trade, or decline with a reason. */
@@ -39,7 +40,7 @@ export function RespondForm({ offerId, trades }: { offerId: string; trades: { id
           </ul>
           <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Note (optional)</span><input name="note" className="input w-full" placeholder="e.g. Available from 1 October" /></label>
           <div className="flex flex-wrap items-center gap-3">
-            <button type="submit" className="btn btn-primary" disabled={aPending}>{aPending ? "Sending…" : "Send my quote"}</button>
+            <Button size="btn" type="submit" disabled={aPending} loading={aPending}>Send my quote</Button>
             {aState.error && <p role="alert" className="text-sm text-[var(--error)]">{aState.error}</p>}
           </div>
         </form>
@@ -48,7 +49,7 @@ export function RespondForm({ offerId, trades }: { offerId: string; trades: { id
           <input type="hidden" name="offerId" value={offerId} />
           <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Why can&apos;t you supply this? *</span><input name="note" required className="input w-full" placeholder="e.g. No carpenters available this month" /></label>
           <div className="flex flex-wrap items-center gap-3">
-            <button type="submit" className="btn btn-secondary" disabled={dPending}>{dPending ? "Sending…" : "Decline request"}</button>
+            <Button variant="secondary" size="btn" type="submit" disabled={dPending} loading={dPending}>Decline request</Button>
             {dState.error && <p role="alert" className="text-sm text-[var(--error)]">{dState.error}</p>}
           </div>
         </form>

@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/Checkbox";
 import { EmployeeAvatar } from "@/components/Avatar";
 import { issueInventoryBulkAction, returnInventoryBulkAction } from "./actions";
 
+import { Button } from "@/components/ui/Button";
 export type VariantRow = { id: string; name: string; sku: string | null; stock: number; issued: number; available: number };
 export type Holder = { id: string; employeeId: string; employeeName: string; employeeIdNo: string; variantName: string | null; quantity: number; issuedDate: string };
 export type EmployeeOption = { id: string; name: string; employeeIdNo: string };
@@ -106,7 +107,7 @@ function IssueBody({ item, employees, onClose }: { item: { id: string; name: str
       {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
       <DialogFooter>
         <button type="button" onClick={onClose} className="btn btn-secondary">Cancel</button>
-        <button type="button" onClick={submit} disabled={pending || lines.length === 0 || short.length > 0} className="btn btn-primary">{pending ? "Issuing…" : `Issue to ${lines.length || ""} ${lines.length === 1 ? "worker" : "workers"}`.replace("  ", " ")}</button>
+        <Button size="btn" type="button" onClick={submit} disabled={pending || lines.length === 0 || short.length > 0} loading={pending}>{`Issue to ${lines.length || ""} ${lines.length === 1 ? "worker" : "workers"}`.replace("  ", " ")}</Button>
       </DialogFooter>
     </div>
   );
@@ -170,7 +171,7 @@ function ReturnBody({ item, onClose }: { item: { id: string; name: string; holde
       {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
       <DialogFooter>
         <button type="button" onClick={onClose} className="btn btn-secondary">Cancel</button>
-        <button type="button" onClick={submit} disabled={pending || picked.size === 0} className="btn btn-primary">{pending ? "Returning…" : `Return ${picked.size || ""}`.trim()}</button>
+        <Button size="btn" type="button" onClick={submit} disabled={pending || picked.size === 0} loading={pending}>{`Return ${picked.size || ""}`.trim()}</Button>
       </DialogFooter>
     </div>
   );

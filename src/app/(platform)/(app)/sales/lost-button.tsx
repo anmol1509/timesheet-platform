@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogFooter, DialogTrigger } from "@/components
 import { Select } from "@/components/ui/Select";
 import { markLostAction } from "./activity-actions";
 
+import { Button } from "@/components/ui/Button";
 const REASONS = ["Price too high", "Went with another supplier", "Project cancelled or delayed", "No response", "Client hired directly", "Other"];
 
 /** "Mark as lost" with the reason, so the pipeline can later show why deals are lost. */
@@ -41,7 +42,7 @@ export function LostButton({ entity, id, label = "Mark as lost" }: { entity: "qu
           </div>
           <DialogFooter>
             <button type="button" className="btn btn-secondary" onClick={() => setOpen(false)}>Cancel</button>
-            <button type="button" className="btn btn-primary" disabled={pending || !reason} onClick={submit}>{pending ? "Saving…" : "Mark as lost"}</button>
+            <Button size="btn" type="button" disabled={pending || !reason} onClick={submit} loading={pending}>Mark as lost</Button>
           </DialogFooter>
         </DialogContent>
       )}

@@ -40,7 +40,7 @@ export function AccountDialog({ account, defaultType }: { account?: Existing; de
         <DialogFooter>
           {account && !account.isSystem && <Button type="button" variant="ghost" className="mr-auto" disabled={pending} onClick={() => run(() => setAccountActiveAction(account.id, !account.isActive))}>{account.isActive ? "Hide" : "Show again"}</Button>}
           <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button type="button" disabled={pending} onClick={() => run(() => saveAccountAction({ id: account?.id, code, name, type }))}>{pending ? "Saving…" : "Save"}</Button>
+          <Button type="button" disabled={pending} onClick={() => run(() => saveAccountAction({ id: account?.id, code, name, type }))} loading={pending}>Save</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

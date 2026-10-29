@@ -7,6 +7,7 @@ import { Dialog, DialogContent } from "@/components/ui/Dialog";
 import { cn } from "@/lib/cn";
 import { RENEWAL_STATUSES, type RenewalStatus } from "@/lib/renewalCases";
 
+import { Button } from "@/components/ui/Button";
 export type Owner = { id: string; name: string };
 
 const STATUS_STYLE: Record<RenewalStatus, string> = {
@@ -173,7 +174,7 @@ export function ExportDialog({ open, onOpenChange, choices, busy, error, onExpor
           {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
           <div className="flex justify-end gap-2">
             <button type="button" className="btn btn-secondary" onClick={() => onOpenChange(false)}>Cancel</button>
-            <button type="button" className="btn btn-primary" disabled={busy || !current} onClick={() => onExport(current)}><Download className="h-4 w-4" aria-hidden /> {busy ? "Preparing…" : "Download Excel"}</button>
+            <Button size="btn" type="button" disabled={busy || !current} onClick={() => onExport(current)} loading={busy}><Download className="h-4 w-4" aria-hidden /> Download Excel</Button>
           </div>
         </div>
       </DialogContent>

@@ -7,6 +7,7 @@ import Link from "next/link";
 import { deleteRunAction, markPaidAction, recomputeRunAction, reopenRunAction, saveLineAction, submitRunAction } from "../actions";
 import { NumberInput } from "@/components/ui/NumberInput";
 
+import { Button } from "@/components/ui/Button";
 type State = { error: string | null; ok?: boolean };
 
 export function RunControls({
@@ -192,7 +193,7 @@ export function LineAdjustCells({
       )}
       {!disabled && (
         <td className={TD}>
-          {dirty && <button type="button" className="btn btn-primary h-8 px-3 text-xs" disabled={pending} onClick={save}>{pending ? "Saving…" : "Save"}</button>}
+          {dirty && <Button size="btn" className="h-8 px-3 text-xs" type="button" disabled={pending} onClick={save} loading={pending}>Save</Button>}
           {saved && !dirty && <span className="text-xs text-[var(--success)]">Saved</span>}
           {error && <p role="alert" className="mt-1 max-w-40 text-xs text-[var(--error)]">{error}</p>}
         </td>

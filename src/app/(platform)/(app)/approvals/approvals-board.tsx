@@ -6,6 +6,7 @@ import { AnimatePresence, m } from "motion/react";
 import { useRouter } from "next/navigation";
 import { Banknote, CalendarCheck, Check, CheckCheck, ExternalLink, FileSpreadsheet, Inbox, ListChecks, Receipt, UserPlus, UserRoundPen, Wallet, Truck, X } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
+import { Button } from "@/components/ui/Button";
 import { Dialog, DialogContent } from "@/components/ui/Dialog";
 import { Badge, type BadgeColor } from "@/components/Badge";
 import { Checkbox } from "@/components/ui/Checkbox";
@@ -64,6 +65,8 @@ export function ApprovalsBoard({ items, tabs, filters, requesters, totalShown }:
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const [bulkMsg, setBulkMsg] = useState<string | null>(null);
+  // The decision that just worked, shown as a tick on its button before the row leaves the queue.
+  const [flash, setFlash] = useState<{ key: string; decision: "APPROVE" | "REJECT" } | null>(null);
 
   const link = (over: Partial<Filters>) => {
     const f = { ...filters, ...over };
@@ -81,6 +84,9 @@ export function ApprovalsBoard({ items, tabs, filters, requesters, totalShown }:
         if (decision === "REJECT") setRejectError(r.error); else setErrors((e) => ({ ...e, [item.key]: r.error! }));
         return;
       }
+      setFlash({ key: item.key, decision });
+      await new Promise((res) => setTimeout(res, 800));
+      setFlash(null);
       setDone((d) => new Set(d).add(item.key));
       after?.();
       router.refresh();
@@ -153,9 +159,9 @@ export function ApprovalsBoard({ items, tabs, filters, requesters, totalShown }:
                 {checked.size > 0 ? `${checked.size} selected` : "Select all"}
               </label>
               {bulkable.length > 0 && (
-                <button type="button" className="btn btn-primary btn-sm gap-1.5" disabled={pending} onClick={bulkApprove}>
+                <Button size="btn-sm" className="gap-1.5" disabled={pending} loading={pending} onClick={bulkApprove}>
                   <CheckCheck className="h-3.5 w-3.5" aria-hidden />Approve {bulkable.length}
-                </button>
+                </Button>
               )}
             </div>
             {bulkMsg && <p role="status" className="border-b border-default px-3 py-2 text-xs text-secondary">{bulkMsg}</p>}
@@ -243,14 +249,14 @@ export function ApprovalsBoard({ items, tabs, filters, requesters, totalShown }:
               <div className="-mx-5 -mb-5 mt-6 rounded-b-card border-t border-default bg-brand-soft px-5 py-4">
                 <p className="text-xs text-secondary"><span className="font-semibold text-primary">What happens next: </span>{active.kind === "PAYROLL" ? "Approving releases this payroll for payment; sending it back returns it to the preparer." : "Approving records your decision straight away; rejecting sends your reason to the requester."}</p>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <button type="button" className="btn btn-secondary gap-1.5" disabled={pending} onClick={() => { setNote(""); setRejectError(null); setRejecting(active); }}>
+                  <Button size="btn" variant="secondary" className="gap-1.5" disabled={pending} onClick={() => { setNote(""); setRejectError(null); setRejecting(active); }}>
                     <X className="h-4 w-4" aria-hidden />{active.kind === "PAYROLL" ? "Send back" : "Reject"}
-                  </button>
+                  </Button>
                   <Link href={active.href} className="btn btn-secondary gap-1.5"><ExternalLink className="h-3.5 w-3.5" aria-hidden />Open full record</Link>
-                  <button type="button" className="btn btn-primary ml-auto gap-1.5" disabled={pending}
+                  <Button size="btn" className="ml-auto gap-1.5" disabled={pending} loading={pending && flash === null} success={flash?.key === active.key && flash.decision === "APPROVE"} successLabel="Approved"
                     onClick={() => { const i = active; if (i.confirmApprove && !confirm(i.kind === "CHANGE" ? "Bank details decide where payments go. Have you confirmed this change with the supplier?" : i.kind === "PAYROLL" ? `Approve this payroll of AED ${aed(i.amount ?? 0)}?` : `Approve all ${i.ids?.length ?? 1} timesheet rows?`)) return; decide(i, "APPROVE"); }}>
                     <Check className="h-4 w-4" aria-hidden />Approve
-                  </button>
+                  </Button>
                 </div>
               </div>
               <p className="mt-3 text-[11px] text-subtle">Tip: press J / K to move through the queue.</p>
@@ -269,7 +275,7 @@ export function ApprovalsBoard({ items, tabs, filters, requesters, totalShown }:
             {rejectError && <p role="alert" className="mt-2 text-sm text-[var(--error)]">{rejectError}</p>}
             <div className="mt-4 flex justify-end gap-2">
               <button type="button" className="btn btn-secondary" onClick={() => setRejecting(null)}>Back</button>
-              <button type="button" className="btn btn-primary" disabled={pending || (rejecting.rejectNeedsReason && !note.trim())} onClick={() => decide(rejecting, "REJECT", note, () => setRejecting(null))}>{rejecting.kind === "PAYROLL" ? "Send back" : "Reject"}</button>
+              <Button size="btn" disabled={pending || (rejecting.rejectNeedsReason && !note.trim())} loading={pending && flash === null} success={flash?.key === rejecting.key && flash.decision === "REJECT"} successLabel={rejecting.kind === "PAYROLL" ? "Sent back" : "Rejected"} onClick={() => decide(rejecting, "REJECT", note, () => setRejecting(null))}>{rejecting.kind === "PAYROLL" ? "Send back" : "Reject"}</Button>
             </div>
           </DialogContent>
         )}

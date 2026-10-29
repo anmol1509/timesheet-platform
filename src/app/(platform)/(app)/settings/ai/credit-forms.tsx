@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import { topUpPriceLabel } from "@/lib/aiCredits";
 import { grantAiCreditsAction, requestCreditsAction, setAiAllowanceAction } from "./actions";
 
+import { Button } from "@/components/ui/Button";
 type State = { error: string | null; ok?: boolean };
 const initial: State = { error: null };
 
@@ -21,7 +22,7 @@ export function CreditForms({ branchId, allowance }: { branchId: string; allowan
           <input name="credits" inputMode="numeric" defaultValue={allowance} className="input mt-1 h-9 w-full text-sm" />
         </label>
         <div className="flex items-center gap-3">
-          <button type="submit" className="btn btn-primary btn-sm" disabled={settingPending}>{settingPending ? "Saving…" : "Save allowance"}</button>
+          <Button size="btn-sm" type="submit" disabled={settingPending} loading={settingPending}>Save allowance</Button>
           {setState.error && <p role="alert" className="text-xs text-[var(--error)]">{setState.error}</p>}
           {setState.ok && !setState.error && <p className="text-xs text-[var(--success)]">Saved.</p>}
         </div>
@@ -39,7 +40,7 @@ export function CreditForms({ branchId, allowance }: { branchId: string; allowan
           </label>
         </div>
         <div className="flex items-center gap-3">
-          <button type="submit" className="btn btn-primary btn-sm" disabled={grantPending}>{grantPending ? "Adding…" : "Add credits"}</button>
+          <Button size="btn-sm" type="submit" disabled={grantPending} loading={grantPending}>Add credits</Button>
           {grantState.error && <p role="alert" className="text-xs text-[var(--error)]">{grantState.error}</p>}
           {grantState.ok && !grantState.error && <p className="text-xs text-[var(--success)]">Added.</p>}
         </div>
@@ -67,7 +68,7 @@ export function RequestStrip() {
       <label className="block min-w-[12rem] flex-1 text-xs text-muted">Reason (optional)
         <input name="reason" maxLength={300} placeholder="e.g. Month-end payroll push, bulk document import" className="input mt-1 h-9 w-full text-sm" />
       </label>
-      <button type="submit" className="btn btn-primary btn-sm" disabled={pending}>{pending ? "Sending…" : "Send request"}</button>
+      <Button size="btn-sm" type="submit" disabled={pending} loading={pending}>Send request</Button>
       {state.error && <p role="alert" className="w-full text-xs text-[var(--error)]">{state.error}</p>}
       {state.ok && !state.error && <p className="w-full text-xs text-[var(--success)]">Request sent. You will get a message when it is answered.</p>}
     </form>

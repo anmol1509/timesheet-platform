@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useLetterheadImage } from "@/components/useLetterheadImage";
 
+import { Button } from "@/components/ui/Button";
 export const DEFAULT_TOP_MM = 65;
 export const DEFAULT_BOTTOM_MM = 35;
 
@@ -72,7 +73,7 @@ export function LetterheadMargins({
         <Slider label="Space left clear at the bottom" value={bottom} min={10} max={100} onChange={setBottom} />
         <p className="text-xs text-muted">Letters printed on this letterhead start below the top margin and stop above the bottom one, so nothing prints over your header or footer. Leave a little more than the artwork needs.</p>
         <div className="flex items-center gap-2">
-          <button type="button" className="btn btn-primary btn-sm" disabled={!dirty || pending} onClick={save}>{pending ? "Saving…" : "Save margins"}</button>
+          <Button size="btn-sm" type="button" disabled={!dirty || pending} onClick={save} loading={pending}>Save margins</Button>
           {dirty && <button type="button" className="btn btn-secondary btn-sm" onClick={() => { setTop(saved.top); setBottom(saved.bottom); }}>Reset</button>}
           {!dirty && !pending && saved.top === topMm && <span className="text-xs text-muted">Saved</span>}
           <button type="button" className="ml-auto text-xs text-[var(--brand-primary)] hover:underline" onClick={() => { setTop(DEFAULT_TOP_MM); setBottom(DEFAULT_BOTTOM_MM); }}>Standard (65 / 35)</button>

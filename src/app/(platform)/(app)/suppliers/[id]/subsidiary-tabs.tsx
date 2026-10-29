@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { createSubsidiaryAction } from "../actions";
 
+import { Button } from "@/components/ui/Button";
 export function SubsidiaryTabs({
   currentId,
   rootId,
@@ -101,13 +102,9 @@ export function SubsidiaryTabs({
               >
                 Cancel
               </button>
-              <button
-                type="submit"
-                disabled={pending}
-                className="btn btn-primary btn-sm"
-              >
-                {pending ? "Adding…" : "Add"}
-              </button>
+              <Button size="btn-sm" type="submit" disabled={pending} loading={pending}>
+                Add
+              </Button>
             </div>
           </form>
         )}

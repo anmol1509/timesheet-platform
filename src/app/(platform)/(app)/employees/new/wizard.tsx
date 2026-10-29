@@ -41,6 +41,7 @@ import { CountrySelect } from "@/components/ui/CountrySelect";
 import { primaryOptions, rootOf, sponsorFits, sponsorOptions } from "@/lib/supplierOptions";
 import { MaskedInput } from "@/components/ui/MaskedInput";
 
+import { Button } from "@/components/ui/Button";
 type Project = { id: string; name: string; code: string };
 
 type Supplier = { id: string; name: string; parentSupplierId?: string | null };
@@ -1720,9 +1721,9 @@ export function EmployeeWizard({
           Previous
         </button>
         {isLast ? (
-          <button type="submit" disabled={pending} className="btn btn-primary">
-            {pending ? "Registering…" : "Register employee"}
-          </button>
+          <Button size="btn" type="submit" disabled={pending} loading={pending}>
+            Register employee
+          </Button>
         ) : (
           <>
           {reading && <button type="button" onClick={cancelReading} className="btn btn-secondary">Cancel reading</button>}

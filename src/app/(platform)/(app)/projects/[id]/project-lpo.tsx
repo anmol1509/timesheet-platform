@@ -8,6 +8,7 @@ import { TRADES } from "@/lib/trades";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { NumberInput } from "@/components/ui/NumberInput";
 
+import { Button } from "@/components/ui/Button";
 type Lpo = {
   id: string;
   lpoNumber: string;
@@ -113,13 +114,9 @@ export function ProjectLpo({
                 </Field>
               </div>
               <div className="flex gap-2">
-                <button
-                  type="submit"
-                  disabled={pending}
-                  className="btn btn-primary btn-sm"
-                >
-                  {pending ? "Saving…" : "Save"}
-                </button>
+                <Button size="btn-sm" type="submit" disabled={pending} loading={pending}>
+                  Save
+                </Button>
                 <button
                   type="button"
                   onClick={() => setEditingId(null)}
@@ -214,13 +211,9 @@ export function ProjectLpo({
             </Field>
           </div>
           <div className="flex gap-2">
-            <button
-              type="submit"
-              disabled={pending}
-              className="btn btn-primary btn-sm"
-            >
-              {pending ? "Adding…" : "Add LPO"}
-            </button>
+            <Button size="btn-sm" type="submit" disabled={pending} loading={pending}>
+              Add LPO
+            </Button>
             <button
               type="button"
               onClick={() => setShowNew(false)}

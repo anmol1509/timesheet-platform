@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { updateProjectOtherDetailsAction } from "../actions";
 
+import { Button } from "@/components/ui/Button";
 export function ProjectOtherDetails({
   projectId,
   description,
@@ -38,13 +39,9 @@ export function ProjectOtherDetails({
         />
       </label>
       <div className="flex items-center gap-3">
-        <button
-          type="submit"
-          disabled={pending}
-          className="btn btn-primary"
-        >
-          {pending ? "Saving…" : "Save changes"}
-        </button>
+        <Button size="btn" type="submit" disabled={pending} loading={pending}>
+          Save changes
+        </Button>
         {saved && !pending && <span className="text-sm text-[var(--success)]">Saved.</span>}
       </div>
     </form>

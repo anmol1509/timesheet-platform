@@ -8,6 +8,7 @@ import { MaskedInput } from "@/components/ui/MaskedInput";
 import { PhoneField } from "@/components/ui/PhoneField";
 import { updateCompanyAction } from "./actions";
 
+import { Button } from "@/components/ui/Button";
 type Branch = {
   id: string;
   name: string;
@@ -58,9 +59,9 @@ export function CompanyForm({ branch }: { branch: Branch }) {
         <div><span className={lab}>Currency</span><CurrencySelect name="currency" defaultValue={branch.currency ?? "AED"} /></div>
       </div>
       <div className="flex items-center gap-3">
-        <button type="submit" className="btn btn-primary" disabled={pending}>
-          {pending ? "Saving…" : "Save company details"}
-        </button>
+        <Button size="btn" type="submit" disabled={pending} loading={pending}>
+          Save company details
+        </Button>
         {state.error && <p role="alert" className="text-sm text-[var(--danger-text,#b42318)]">{state.error}</p>}
         {state.ok && <p role="status" className="text-sm text-[var(--success-text,#067647)]">Saved.</p>}
       </div>

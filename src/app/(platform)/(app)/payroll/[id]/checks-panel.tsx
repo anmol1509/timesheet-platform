@@ -7,6 +7,7 @@ import { CircleAlert } from "lucide-react";
 import { recomputeRunAction } from "../actions";
 import { DaysButton } from "./days-panel";
 
+import { Button } from "@/components/ui/Button";
 export type CheckIssue = { text: string; href?: string; kind?: string; workers?: { id: string; name: string }[] };
 
 const RECALC_KINDS = new Set(["pending-timesheets", "no-hours", "no-attendance", "zero-pay", "swing"]);
@@ -54,7 +55,7 @@ export function ChecksPanel({ runId, canEdit, issues }: { runId: string; canEdit
             </ul>
           )}
           <div className="mt-2 flex flex-wrap items-center gap-3">
-            {canEdit && i.kind && RECALC_KINDS.has(i.kind) && i === firstRecalc && <button type="button" className="btn btn-secondary btn-sm" disabled={pending} onClick={recalc}>{pending ? "Recalculating…" : "Recalculate the run"}</button>}
+            {canEdit && i.kind && RECALC_KINDS.has(i.kind) && i === firstRecalc && <Button variant="secondary" size="btn-sm" type="button" disabled={pending} onClick={recalc} loading={pending}>Recalculate the run</Button>}
             {i.href && <Link href={i.href} className="text-xs font-medium text-[var(--brand-primary)] hover:underline">Open the records</Link>}
           </div>
         </section>

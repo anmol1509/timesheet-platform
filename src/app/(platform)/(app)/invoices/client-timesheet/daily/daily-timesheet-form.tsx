@@ -5,6 +5,7 @@ import { Select } from "@/components/ui/Select";
 import { submitDailyTimesheetAction } from "../actions";
 import { DatePicker } from "@/components/ui/DatePicker";
 
+import { Button } from "@/components/ui/Button";
 type Supplier = { id: string; name: string };
 type SiteOption = { id: string; name: string; projectId: string };
 type EmployeeOption = {
@@ -177,14 +178,9 @@ export function DailyTimesheetForm({
 
       {result && <p className="text-sm text-secondary">{result}</p>}
 
-      <button
-        type="button"
-        onClick={handleSubmit}
-        disabled={pending || !supplierId || !projectId || rows.length === 0}
-        className="btn btn-primary"
-      >
-        {pending ? "Saving…" : "Save Daily Timesheet"}
-      </button>
+      <Button size="btn" type="button" onClick={handleSubmit} disabled={pending || !supplierId || !projectId || rows.length === 0} loading={pending}>
+        Save Daily Timesheet
+      </Button>
     </div>
   );
 }

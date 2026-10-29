@@ -23,6 +23,7 @@ import {
   loadDayAttendanceAction,
 } from "./actions";
 
+import { Button } from "@/components/ui/Button";
 type Supplier = { id: string; name: string; parentId: string | null };
 type EmployeeOption = {
   id: string;
@@ -775,14 +776,9 @@ function CorrectionRequestPanel({
             />
           </label>
           <div className="mt-2 flex gap-2">
-            <button
-              type="button"
-              disabled={pending || !reason.trim()}
-              onClick={submit}
-              className="btn btn-primary btn-sm"
-            >
-              {pending ? "Submitting…" : "Submit request"}
-            </button>
+            <Button size="btn-sm" type="button" disabled={pending || !reason.trim()} onClick={submit} loading={pending}>
+              Submit request
+            </Button>
             <button type="button" onClick={onClose} className="text-xs font-medium text-subtle hover:underline">
               Cancel
             </button>

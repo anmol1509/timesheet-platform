@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { updateDemandRequestAction } from "../actions";
 
+import { Button } from "@/components/ui/Button";
 type Request = {
   id: string;
   remarks: string | null;
@@ -38,13 +39,9 @@ export function RequestDetailsForm({ request }: { request: Request }) {
         </div>
       </div>
       <div className="flex items-center gap-3">
-        <button
-          type="submit"
-          disabled={pending}
-          className="btn btn-primary"
-        >
-          {pending ? "Saving…" : "Save changes"}
-        </button>
+        <Button size="btn" type="submit" disabled={pending} loading={pending}>
+          Save changes
+        </Button>
         {saved && !pending && <span className="text-sm text-[var(--success)]">Saved.</span>}
       </div>
     </form>

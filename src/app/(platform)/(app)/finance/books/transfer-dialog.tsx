@@ -50,7 +50,7 @@ export function TransferDialog({ accounts, minDate, foreign = {} }: { accounts: 
             const r = await createTransferAction({ from, to, date, amount: Number(amount.replace(/,/g, "")) || 0, narration: note, fromForeign: Number(fromF.replace(/,/g, "")) || undefined, toForeign: Number(toF.replace(/,/g, "")) || undefined });
             if (r.error) { setError(r.error); return; }
             setOpen(false); setError(null); setAmount(""); setNote(""); setFromF(""); setToF("");
-          })}>{pending ? "Saving…" : "Transfer"}</Button>
+          })} loading={pending}>Transfer</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -64,7 +64,7 @@ export function VoucherDialog({ accounts, minDate, label = "New voucher" }: { ac
         {error && <p role="alert" className="mt-3 text-sm text-error">{error}</p>}
         <DialogFooter>
           <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button type="button" disabled={pending || diff !== 0 || (debit === 0 && credit === 0)} onClick={save}>{pending ? "Saving…" : "Post voucher"}</Button>
+          <Button type="button" disabled={pending || diff !== 0 || (debit === 0 && credit === 0)} onClick={save} loading={pending}>Post voucher</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

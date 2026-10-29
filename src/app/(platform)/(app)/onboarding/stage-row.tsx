@@ -10,6 +10,7 @@ import { updateStageAction, assignStageTaskAction } from "./actions";
 import { StageAttachments, type StageAttachmentRow } from "./stage-attachments";
 import type { Stage, StatusKind } from "@/lib/onboarding";
 
+import { Button } from "@/components/ui/Button";
 type State = { error: string | null; ok?: boolean; skipped?: string[] };
 type HrOption = { id: string; name: string };
 type Task = { ownerId: string | null; ownerName: string | null; dueDate: Date | null } | null;
@@ -128,9 +129,9 @@ export function StageRow({
               <span className="mb-1 block text-xs font-medium text-muted">Due date</span>
               <DatePicker name="dueDate" defaultValue={toDateInput(task?.dueDate ?? null)} />
             </label>
-            <button type="submit" className="btn btn-secondary" disabled={taskPending}>
-              {taskPending ? "Saving…" : "Assign"}
-            </button>
+            <Button variant="secondary" size="btn" type="submit" disabled={taskPending} loading={taskPending}>
+              Assign
+            </Button>
             {taskState.error && <p role="alert" className="text-sm text-[var(--error)]">{taskState.error}</p>}
           </form>}
           {canEdit ? <form action={action} className="grid gap-3 px-4 py-4 sm:grid-cols-2">
@@ -160,9 +161,9 @@ export function StageRow({
               <input name="remarks" className="input w-full" />
             </label>
             <div className="flex items-center gap-3 sm:col-span-2">
-              <button type="submit" className="btn btn-primary" disabled={pending}>
-                {pending ? "Saving…" : "Save status"}
-              </button>
+              <Button size="btn" type="submit" disabled={pending} loading={pending}>
+                Save status
+              </Button>
               {state.error && <p role="alert" className="text-sm text-[var(--error)]">{state.error}</p>}
             </div>
             {state.skipped && state.skipped.length > 0 && (

@@ -8,6 +8,7 @@ import { Select } from "@/components/ui/Select";
 import { cn } from "@/lib/cn";
 import { addWorkmenCompEmployeeAction, undoWorkmenCompEmployeeAction, getWorkmenCompWorkersAction, saveInsuredNamesAction, setWorkmenCompLinkAction, type WcWorker, type WcWorkers } from "../actions";
 
+import { Button } from "@/components/ui/Button";
 /**
  * Who is on one policy. Every name read off the certificate is listed with the workers it matches, and whether each is
  * linked to this policy, linked to another one, or not linked yet, with a button to link (the file is then filed on that
@@ -120,7 +121,7 @@ export function WorkmenCompWorkers({ supplierId, attachmentId, filename, canEdit
       {data.names === null ? (
         <div className="flex flex-wrap items-center gap-3 text-sm text-secondary">
           <span>The names on this certificate were not kept when it was uploaded.</span>
-          {canEdit && <button type="button" disabled={reading} onClick={readAgain} className="btn btn-secondary btn-sm">{reading ? "Reading…" : "Read the names from the file"}</button>}
+          {canEdit && <Button variant="secondary" size="btn-sm" type="button" disabled={reading} onClick={readAgain} loading={reading}>Read the names from the file</Button>}
           <span className="w-full text-xs text-muted">{linkedHere} worker{linkedHere === 1 ? " is" : "s are"} linked to it.</span>
         </div>
       ) : (
@@ -156,7 +157,7 @@ export function WorkmenCompWorkers({ supplierId, attachmentId, filename, canEdit
                           <Select value="" onChange={(id) => { if (id) setLink(id, true); }} searchable placeholder="Match to an existing worker…" options={matchOptions(n.name)} />
                         </div>
                         <span className="text-xs text-muted">or</span>
-                        <button type="button" disabled={busy !== null} onClick={() => addWorker(n.name)} className="btn btn-secondary btn-sm">{busy === `add:${n.name}` ? "Adding…" : "Add as new employee"}</button>
+                        <Button variant="secondary" size="btn-sm" type="button" disabled={busy !== null} onClick={() => addWorker(n.name)} loading={busy === `add:${n.name}`}>Add as new employee</Button>
                       </div>
                     )}
                     <p className="text-xs text-muted">Match lists the workers of this company, its parent and its subsidiaries, closest names first. Adding creates a worker with just the name; fill in their details later on Employees (shown as Incomplete).</p>

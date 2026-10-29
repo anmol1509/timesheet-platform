@@ -7,6 +7,7 @@ import { defaultConfig, MAX_SIGNATURES, type ColumnDef, type TemplateConfig } fr
 import type { TimesheetTemplateKey } from "@/lib/timesheetTemplates";
 import { cn } from "@/lib/cn";
 
+import { Button } from "@/components/ui/Button";
 const HEADER_LABELS: [keyof TemplateConfig["header"], string][] = [
   ["logo", "Logo"], ["address", "Address"], ["phone", "Phone and fax"], ["email", "Email"], ["poBox", "P.O. Box"], ["trn", "TRN"],
   ["subContractor", "Sub-contractor"], ["issuedTo", "Issued to"], ["period", "Period dates"],
@@ -147,7 +148,7 @@ export function TemplateEditor({ id, name: initialName, baseKey, baseName, colum
         {state.error && <p role="alert" className="text-sm text-[var(--error)]">{state.error}</p>}
         {state.ok && !state.error && <p role="status" className="text-sm text-[var(--success)]">Saved.</p>}
         <div className="flex flex-wrap items-center gap-3 border-t border-default pt-4">
-          <button type="submit" disabled={pending || !name.trim()} className="btn btn-primary">{pending ? "Saving…" : "Save template"}</button>
+          <Button size="btn" type="submit" disabled={pending || !name.trim()} loading={pending}>Save template</Button>
           <button type="button" onClick={() => { setCfg(defaultConfig(baseKey)); }} className="btn btn-secondary gap-1.5"><RotateCcw className="h-4 w-4" aria-hidden />Reset to original</button>
         </div>
       </form>

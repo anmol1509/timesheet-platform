@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/Dialog";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { createSkillAction } from "./actions";
 
+import { Button } from "@/components/ui/Button";
 /** The add-a-trade form, opened from the banner so the list keeps the page. */
 export function AddTrade({ triggerClassName }: { triggerClassName: string }) {
   const [open, setOpen] = useState(false);
@@ -31,7 +32,7 @@ export function AddTrade({ triggerClassName }: { triggerClassName: string }) {
           <Checkbox name="trending" value="on" label="Trending" />
           <div className="flex justify-end gap-2 pt-2">
             <button type="button" className="btn btn-secondary" onClick={() => setOpen(false)}>Cancel</button>
-            <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? "Adding…" : "Add trade"}</button>
+            <Button size="btn" type="submit" disabled={pending} loading={pending}>Add trade</Button>
           </div>
         </form>
       </DialogContent>

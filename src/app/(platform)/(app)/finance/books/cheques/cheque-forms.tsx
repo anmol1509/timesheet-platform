@@ -48,7 +48,7 @@ export function AddCheque({ clients, suppliers, banks, accounts }: { clients: Op
             const r = await saveChequeAction({ direction: f.direction, number: f.number, chequeDate: f.date, amount: num(f.amount), partyType: f.partyType, partyId: f.party || undefined, partyName: f.name, bankId: f.bank || undefined, counterAccountId: f.counter || undefined, narration: f.narration });
             if (r.error) { setError(r.error); return; }
             setOpen(false); setError(null); setF((c) => ({ ...c, number: "", amount: "", narration: "", name: "" }));
-          })}>{pending ? "Saving…" : "Add"}</Button>
+          })} loading={pending}>Add</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -70,7 +70,7 @@ export function ChequeActions({ id, number, status }: { id: string; number: stri
             <DialogContent title={`Cheque ${number} cleared`} description="The day the bank paid it or took it. The books record the money on this day.">
               <label className="mt-4 block text-sm font-medium text-primary">Cleared on<div className="mt-1"><DatePicker value={date} onChange={setDate} ariaLabel="Cleared on" /></div></label>
               {error && <p role="alert" className="mt-2 text-sm text-error">{error}</p>}
-              <DialogFooter><Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Button type="button" disabled={pending} onClick={() => set("CLEARED", date)}>{pending ? "Saving…" : "Mark cleared"}</Button></DialogFooter>
+              <DialogFooter><Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Button type="button" disabled={pending} onClick={() => set("CLEARED", date)} loading={pending}>Mark cleared</Button></DialogFooter>
             </DialogContent>
           </Dialog>
           <Button type="button" size="sm" variant="ghost" disabled={pending} onClick={() => set("BOUNCED")}>Bounced</Button>

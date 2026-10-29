@@ -6,6 +6,7 @@ import { DEFAULT_PLAIN, DEFAULT_SIDE_ON_LETTERHEAD, MARGIN_LIMITS, type Margins 
 import { DEFAULT_BOTTOM_MM, DEFAULT_TOP_MM } from "@/components/LetterheadMargins";
 import { cn } from "@/lib/cn";
 
+import { Button } from "@/components/ui/Button";
 type Action = (fd: FormData) => Promise<{ error?: string | null } | void>;
 
 /**
@@ -100,7 +101,7 @@ export function PaperMargins({
               : "Letters printed on pre-printed letterhead start below the top margin and stop above the bottom one, so nothing prints over your header or footer. Leave a little more than the artwork needs. The sides apply to payslips, NOCs and quotations on letterhead too."}
           </p>
           <div className="flex items-center gap-2">
-            <button type="button" className="btn btn-primary btn-sm" disabled={!dirty || pending} onClick={save}>{pending ? "Saving…" : "Save margins"}</button>
+            <Button size="btn-sm" type="button" disabled={!dirty || pending} onClick={save} loading={pending}>Save margins</Button>
             {dirty && <button type="button" className="btn btn-secondary btn-sm" onClick={() => setValues((all) => ({ ...all, [tab]: saved[tab] }))}>Reset</button>}
             {!dirty && !pending && <span className="text-xs text-muted">Saved</span>}
             <button type="button" className="ml-auto text-xs text-[var(--brand-primary)] hover:underline" onClick={() => setValues((all) => ({ ...all, [tab]: standard }))}>Standard ({standard.top} / {standard.bottom} / {standard.left} / {standard.right})</button>

@@ -4,6 +4,7 @@ import { PhoneField } from "@/components/ui/PhoneField";
 import { useActionState } from "react";
 import { changePasswordAction, updateProfileAction } from "./actions";
 
+import { Button } from "@/components/ui/Button";
 type State = { error: string | null; ok?: boolean };
 const INITIAL: State = { error: null };
 
@@ -46,9 +47,9 @@ export function ProfileForm({
         </label>
       </div>
       <div className="flex items-center gap-3">
-        <button type="submit" className="btn btn-primary" disabled={pending}>
-          {pending ? "Saving…" : "Save profile"}
-        </button>
+        <Button size="btn" type="submit" disabled={pending} loading={pending}>
+          Save profile
+        </Button>
         <Message state={state} success="Profile saved." />
       </div>
     </form>
@@ -63,9 +64,9 @@ export function PasswordForm() {
       <input name="next" type="password" placeholder="New password (min 8 characters)" required minLength={8} autoComplete="new-password" className="input w-full" />
       <input name="confirm" type="password" placeholder="Confirm new password" required minLength={8} autoComplete="new-password" className="input w-full" />
       <div className="flex items-center gap-3">
-        <button type="submit" className="btn btn-primary" disabled={pending}>
-          {pending ? "Updating…" : "Change password"}
-        </button>
+        <Button size="btn" type="submit" disabled={pending} loading={pending}>
+          Change password
+        </Button>
         <Message state={state} success="Password changed." />
       </div>
     </form>

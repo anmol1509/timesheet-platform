@@ -12,6 +12,7 @@ import { DEDUCTION_CATEGORIES, EARNING_CATEGORIES, categoryLabel } from "@/lib/p
 import { MonthInput } from "@/components/ui/MonthInput";
 import { NumberInput } from "@/components/ui/NumberInput";
 
+import { Button } from "@/components/ui/Button";
 type State = { error: string | null; ok?: boolean };
 export type RecurringRow = { category?: string | null; id: string; employee: string; employeeIdNo: string; kind: string; label: string; amount: number; startMonth: string; endMonth: string | null; active: boolean };
 const aed = (n: number) => n.toLocaleString("en-AE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -47,7 +48,7 @@ function NewItemForm({ employees, onDone }: { employees: { id: string; label: st
         <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Last month (blank = ongoing)</span><MonthInput name="endMonth" className="w-full" /></label>
       </div>
       <div className="flex items-center gap-3">
-        <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? "Saving…" : "Add item"}</button>
+        <Button size="btn" type="submit" disabled={pending} loading={pending}>Add item</Button>
         {state.error && <p role="alert" className="text-sm text-[var(--error)]">{state.error}</p>}
       </div>
     </form>

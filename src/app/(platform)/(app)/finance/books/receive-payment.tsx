@@ -72,7 +72,7 @@ export function ReceivePayment({ clients, moneyAccounts, otherAccounts, minDate,
               : await receiveMoneyAction({ source: kind, from: payer, date, amount: fx ? 0 : value, narration, moneyAccountId: money, creditAccountId: credit, ...(fx ? { foreign: { amount: value, rate: Number(rate) || 0 } } : {}) });
             if (r.error) { setError(r.error); return; }
             setOpen(false); setAmount(""); setNarration(""); setClient(""); setPayer(""); setCredit("");
-          })}>{pending ? "Saving…" : "Post"}</Button>
+          })} loading={pending}>Post</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

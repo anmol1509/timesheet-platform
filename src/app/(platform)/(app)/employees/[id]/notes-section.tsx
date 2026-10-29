@@ -9,6 +9,7 @@ import { MAX_UPLOAD_LABEL } from "@/lib/constants";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { addEmployeeNoteAction, deleteEmployeeNoteAction } from "./actions";
 
+import { Button } from "@/components/ui/Button";
 type NoteRow = {
   id: string;
   remarks: string;
@@ -104,14 +105,9 @@ export function NotesSection({
               </span>
             </label>
             <div className="mt-3 flex items-center gap-2">
-              <button
-                type="button"
-                onClick={submit}
-                disabled={pending}
-                className="btn btn-primary px-3 py-1 text-xs"
-              >
-                {pending ? "Saving…" : "Save note"}
-              </button>
+              <Button size="btn" className="px-3 py-1 text-xs" type="button" onClick={submit} disabled={pending} loading={pending}>
+                Save note
+              </Button>
               <button
                 type="button"
                 onClick={() => {

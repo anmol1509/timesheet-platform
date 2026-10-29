@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { setCompanyHeaderFieldsAction } from "../actions";
 
+import { Button } from "@/components/ui/Button";
 const FIELDS: { gap: string; key: "trn" | "location" | "phone" | "contactEmail"; label: string; placeholder: string }[] = [
   { gap: "TRN", key: "trn", label: "TRN (15 digits)", placeholder: "100000000000003" },
   { gap: "address", key: "location", label: "Address", placeholder: "Office, area" },
@@ -41,7 +42,7 @@ export function HeaderFix({ supplierId, gaps, canEdit }: { supplierId: string; g
       {gaps.includes("logo") && <p className="text-xs text-muted">The logo is uploaded under <span className="font-medium text-primary">Logo, signatory, signature &amp; stamp</span> lower on this page.</p>}
       {open.length > 0 && canEdit && (
         <div className="flex items-center gap-3">
-          <button type="button" className="btn btn-primary btn-sm" disabled={pending} onClick={save}>{pending ? "Saving…" : "Save"}</button>
+          <Button size="btn-sm" type="button" disabled={pending} onClick={save} loading={pending}>Save</Button>
           {error && <p role="alert" className="text-xs text-[var(--error)]">{error}</p>}
         </div>
       )}

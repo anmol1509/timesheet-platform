@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { ImageUpload } from "@/components/ImageUpload";
 import { removeSupplierLetterImageAction, saveSupplierSignatoryAction, uploadSupplierLetterImageAction } from "../actions";
 
+import { Button } from "@/components/ui/Button";
 /** Who signs letters issued for this company, and the signature and stamp printed when ticked on a letter. */
 export function SupplierLettersSection({ supplierId, signatoryName, signatoryTitle, signatureUrl, stampUrl, logoUrl, showLogo = false }: { supplierId: string; signatoryName: string; signatoryTitle: string; signatureUrl: string | null; stampUrl: string | null; logoUrl?: string | null; /** Own companies only: the logo that heads timesheets issued by this company. */ showLogo?: boolean }) {
   const [name, setName] = useState(signatoryName);
@@ -41,7 +42,7 @@ export function SupplierLettersSection({ supplierId, signatoryName, signatoryTit
         </label>
       </div>
       <div className="flex items-center gap-3">
-        <button type="button" className="btn btn-secondary" disabled={pending} onClick={save}>{pending ? "Saving…" : "Save signatory"}</button>
+        <Button variant="secondary" size="btn" type="button" disabled={pending} onClick={save} loading={pending}>Save signatory</Button>
         {message && <span role="status" className={`text-sm ${message.ok ? "text-[var(--success)]" : "text-[var(--error)]"}`}>{message.text}</span>}
       </div>
       {showLogo && (

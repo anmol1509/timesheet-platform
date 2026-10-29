@@ -9,6 +9,7 @@ import { cn } from "@/lib/cn";
 import { MODULES, ROLE_PRESETS, describeAccess } from "@/lib/permissions";
 import { createUserAction } from "./actions";
 
+import { Button } from "@/components/ui/Button";
 type Branch = { id: string; code: string; name: string };
 export type AccessRoleOption = { id: string; name: string; description: string | null; permissions: string[]; branchId: string | null };
 
@@ -274,9 +275,9 @@ export function AddMemberWizard({
             Next: role &amp; permissions <ArrowRight className="h-4 w-4" aria-hidden />
           </button>
         ) : (
-          <button type="button" className="btn btn-primary" onClick={submit} disabled={pending}>
-            {pending ? "Adding…" : "Add team member"}
-          </button>
+          <Button size="btn" type="button" onClick={submit} disabled={pending} loading={pending}>
+            Add team member
+          </Button>
         )}
         {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
       </div>

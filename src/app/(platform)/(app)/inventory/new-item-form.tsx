@@ -6,6 +6,7 @@ import { ComboSelect } from "@/components/ui/ComboSelect";
 import { INVENTORY_CATEGORIES } from "@/lib/formLists";
 import { NumberInput } from "@/components/ui/NumberInput";
 
+import { Button } from "@/components/ui/Button";
 export function NewItemForm({ bare }: { bare?: boolean } = {}) {
   const [state, formAction, pending] = useActionState(createInventoryItemAction, {
     error: null,
@@ -38,13 +39,9 @@ export function NewItemForm({ bare }: { bare?: boolean } = {}) {
           {state.error}
         </p>
       )}
-      <button
-        type="submit"
-        disabled={pending}
-        className="btn btn-primary"
-      >
-        {pending ? "Adding…" : "+ Add Item"}
-      </button>
+      <Button size="btn" type="submit" disabled={pending} loading={pending}>
+        + Add Item
+      </Button>
     </form>
   );
 }

@@ -8,6 +8,7 @@ import { DatePicker } from "@/components/ui/DatePicker";
 import { COST_KINDS, COST_KIND_LABEL, costTotals } from "@/lib/candidateCosts";
 import { addCostAction, deleteCostAction, toggleCostPaidAction } from "./cost-actions";
 
+import { Button } from "@/components/ui/Button";
 type Cost = { id: string; kind: string; amount: number; incurredOn: string; paid: boolean; note: string | null };
 type State = { error: string | null; ok?: boolean };
 
@@ -68,7 +69,7 @@ export function CostPanel({ candidateId, costs, canEdit = true }: { candidateId:
         <label className="block"><span className={lbl}>Note</span><input name="note" maxLength={200} className="input w-full" /></label>
         <div className="flex items-center gap-3">
           <label className="flex items-center gap-1.5 text-xs text-muted"><input type="checkbox" name="paid" /> Paid</label>
-          <button type="submit" className="btn btn-primary btn-sm" disabled={pending}>{pending ? "Adding…" : "Add cost"}</button>
+          <Button size="btn-sm" type="submit" disabled={pending} loading={pending}>Add cost</Button>
         </div>
         {state.error && <p role="alert" className="text-sm text-[var(--error)] sm:col-span-full">{state.error}</p>}
       </form>}

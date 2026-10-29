@@ -9,6 +9,7 @@ import { EMPTY_PERSON, PersonPicker, type NewPerson, type PersonOption, type Pic
 import { SHARE_OPTIONS, equalSplit, ownershipProblem, ownershipSummary } from "@/lib/ownership";
 import { saveOwnersAction } from "./party-actions";
 
+import { Button } from "@/components/ui/Button";
 export type OwnerRow = { linkId: string; partyId: string; name: string; percent: number | null };
 type Row = { rid: number; linkId?: string; choice: PickerChoice; person: NewPerson; name: string; percent: number | null; touched: boolean };
 
@@ -104,7 +105,7 @@ export function OwnersEditor({ supplierId, owners, people, canEdit }: { supplier
       {canEdit && (
         <div className="flex flex-wrap items-center gap-3">
           <button type="button" className="btn btn-secondary gap-1.5" onClick={add}><Plus className="h-3.5 w-3.5" aria-hidden />Add owner</button>
-          <button type="button" className="btn btn-primary" disabled={pending || !dirty || !!problem} onClick={save}>{pending ? "Saving…" : "Save owners"}</button>
+          <Button size="btn" type="button" disabled={pending || !dirty || !!problem} onClick={save} loading={pending}>Save owners</Button>
           {saved && !dirty && <span role="status" className="text-sm text-[var(--success)]">Saved.</span>}
           {dirty && problem && <span className="text-xs text-[var(--warning)]">{problem}</span>}
         </div>

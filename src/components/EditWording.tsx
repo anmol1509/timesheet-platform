@@ -7,6 +7,7 @@ import { LetterEditor } from "@/components/LetterEditor";
 import { fieldsFor, type Audience } from "@/lib/letterFields";
 import { loadDocEditAction, resetDocEditAction, saveDocEditAction, type DocTarget } from "@/app/(platform)/(app)/doc-edit/actions";
 
+import { Button } from "@/components/ui/Button";
 /**
  * "Edit wording" for one document made from a template: opens the same editor the templates use (text, lists and tables),
  * on this document's wording. A change applies to this document only; the template is never touched, and the figures
@@ -55,7 +56,7 @@ export function EditWording({ target, label = "Edit wording", className, onChang
               <LetterEditor key={key} html={html} onChange={setHtml} fields={fieldsFor(state.audience)} audience={state.audience} noAsk />
               {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
               <div className="flex flex-wrap items-center gap-2">
-                <button type="button" className="btn btn-primary" disabled={busy} onClick={() => run(() => saveDocEditAction(target, html, title))}>{busy ? "Saving…" : "Save wording"}</button>
+                <Button size="btn" type="button" disabled={busy} onClick={() => run(() => saveDocEditAction(target, html, title))} loading={busy}>Save wording</Button>
                 <button type="button" className="btn btn-secondary" disabled={busy} onClick={() => setOpen(false)}>Cancel</button>
                 {state.edited && <button type="button" className="ml-auto inline-flex items-center gap-1 text-sm font-semibold text-brand hover:underline" disabled={busy} onClick={() => run(() => resetDocEditAction(target))}><RotateCcw className="h-3.5 w-3.5" aria-hidden /> Reset to template</button>}
               </div>

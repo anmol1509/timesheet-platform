@@ -18,6 +18,7 @@ import {
   updateUserAction,
 } from "./actions";
 
+import { Button } from "@/components/ui/Button";
 type State = { error: string | null; ok?: boolean };
 type Branch = { id: string; code: string; name: string };
 type AccessRoleOption = WizardRole;
@@ -141,9 +142,9 @@ function UserForm({
         )}
       </div>
       <div className="flex items-center gap-3 pt-1">
-        <button type="submit" className="btn btn-primary" disabled={pending}>
-          {pending ? "Saving…" : user ? "Save changes" : "Add team member"}
-        </button>
+        <Button size="btn" type="submit" disabled={pending} loading={pending}>
+          {user ? "Save changes" : "Add team member"}
+        </Button>
         <Feedback state={state} />
       </div>
     </form>
@@ -164,9 +165,9 @@ function ResetPasswordForm({ userId, onDone }: { userId: string; onDone: () => v
       <input type="hidden" name="userId" value={userId} />
       <input name="password" type="password" required minLength={8} placeholder="New temporary password" autoComplete="new-password" className="input w-full" />
       <div className="flex items-center gap-3">
-        <button type="submit" className="btn btn-primary" disabled={pending}>
-          {pending ? "Saving…" : "Set password"}
-        </button>
+        <Button size="btn" type="submit" disabled={pending} loading={pending}>
+          Set password
+        </Button>
         <Feedback state={state} />
       </div>
     </form>

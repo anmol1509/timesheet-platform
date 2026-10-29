@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/Dialog";
 import { Badge } from "@/components/Badge";
 import { applyRunAdvancesAction, loadRunAdvancesAction, type RunAdvance } from "../pay-items-actions";
 
+import { Button } from "@/components/ui/Button";
 const aed = (n: number) => n.toLocaleString("en-AE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 /**
@@ -86,7 +87,7 @@ export function AdvancesButton({ runId, employeeId, name, count, owed, unschedul
                     <span className="text-xs text-muted">Deduct this month (AED)</span>
                     <input className="input h-8 w-32 text-right text-xs tabular-nums" type="number" step="0.01" min="0" max={a.balance} value={amounts[a.id] ?? ""} onChange={(e) => { setDone(null); setAmounts((p) => ({ ...p, [a.id]: e.target.value })); }} aria-label={`Amount to deduct for ${a.ref}`} />
                     <button type="button" className="text-xs text-[var(--brand-primary)] hover:underline" onClick={() => { setDone(null); setAmounts((p) => ({ ...p, [a.id]: String(a.balance) })); }}>All of it</button>
-                    <button type="button" className="btn btn-primary ml-auto h-8 px-3 text-xs" disabled={pending} onClick={() => apply(a)}>{busyId === a.id ? "Applying…" : "Apply"}</button>
+                    <Button size="btn" className="ml-auto h-8 px-3 text-xs" type="button" disabled={pending} onClick={() => apply(a)} loading={busyId === a.id}>Apply</Button>
                   </label>
                 )}
                 {done === a.id && <p className="mt-1 text-xs text-[var(--success)]">Applied. This worker&apos;s pay has been worked out again.</p>}

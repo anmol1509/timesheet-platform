@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { NumberInput } from "@/components/ui/NumberInput";
 
+import { Button } from "@/components/ui/Button";
 type Entry = {
   id: string;
   employeeIdNo: string;
@@ -128,31 +129,17 @@ export function ReviewInvoice({
             </p>
           </div>
           <div className="flex gap-2">
-            <button
-              onClick={() => handleGenerate("xlsx", false)}
-              disabled={generating !== null}
-              className="btn btn-secondary"
-            >
-              {generating === "xlsx" ? "Generating…" : "Download draft (XLSX)"}
-            </button>
-            <button
-              onClick={() => handleGenerate("pdf", false)}
-              disabled={generating !== null}
-              className="btn btn-secondary"
-            >
-              {generating === "pdf" ? "Generating…" : "Download draft (PDF)"}
-            </button>
-            <button
-              onClick={() => handleGenerate("pdf", true)}
-              disabled={generating !== null || issued !== null || (hasLpoWarning && !lpoAck)}
-              className="btn btn-primary"
-            >
-              {generating === "issue"
-                ? "Issuing…"
-                : issued
+            <Button variant="secondary" size="btn" onClick={() => handleGenerate("xlsx", false)} disabled={generating !== null} loading={generating === "xlsx"}>
+              Download draft (XLSX)
+            </Button>
+            <Button variant="secondary" size="btn" onClick={() => handleGenerate("pdf", false)} disabled={generating !== null} loading={generating === "pdf"}>
+              Download draft (PDF)
+            </Button>
+            <Button size="btn" onClick={() => handleGenerate("pdf", true)} disabled={generating !== null || issued !== null || (hasLpoWarning && !lpoAck)} loading={generating === "issue"}>
+              {issued
                   ? `Issued as ${issued.invoiceNumber}`
                   : "Issue invoice"}
-            </button>
+            </Button>
           </div>
         </div>
         {error && (

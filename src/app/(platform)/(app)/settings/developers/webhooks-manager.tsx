@@ -16,6 +16,7 @@ import {
   type HookState,
 } from "./actions";
 
+import { Button } from "@/components/ui/Button";
 export type EndpointRow = {
   id: string; url: string; description: string | null; events: string[]; secretHint: string; isActive: boolean;
   disabledReason: string | null; lastDeliveryAt: string | null; lastStatusCode: number | null;
@@ -105,7 +106,7 @@ function EndpointForm({ endpoint, onClose }: { endpoint?: EndpointRow; onClose: 
       </label>
       <EventPicker selected={endpoint?.events} />
       <div className="flex items-center gap-3">
-        <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? "Saving…" : endpoint ? "Save changes" : "Add endpoint"}</button>
+        <Button size="btn" type="submit" disabled={pending} loading={pending}>{endpoint ? "Save changes" : "Add endpoint"}</Button>
         {state.error && <p role="alert" className="text-sm text-[var(--error)]">{state.error}</p>}
       </div>
     </form>

@@ -4,6 +4,7 @@ import { useRef, useState, useTransition } from "react";
 import { Wand2 } from "lucide-react";
 import { suggestClientCodeAction } from "./actions";
 
+import { Button } from "@/components/ui/Button";
 /** Supplier code input with an "Auto" button that fills in the name's acronym.
  * The name comes from the form's own `name` field unless `fixedName` is given
  * (the edit form has no name field). */
@@ -49,10 +50,10 @@ export function ClientCodeField({
           placeholder="e.g. CEMA"
           className="input w-full uppercase"
         />
-        <button type="button" onClick={auto} disabled={pending} className="btn btn-secondary btn-sm shrink-0">
+        <Button variant="secondary" size="btn-sm" className="shrink-0" type="button" onClick={auto} disabled={pending} loading={pending}>
           <Wand2 className="h-4 w-4" aria-hidden />
-          {pending ? "…" : "Auto"}
-        </button>
+          Auto
+        </Button>
       </div>
       <p className="mt-1 text-xs text-muted">
         {hint ?? "C + initials of the name (Emaar Properties → CEP). Leave blank to generate on save, or edit it."}

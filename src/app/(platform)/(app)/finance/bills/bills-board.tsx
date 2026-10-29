@@ -19,6 +19,7 @@ import { MonthInput } from "@/components/ui/MonthInput";
 import { NumberInput } from "@/components/ui/NumberInput";
 import { readFields } from "@/components/readFields";
 
+import { Button } from "@/components/ui/Button";
 type State = { error: string | null; ok?: boolean };
 export type BillRow = {
   id: string; supplier: string; supplierId: string; billNo: string; billDate: string; dueDate: string;
@@ -117,7 +118,7 @@ function BillForm({ suppliers, onDone }: { suppliers: { id: string; name: string
       </div>
       <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Description</span><input key={`d-${fillKey}`} name="description" defaultValue={fill.description} className="input w-full" placeholder="e.g. Labour supply, Aug" /></label>
       <div className="flex flex-wrap items-center gap-3">
-        <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? "Saving…" : dup ? "Keep both: add anyway" : "Add bill"}</button>
+        <Button size="btn" type="submit" disabled={pending} loading={pending}>{dup ? "Keep both: add anyway" : "Add bill"}</Button>
         {state.error && <p role="alert" className={dup ? "text-sm text-[var(--warning)]" : errCls}>{state.error.replace("DUPLICATE: ", "")}</p>}
       </div>
       <p className="text-xs text-subtle">The bill is checked against the timesheet when it is saved, and the difference is shown before anyone approves it. New bills wait for approval before they can be paid.</p>
@@ -142,7 +143,7 @@ function PayForm({ bill, banks, onDone }: { bill: BillRow; banks: BankOpt[]; onD
         <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Reference</span><input name="reference" className="input w-full" placeholder="Transfer / cheque no." /></label>
         {banks.length > 0 && <label className="col-span-2 block"><span className="mb-1 block text-xs font-medium text-muted">Paid from</span><Select name="bankId" defaultValue="" searchable={false} options={[{ value: "", label: "Default bank" }, ...banks.map((b) => ({ value: b.id, label: b.label }))]} /></label>}
       </div>
-      <div className="flex items-center gap-3"><button type="submit" className="btn btn-primary" disabled={pending}>{pending ? "Saving…" : "Record payment"}</button>{state.error && <p role="alert" className={errCls}>{state.error}</p>}</div>
+      <div className="flex items-center gap-3"><Button size="btn" type="submit" disabled={pending} loading={pending}>Record payment</Button>{state.error && <p role="alert" className={errCls}>{state.error}</p>}</div>
     </form>
   );
 }
@@ -166,7 +167,7 @@ function BatchForm({ bills, banks, onDone }: { bills: BillRow[]; banks: BankOpt[
         <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Batch reference</span><input name="reference" className="input w-full" placeholder="Transfer batch no." /></label>
         {banks.length > 0 && <label className="col-span-3 block"><span className="mb-1 block text-xs font-medium text-muted">Paid from</span><Select name="bankId" defaultValue="" searchable={false} options={[{ value: "", label: "Default bank" }, ...banks.map((b) => ({ value: b.id, label: b.label }))]} /></label>}
       </div>
-      <div className="flex items-center gap-3"><button type="submit" className="btn btn-primary" disabled={pending}>{pending ? "Recording…" : `Record ${bills.length} payments`}</button>{state.error && <p role="alert" className={errCls}>{state.error}</p>}</div>
+      <div className="flex items-center gap-3"><Button size="btn" type="submit" disabled={pending} loading={pending}>{`Record ${bills.length} payments`}</Button>{state.error && <p role="alert" className={errCls}>{state.error}</p>}</div>
     </form>
   );
 }

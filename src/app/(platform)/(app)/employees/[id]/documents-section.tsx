@@ -12,6 +12,7 @@ import { readOtherDoc } from "@/components/otherDocRead";
 import { nameFromFile, otherDocProblem, trackedExpiry } from "@/lib/otherDoc";
 import { Paperclip, X } from "lucide-react";
 
+import { Button } from "@/components/ui/Button";
 type Doc = {
   id: string;
   type: string;
@@ -138,9 +139,9 @@ export function DocumentsSection({
 
           {rows.length > 0 && (
             <div className="flex items-center gap-3">
-              <button type="button" className="btn btn-primary" onClick={uploadAll} disabled={busy || rows.every((r) => r.state === "uploading")}>
-                {busy ? "Uploading…" : `Upload ${rows.length} document${rows.length === 1 ? "" : "s"}`}
-              </button>
+              <Button size="btn" type="button" onClick={uploadAll} disabled={busy || rows.every((r) => r.state === "uploading")} loading={busy}>
+                {`Upload ${rows.length} document${rows.length === 1 ? "" : "s"}`}
+              </Button>
               <button type="button" className="text-sm text-muted hover:text-primary" disabled={busy} onClick={() => setRows([])}>Clear</button>
             </div>
           )}

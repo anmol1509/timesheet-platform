@@ -7,6 +7,7 @@ import { NumberInput } from "@/components/ui/NumberInput";
 import { EXIT_REASONS } from "@/lib/exitReasons";
 import { approveSettlementAction, deleteSettlementAction, markSettlementPaidAction, updateSettlementAction } from "../actions";
 
+import { Button } from "@/components/ui/Button";
 type State = { error: string | null; ok?: boolean };
 type Draft = { id: string; exitDate: string; reason: string; basic: number; unpaidSalaryDays: number; leavePay: number; noticePay: number; otherEarnings: number; loanBalance: number; otherDeductions: number; notes: string };
 
@@ -40,7 +41,7 @@ export function SettlementEditor({ s }: { s: Draft }) {
       </div>
       <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Notes (say what any deduction is for)</span><input name="notes" defaultValue={s.notes} maxLength={500} className="input w-full" /></label>
       <div className="flex items-center gap-3">
-        <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? "Saving…" : "Save and recalculate"}</button>
+        <Button size="btn" type="submit" disabled={pending} loading={pending}>Save and recalculate</Button>
         {state.error && <p role="alert" className="text-sm text-[var(--error)]">{state.error}</p>}
         {state.ok && !state.error && <p role="status" className="text-sm text-[var(--success)]">Saved.</p>}
       </div>

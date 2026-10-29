@@ -8,6 +8,7 @@ import { Badge } from "@/components/Badge";
 import { API_SCOPES } from "@/lib/api/keys";
 import { createApiKeyAction, revokeApiKeyAction } from "./actions";
 
+import { Button } from "@/components/ui/Button";
 export type KeyRow = { id: string; name: string; prefix: string; scopes: string[]; createdAt: string; createdBy: string; expiresAt: string | null; lastUsedAt: string | null; revoked: boolean };
 type State = { error: string | null; secret?: string; name?: string };
 
@@ -115,9 +116,9 @@ function CreateForm({ onClose }: { onClose: () => void }) {
       </label>
 
       <div className="flex items-center gap-3">
-        <button type="submit" className="btn btn-primary" disabled={pending}>
-          {pending ? "Creating…" : "Create key"}
-        </button>
+        <Button size="btn" type="submit" disabled={pending} loading={pending}>
+          Create key
+        </Button>
         {state.error && (
           <p role="alert" className="text-sm text-[var(--error)]">
             {state.error}

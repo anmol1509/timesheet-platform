@@ -9,6 +9,7 @@ import { VEHICLE_TYPES } from "@/lib/formLists";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { NumberInput } from "@/components/ui/NumberInput";
 
+import { Button } from "@/components/ui/Button";
 type Vehicle = {
   id: string;
   plateNumber: string;
@@ -171,13 +172,9 @@ export function EditVehicleForm({ vehicle, drivers }: { vehicle: Vehicle; driver
       </div>
       <div className="flex items-center gap-3">
         {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
-      <button
-          type="submit"
-          disabled={pending}
-          className="btn btn-primary"
-        >
-          {pending ? "Saving…" : "Save changes"}
-        </button>
+      <Button size="btn" type="submit" disabled={pending} loading={pending}>
+          Save changes
+        </Button>
         {saved && !pending && (
           <span className="text-sm text-[var(--success)]">Saved.</span>
         )}

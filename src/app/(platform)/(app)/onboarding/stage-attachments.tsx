@@ -7,6 +7,7 @@ import { DeleteButton } from "@/components/DeleteButton";
 import { MAX_UPLOAD_LABEL } from "@/lib/constants";
 import { readOtherDoc } from "@/components/otherDocRead";
 
+import { Button } from "@/components/ui/Button";
 export type StageAttachmentRow = { id: string; filename: string };
 
 /** A compact per-stage file attach — the same generic Attachment model the
@@ -68,9 +69,9 @@ export function StageAttachments({
             if (read && (read.docNumber || read.expiry)) onRead({ docNumber: read.docNumber, expiry: read.expiry });
           }}
         />
-        <button type="submit" className="btn btn-secondary px-2.5 py-1 text-xs" disabled={uploading}>
-          {uploading ? "Attaching…" : "Attach"}
-        </button>
+        <Button variant="secondary" size="btn" className="px-2.5 py-1 text-xs" type="submit" disabled={uploading} loading={uploading}>
+          Attach
+        </Button>
         <span className="text-[11px] text-subtle">{reading ? "Reading the file…" : `max ${MAX_UPLOAD_LABEL}`}</span>
       </form>}
       {error && <p role="alert" className="mt-1 text-xs text-[var(--error)]">{error}</p>}

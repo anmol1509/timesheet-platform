@@ -12,6 +12,7 @@ import { COMPLIANCE_FIELDS } from "@/lib/compliance";
 import type { ComplianceAlert } from "@/lib/dashboardAlerts";
 import { cn } from "@/lib/cn";
 
+import { Button } from "@/components/ui/Button";
 /**
  * The bell. "For you" is what is waiting on this person (approvals they can
  * decide here, and unread messages), "Compliance" the documents running out, and
@@ -156,7 +157,7 @@ export function NotificationsMenu({
                             {errors[d.key] && <p role="alert" className="mt-1 text-xs text-[var(--error)]">{errors[d.key]}</p>}
                             <div className="mt-2 flex gap-2">
                               <Link href={d.href} onClick={close} className="btn btn-secondary btn-sm">Review</Link>
-                              {d.quickApprove && <button type="button" disabled={busy === d.key} onClick={() => void approve(d)} className="btn btn-primary btn-sm">{busy === d.key ? "Approving…" : "Approve"}</button>}
+                              {d.quickApprove && <Button size="btn-sm" type="button" disabled={busy === d.key} onClick={() => void approve(d)} loading={busy === d.key}>Approve</Button>}
                             </div>
                           </div>
                         </div>

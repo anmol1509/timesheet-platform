@@ -8,6 +8,7 @@ import { NumberInput } from "@/components/ui/NumberInput";
 import { Dialog, DialogContent, DialogFooter, DialogTrigger } from "@/components/ui/Dialog";
 import { cn } from "@/lib/cn";
 
+import { Button } from "@/components/ui/Button";
 type RoomDraft = { name: string; bedCount: number; bunkCount: number };
 const clamp = (v: unknown, min: number, max: number) => Math.max(min, Math.min(max, Number(String(v)) || 0));
 
@@ -128,9 +129,9 @@ function AddCampBody() {
       {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
 
       <DialogFooter>
-        <button type="button" onClick={handleSubmit} disabled={!canSubmit || pending} className="btn btn-primary">
-          {pending ? "Creating…" : `Create camp with ${totalBeds} bed${totalBeds === 1 ? "" : "s"}`}
-        </button>
+        <Button size="btn" type="button" onClick={handleSubmit} disabled={!canSubmit || pending} loading={pending}>
+          {`Create camp with ${totalBeds} bed${totalBeds === 1 ? "" : "s"}`}
+        </Button>
       </DialogFooter>
     </div>
   );

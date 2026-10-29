@@ -9,6 +9,7 @@ import { addPettyCashTopUpAction, saveBudgetAction, setExpenseLimitAction } from
 import { DatePicker } from "@/components/ui/DatePicker";
 import { NumberInput } from "@/components/ui/NumberInput";
 
+import { Button } from "@/components/ui/Button";
 type State = { error: string | null; ok?: boolean };
 const aed = (n: number) => n.toLocaleString("en-AE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -128,7 +129,7 @@ export function ExpenseTools({
             </div>
             <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Note</span><input name="note" className="input w-full" placeholder="e.g. Withdrawn from ADCB" /></label>
             <div className="flex items-center gap-3">
-              <button type="submit" className="btn btn-primary" disabled={tPending}>{tPending ? "Saving…" : "Add to float"}</button>
+              <Button size="btn" type="submit" disabled={tPending} loading={tPending}>Add to float</Button>
               {tState.error && <p role="alert" className="text-sm text-[var(--error)]">{tState.error}</p>}
             </div>
           </form>

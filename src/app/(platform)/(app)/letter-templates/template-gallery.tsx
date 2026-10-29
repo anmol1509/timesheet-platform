@@ -7,6 +7,7 @@ import { Dialog, DialogContent } from "@/components/ui/Dialog";
 import { RowMenu } from "@/components/ui/RowMenu";
 import { duplicateTemplateAction, updateToLatestWordingAction } from "./actions";
 
+import { Button } from "@/components/ui/Button";
 export type TemplateCard = {
   id: string;
   name: string;
@@ -148,7 +149,7 @@ function UpdateWording({ id, onDone }: { id: string; onDone: () => void }) {
   return (
     <div className="rounded-lg border border-[var(--brand-primary-border)] bg-brand-soft px-3 py-2.5 text-xs text-secondary">
       <p><b className="text-primary">Newer wording is available.</b> This template has never been edited, so it can be updated to the latest ready-made wording, with a details table.</p>
-      <button type="button" className="btn btn-primary btn-sm mt-2" disabled={busy} onClick={run}>{busy ? "Updating…" : "Update to the new wording"}</button>
+      <Button size="btn-sm" className="mt-2" type="button" disabled={busy} onClick={run} loading={busy}>Update to the new wording</Button>
       {error && <p role="alert" className="mt-1 text-[var(--error)]">{error}</p>}
     </div>
   );

@@ -6,6 +6,7 @@ import { MoreHorizontal } from "lucide-react";
 import { addCorrectionAction, refreshLineBankAction, setLinePaymentAction } from "../actions";
 import { Badge, type BadgeColor } from "@/components/Badge";
 
+import { Button } from "@/components/ui/Button";
 const STATUS: Record<string, { label: string; color: BadgeColor }> = {
   PENDING: { label: "Awaiting bank", color: "slate" },
   PAID: { label: "Paid", color: "green" },
@@ -81,7 +82,7 @@ export function PaymentCell({ lineId, status, note, editable, canCorrect, nextMo
                     <select name="kind" className="input h-9 w-full text-sm" aria-label="Type"><option value="EARNING">Pay extra</option><option value="DEDUCTION">Take off</option></select>
                     <input name="amount" type="number" step="0.01" min="0" placeholder="Amount (AED)" className="input h-9 w-full text-sm" aria-label="Amount" required />
                     <input name="label" placeholder="What for?" className="input h-9 w-full text-sm" aria-label="Reason" required />
-                    <div className="flex gap-2"><button type="submit" disabled={pending} className="btn btn-primary btn-sm">{pending ? "Adding…" : `Add to ${nextMonth}`}</button><button type="button" className="btn btn-secondary btn-sm" onClick={() => setMode("menu")}>Back</button></div>
+                    <div className="flex gap-2"><Button size="btn-sm" type="submit" disabled={pending} loading={pending}>{`Add to ${nextMonth}`}</Button><button type="button" className="btn btn-secondary btn-sm" onClick={() => setMode("menu")}>Back</button></div>
                   </form>
                 )}
                 {error && <p role="alert" className="px-2.5 py-1.5 text-xs text-[var(--error)]">{error}</p>}

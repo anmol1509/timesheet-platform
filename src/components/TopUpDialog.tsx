@@ -7,6 +7,7 @@ import { cn } from "@/lib/cn";
 import { topUpPriceLabel } from "@/lib/aiCredits";
 import { requestCreditsAction } from "@/app/(platform)/(app)/settings/ai/actions";
 
+import { Button } from "@/components/ui/Button";
 const PACKS = [
   { credits: 1000, note: "A small top-up" },
   { credits: 2500, note: "Month-end push" },
@@ -67,7 +68,7 @@ export function TopUpDialog({ open, onOpenChange, total }: { open: boolean; onOp
             {state.error && <p role="alert" className="text-xs text-[var(--error)]">{state.error}</p>}
             <div className="flex justify-end gap-2">
               <button type="button" className="btn btn-secondary btn-sm" onClick={() => onOpenChange(false)}>Cancel</button>
-              <button type="submit" className="btn btn-primary btn-sm" disabled={pending || credits <= 0}>{pending ? "Sending…" : "Send request"}</button>
+              <Button size="btn-sm" type="submit" disabled={pending || credits <= 0} loading={pending}>Send request</Button>
             </div>
           </form>
         )}

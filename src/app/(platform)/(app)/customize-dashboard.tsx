@@ -10,6 +10,7 @@ import { WidgetThumb } from "@/components/WidgetThumb";
 import { DURATION, EASE } from "@/lib/motion";
 import { saveDashboardPreferenceAction } from "./dashboard-actions";
 
+import { Button } from "@/components/ui/Button";
 type WidgetMeta = { id: string; label: string };
 
 // Short names for the picker; the registry labels are long because they double
@@ -169,9 +170,9 @@ function CustomizeForm({
         <button type="button" onClick={onClose} className="btn btn-secondary">
           Cancel
         </button>
-        <button type="button" onClick={handleSave} disabled={pending} className="btn btn-primary">
-          {pending ? "Saving…" : "Save"}
-        </button>
+        <Button size="btn" type="button" onClick={handleSave} disabled={pending} loading={pending}>
+          Save
+        </Button>
       </DialogFooter>
     </div>
   );
