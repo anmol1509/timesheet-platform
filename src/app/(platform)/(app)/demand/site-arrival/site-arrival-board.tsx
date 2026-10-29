@@ -71,6 +71,8 @@ export function SiteArrivalBoard({
   const [arrivalDate, setArrivalDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [siteId, setSiteId] = useState("");
   const [disapproving, setDisapproving] = useState<ArrivalRow | null>(null);
+  // One worker at a time: the row button opens a small form that asks for that worker's own date, so a single action never borrows the date from the bulk bar.
+  const [rowAction, setRowAction] = useState<{ row: ArrivalRow; mode: "confirm" | "record" } | null>(null);
   const [query, setQuery] = useState("");
 
   // The search narrows what is listed, never what is picked: a worker ticked and then
@@ -158,25 +160,6 @@ export function SiteArrivalBoard({
     });
   }
 
-  // Single-row approve, alongside the bulk one above — the per-row
-  // Approve/Disapprove pair is the primary way through this list; the
-  // checkbox + top bar stays for confirming several at once.
-  function approveOne(employeeId: string) {
-    const body = new FormData();
-    body.append("siteArrivalDate", arrivalDate);
-    if (siteId && siteOptions.some((s) => s.id === siteId)) body.append("siteId", siteId);
-    body.append("employeeId", employeeId);
-    startTransition(async () => {
-      await confirmSiteArrivalAction(body);
-      setPicked((prev) => {
-        const next = new Set(prev);
-        next.delete(employeeId);
-        return next;
-      });
-      router.refresh();
-    });
-  }
-
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -225,10 +208,15 @@ export function SiteArrivalBoard({
             These workers are Active but nobody has recorded when they reached site, so attendance cannot be marked for them. Enter the date they actually arrived. Their status does not change.
           </p>
         )}
-        {(tab === "pending" || tab === "unrecorded") && (
+        {(tab === "pending" || tab === "unrecorded") && picked.size === 0 && (
+          <p className="border-b border-default px-4 py-3 text-xs text-muted">
+            Use the button on a row to {tab === "unrecorded" ? "record" : "confirm"} one worker, or tick several to {tab === "unrecorded" ? "record" : "confirm"} them together.
+          </p>
+        )}
+        {(tab === "pending" || tab === "unrecorded") && picked.size > 0 && (
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-default px-4 py-3">
             <span className="text-xs text-muted">
-              {picked.size > 0 ? `${picked.size} selected` : tab === "unrecorded" ? "Select who to record" : "Select who reached site"}
+              {`${picked.size} selected, one date for all`}
             </span>
             <div className="flex flex-wrap items-center gap-3">
               <label className="flex items-center gap-1.5">
@@ -355,10 +343,10 @@ export function SiteArrivalBoard({
                         <button
                           type="button"
                           disabled={saving}
-                          onClick={() => recordMissing([r.id])}
-                          className="text-xs font-medium text-[var(--brand-primary)] hover:underline disabled:opacity-60"
+                          onClick={() => setRowAction({ row: r, mode: "record" })}
+                          className="btn btn-secondary btn-sm"
                         >
-                          Record
+                          Record arrival
                         </button>
                       ) : tab === "arrived" ? (
                         <button
@@ -375,10 +363,10 @@ export function SiteArrivalBoard({
                           <button
                             type="button"
                             disabled={saving}
-                            onClick={() => approveOne(r.id)}
-                            className="text-xs font-medium text-[var(--success)] hover:underline disabled:opacity-60"
+                            onClick={() => setRowAction({ row: r, mode: "confirm" })}
+                            className="btn btn-secondary btn-sm"
                           >
-                            Approve
+                            Confirm on site
                           </button>
                           <button
                             type="button"
@@ -411,6 +399,12 @@ export function SiteArrivalBoard({
         )}
       </div>
 
+      <ArrivalModal
+        target={rowAction}
+        sites={sites}
+        onClose={() => setRowAction(null)}
+        onDone={() => router.refresh()}
+      />
       <DisapproveModal
         row={disapproving}
         onClose={() => setDisapproving(null)}
@@ -496,6 +490,102 @@ function DisapproveForm({
           className="btn btn-danger"
         >
           {pending ? "Saving…" : "Disapprove"}
+        </button>
+      </DialogFooter>
+    </div>
+  );
+}
+
+/** Asks for one worker's own arrival date. The bulk bar's date is only for the workers ticked there. */
+function ArrivalModal({
+  target,
+  sites,
+  onClose,
+  onDone,
+}: {
+  target: { row: ArrivalRow; mode: "confirm" | "record" } | null;
+  sites: { id: string; name: string; projectId: string }[];
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const row = target?.row ?? null;
+  return (
+    <Dialog open={!!target} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent
+        title={target?.mode === "record" ? "Record arrival" : "Confirm on site"}
+        description={row ? `${row.name} (${row.employeeIdNo})${row.projectLabel ? `, ${row.projectLabel}` : ""}` : undefined}
+      >
+        {target && (
+          <ArrivalForm
+            key={target.row.id}
+            target={target}
+            sites={sites.filter((s) => s.projectId === target.row.projectId)}
+            onClose={onClose}
+            onDone={onDone}
+          />
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ArrivalForm({
+  target,
+  sites,
+  onClose,
+  onDone,
+}: {
+  target: { row: ArrivalRow; mode: "confirm" | "record" };
+  sites: { id: string; name: string; projectId: string }[];
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const { row, mode } = target;
+  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [siteId, setSiteId] = useState("");
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  function submit() {
+    setError(null);
+    const body = new FormData();
+    body.append("employeeId", row.id);
+    body.append("siteArrivalDate", date);
+    if (siteId) body.append("siteId", siteId);
+    startTransition(async () => {
+      if (mode === "record") {
+        const res = await recordMissingArrivalAction(body);
+        if (res?.error) return setError(res.error);
+        if (!res?.recorded) return setError("Nothing was recorded. The worker may already have an arrival date.");
+      } else {
+        const res = await confirmSiteArrivalAction(body);
+        if (!res?.confirmed) return setError("Couldn't confirm this worker. Check the date and try again.");
+      }
+      onDone();
+      onClose();
+    });
+  }
+
+  return (
+    <div className="mt-4 space-y-4">
+      <label className="block">
+        <span className="mb-1 block text-xs font-medium text-muted">Reached site on</span>
+        <DatePicker value={date} onChange={(v) => setDate(v)} className="w-full" />
+        <span className="mt-1 block text-xs text-subtle">
+          {mode === "record" ? "Joined " + formatDate(row.joinDate ?? null) + ". Enter the day they really arrived." : "Due on site " + formatDate(row.mobilisationDate) + "."}
+        </span>
+      </label>
+      {sites.length > 0 && (
+        <label className="block">
+          <span className="mb-1 block text-xs font-medium text-muted">Site (optional)</span>
+          <Select value={siteId} onChange={setSiteId} placeholder="No site" options={sites.map((s) => ({ value: s.id, label: s.name }))} />
+        </label>
+      )}
+      {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
+      <DialogFooter>
+        <button type="button" onClick={onClose} className="btn btn-secondary">Cancel</button>
+        <button type="button" onClick={submit} disabled={pending || !date} className="btn btn-primary">
+          {pending ? "Saving…" : mode === "record" ? "Record arrival" : "Confirm on site"}
         </button>
       </DialogFooter>
     </div>
