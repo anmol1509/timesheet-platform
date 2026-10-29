@@ -152,9 +152,12 @@ export function TwoLevelNav({ brandSlot, ...props }: Props & { brandSlot?: React
         })}
       </aside>
       <aside className="glass nav-surface fixed top-3 bottom-3 left-[6.25rem] z-20 hidden w-56 flex-col overflow-hidden rounded-[22px] lg:flex">
-        <h2 className="shrink-0 px-4 pt-4 pb-2 text-sm font-semibold text-primary">{current}</h2>
-        <div className="min-h-0 flex-1 overflow-y-auto px-2.5 pb-3">
-          <CategoryPages model={model} category={current} />
+        {/* Keyed by area so the list eases in each time another area is picked. */}
+        <div key={current} className="step-enter flex min-h-0 flex-1 flex-col">
+          <h2 className="shrink-0 px-4 pt-4 pb-2 text-sm font-semibold text-primary">{current}</h2>
+          <div className="min-h-0 flex-1 overflow-y-auto px-2.5 pb-3">
+            <CategoryPages model={model} category={current} />
+          </div>
         </div>
         {brandSlot && <div className="shrink-0 border-t border-default p-3">{brandSlot}</div>}
       </aside>

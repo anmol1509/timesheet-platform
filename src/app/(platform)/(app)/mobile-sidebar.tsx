@@ -41,7 +41,7 @@ export function MobileSidebar({
       </RadixDialog.Trigger>
       <RadixDialog.Portal>
         <RadixDialog.Overlay className="rx-overlay fixed inset-0 z-40 bg-[#101828]/40 backdrop-blur-[2px] lg:hidden" />
-        <RadixDialog.Content className="fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col border-r border-default bg-surface outline-none lg:hidden">
+        <RadixDialog.Content className="rx-sheet-left fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col border-r border-default bg-surface outline-none lg:hidden">
           <RadixDialog.Title className="sr-only">Navigation</RadixDialog.Title>
           <div className="flex h-16 shrink-0 items-center justify-between pr-2.5 pl-4">
             <BrandMark onNavigate={() => setOpen(false)} />
