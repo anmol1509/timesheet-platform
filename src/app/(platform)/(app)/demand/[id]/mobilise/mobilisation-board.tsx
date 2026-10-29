@@ -18,6 +18,7 @@ import {
 } from "../../actions";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { HeldSuppliersList } from "@/components/HeldSuppliers";
+import { Dialog, DialogContent, DialogFooter } from "@/components/ui/Dialog";
 
 type Line = {
   id: string;
@@ -88,6 +89,8 @@ export function MobilisationBoard({
   const [mobilisationDate, setMobilisationDate] = useState(
     () => new Date().toISOString().slice(0, 10)
   );
+  // One worker mobilised from their own row, with their own date.
+  const [one, setOne] = useState<Worker | null>(null);
 
   const activeLine = lines.find((l) => l.id === activeLineId) ?? lines[0];
   const assignedIds = useMemo(
@@ -162,6 +165,19 @@ export function MobilisationBoard({
     startTransition(async () => {
       await allocateEmployeesAction(body);
       setPicked(new Set());
+      router.refresh();
+    });
+  }
+
+  function assignOne(w: Worker, date: string) {
+    const body = new FormData();
+    body.append("tradeId", activeLine.id);
+    body.append("mobilisationDate", date);
+    body.append("employeeId", w.id);
+    startTransition(async () => {
+      await allocateEmployeesAction(body);
+      setOne(null);
+      setPicked((prev) => { const next = new Set(prev); next.delete(w.id); return next; });
       router.refresh();
     });
   }
@@ -308,10 +324,6 @@ export function MobilisationBoard({
               ))}
             </div>
             <div className="flex items-center gap-3">
-              <label className="flex items-center gap-1.5">
-                <span className="text-xs text-muted">On site from</span>
-                <DatePicker value={mobilisationDate} onChange={(v) => setMobilisationDate(v)} disabled={locked} />
-              </label>
               <span className="text-xs text-muted">
                 {locked
                   ? approvalStateOf(activeLine) === "REFUSED"
@@ -319,16 +331,26 @@ export function MobilisationBoard({
                     : "Approve this trade to mobilise"
                   : remaining === 0
                     ? "Line is full"
-                    : `${remaining} still needed`}
+                    : picked.size === 0
+                      ? `${remaining} still needed. Use the button on a row, or tick several to mobilise them together.`
+                      : `${picked.size} selected, one date for all`}
               </span>
-              <button
-                type="button"
-                onClick={assign}
-                disabled={locked || pending || picked.size === 0}
-                className="btn btn-primary btn-sm"
-              >
-                Mobilise {picked.size > 0 ? picked.size : ""}
-              </button>
+              {picked.size > 0 && (
+                <>
+                  <label className="flex items-center gap-1.5">
+                    <span className="text-xs text-muted">On site from</span>
+                    <DatePicker value={mobilisationDate} onChange={(v) => setMobilisationDate(v)} disabled={locked} />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={assign}
+                    disabled={locked || pending}
+                    className="btn btn-primary btn-sm"
+                  >
+                    Mobilise {picked.size}
+                  </button>
+                </>
+              )}
             </div>
           </div>
 
@@ -376,6 +398,14 @@ export function MobilisationBoard({
                       <Blocked worker={w} />
                     </div>
                     <span className="text-xs text-muted">{w.trade || "No trade set"}</span>
+                    <button
+                      type="button"
+                      onClick={() => setOne(w)}
+                      disabled={locked || pending || !!w.blocked || remaining === 0}
+                      className="btn btn-secondary btn-sm shrink-0"
+                    >
+                      Mobilise
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -442,6 +472,33 @@ export function MobilisationBoard({
         </div>
       </div>
     </div>
+    <MobiliseOneModal worker={one} trade={activeLine.trade} pending={pending} onClose={() => setOne(null)} onConfirm={assignOne} />
+    </div>
+  );
+}
+
+function MobiliseOneModal({ worker, trade, pending, onClose, onConfirm }: { worker: Worker | null; trade: string; pending: boolean; onClose: () => void; onConfirm: (w: Worker, date: string) => void }) {
+  return (
+    <Dialog open={!!worker} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent title="Mobilise" description={worker ? `${worker.name} (${worker.employeeIdNo}) as ${trade}` : undefined}>
+        {worker && <MobiliseOneForm key={worker.id} worker={worker} pending={pending} onClose={onClose} onConfirm={onConfirm} />}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function MobiliseOneForm({ worker, pending, onClose, onConfirm }: { worker: Worker; pending: boolean; onClose: () => void; onConfirm: (w: Worker, date: string) => void }) {
+  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  return (
+    <div className="mt-4 space-y-4">
+      <label className="block">
+        <span className="mb-1 block text-xs font-medium text-muted">On site from</span>
+        <DatePicker value={date} onChange={(v) => setDate(v)} className="w-full" />
+      </label>
+      <DialogFooter>
+        <button type="button" onClick={onClose} className="btn btn-secondary">Cancel</button>
+        <button type="button" disabled={pending || !date} onClick={() => onConfirm(worker, date)} className="btn btn-primary">{pending ? "Mobilising…" : "Mobilise"}</button>
+      </DialogFooter>
     </div>
   );
 }
