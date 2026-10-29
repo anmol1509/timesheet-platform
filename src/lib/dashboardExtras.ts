@@ -223,6 +223,8 @@ export type OperationsSnapshot = {
   transport: { vehicles: number; inMaintenance: number; expired: number; expiringSoon: number } | null;
   inventory: { low: number; out: number; itemsHeld: number } | null;
   waitingForBed: number | null;
+  /** Active workers whose arrival on site was never recorded, so attendance cannot be marked for them. Null when the person may not open Demand. */
+  arrivalNotRecorded: number | null;
   drafts: number;
 };
 
@@ -232,7 +234,7 @@ const DONE_STAGE = /issued|complete|approved|done|stamped|received|closed|cancel
 export async function getOperationsSnapshot(
   branchId: string | null,
   userId: string,
-  allow: { sales: boolean; onboarding: boolean; employees: boolean; transport: boolean; inventory: boolean; camps: boolean },
+  allow: { sales: boolean; onboarding: boolean; employees: boolean; transport: boolean; inventory: boolean; camps: boolean; demand: boolean },
 ): Promise<OperationsSnapshot> {
   const bw = branchWhere(branchId);
   const now = new Date();
@@ -249,7 +251,7 @@ export async function getOperationsSnapshot(
     }
     return n;
   };
-  const [sales, onboarding, applications, transport, inventory, waiting, drafts] = await Promise.all([
+  const [sales, onboarding, applications, transport, inventory, waiting, arrivalNotRecorded, drafts] = await Promise.all([
     allow.sales
       ? Promise.all([
           prisma.enquiry.count({ where: { ...bw, status: "Open" } }),
@@ -303,7 +305,8 @@ export async function getOperationsSnapshot(
           })
       : null,
     allow.camps ? prisma.campCheckIn.count({ where: { status: "CHECKED_IN", bedId: null, camp: { ownerType: "OWN", ...bw } } }) : null,
+    allow.demand ? prisma.employee.count({ where: { ...bw, active: true, status: "ACTIVE", siteArrivalDate: null } }) : null,
     prisma.draft.count({ where: { userId } }),
   ]);
-  return { sales, onboarding, applications, transport, inventory, waitingForBed: waiting, drafts };
+  return { sales, onboarding, applications, transport, inventory, waitingForBed: waiting, arrivalNotRecorded, drafts };
 }

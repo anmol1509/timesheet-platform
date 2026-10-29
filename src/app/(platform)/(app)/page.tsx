@@ -137,6 +137,7 @@ export default async function DashboardPage() {
           transport: can(subject, "facilities.transport", "view"),
           inventory: can(subject, "facilities.inventory", "view"),
           camps: can(subject, "facilities.camps", "view"),
+          demand: can(subject, "demand", "view"),
         }).catch(() => null)
       : null,
   ]);

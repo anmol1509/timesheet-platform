@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { EmployeeAvatar } from "@/components/Avatar";
 import { Select } from "@/components/ui/Select";
@@ -586,7 +587,13 @@ export function AttendanceForm({
                         )}
                         {!eligible && (
                           <span className="ml-1.5 text-xs text-[var(--warning)]">
-                            not yet arrived{e.siteArrivalDate ? ` (from ${e.siteArrivalDate})` : ""}
+                            {e.siteArrivalDate ? `not yet arrived (from ${e.siteArrivalDate})` : "arrival not recorded"}
+                            {!e.siteArrivalDate && (
+                              <>
+                                {" "}
+                                <Link href="/demand/site-arrival?tab=unrecorded" className="underline" title="Mobilisation confirms when a worker reached site; attendance follows that date">mobilisation to confirm</Link>
+                              </>
+                            )}
                           </span>
                         )}
                       </td>

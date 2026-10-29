@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   AlertTriangle,
   BedDouble,
+  MapPinCheck,
   CheckCircle2,
   UserPlus,
   Upload as UploadIcon,
@@ -616,6 +617,9 @@ export function buildTodo(d: DashboardData): TodoItem[] {
   }
   if (o?.waitingForBed) {
     out.push({ rank: 35, key: "beds", tone: "amber", icon: BedDouble, title: `${plural(o.waitingForBed, "worker")} waiting for a bed`, sub: "Checked in, no bed yet", href: "/accommodation/camps", action: "Assign beds" });
+  }
+  if (o?.arrivalNotRecorded) {
+    out.push({ rank: 38, key: "arrival", tone: "amber", icon: MapPinCheck, title: `${plural(o.arrivalNotRecorded, "worker")} active but arrival not recorded`, sub: "Attendance cannot be marked until mobilisation confirms the date they reached site", href: "/demand/site-arrival?tab=unrecorded", action: "Record arrival" });
   }
   if (o?.onboarding && o.onboarding.readyToJoin > 0) {
     out.push({ rank: 55, key: "ready", tone: "blue", icon: UserPlus, title: `${plural(o.onboarding.readyToJoin, "candidate")} ready to join`, sub: "Onboarding is complete", href: "/onboarding", action: "Open tracker" });
