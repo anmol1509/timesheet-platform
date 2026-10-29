@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { Prisma } from "@/generated/prisma/client";
 import { branchWhere } from "@/lib/branch";
 import { can, type PermissionSubject } from "@/lib/permissions";
 import { billVariance, exceedsApprovalLimit } from "@/lib/financeRules";
@@ -266,7 +267,49 @@ export async function loadApprovals(scope: ApprovalScope, only?: ApprovalKind[])
  * can show it on every page without loading the items. Mirrors loadApprovals
  * kind by kind (grouped kinds count groups, not rows).
  */
+/**
+ * How many requests wait for this person. This runs on every page (the sidebar and bell badge), so it is a single
+ * query. If that query ever fails the per-table version below answers instead, so the badge is never wrong.
+ */
 export async function countPendingApprovals(scope: ApprovalScope): Promise<number> {
+  try {
+    return await countPendingApprovalsOneQuery(scope);
+  } catch {
+    return countPendingApprovalsByTable(scope);
+  }
+}
+
+export async function countPendingApprovalsOneQuery(scope: ApprovalScope): Promise<number> {
+  const allowed = allowedKinds(scope.subject);
+  const has = (k: ApprovalKind) => allowed.includes(k);
+  if (allowed.length === 0) return 0;
+  const sql = Prisma.sql;
+  const inBranch = (col: string) => (scope.branchId ? sql`AND ${Prisma.raw(col)} = ${scope.branchId}` : Prisma.empty);
+  const parts: Prisma.Sql[] = [];
+  if (has("EXPENSE")) parts.push(sql`SELECT count(*) FROM "Expense" WHERE status = 'PENDING' ${inBranch('"branchId"')}`);
+  if (has("BILL")) parts.push(sql`SELECT count(*) FROM "SupplierBill" WHERE "approvalStatus" = 'PENDING' ${inBranch('"branchId"')}`);
+  if (has("PAYROLL")) parts.push(sql`SELECT count(*) FROM "PayrollRun" WHERE status = 'DRAFT' AND "submittedAt" IS NOT NULL ${inBranch('"branchId"')}`);
+  if (has("ADVANCE")) parts.push(sql`SELECT count(*) FROM "EmployeeLoan" WHERE "approvalStatus" = 'PENDING' AND status = 'ACTIVE' ${inBranch('"branchId"')}`);
+  if (has("WORKER")) parts.push(sql`SELECT count(*) FROM "WorkerSubmission" WHERE status = 'PENDING' ${inBranch('"branchId"')}`);
+  if (has("CHANGE")) parts.push(sql`SELECT count(*) FROM "SupplierChangeRequest" WHERE status = 'PENDING' ${inBranch('"branchId"')}`);
+  if (has("SUPPLIER")) {
+    parts.push(sql`SELECT ${Prisma.join(SUPPLIER_FLAGS.map(([f]) => sql`count(*) FILTER (WHERE ${Prisma.raw(`"${f}"`)} = 'Pending')`), " + ")} FROM "Supplier" WHERE "isOwnCompany" = false ${inBranch('"branchId"')}`);
+  }
+  if (has("DEMAND")) {
+    parts.push(sql`SELECT count(*) FROM "DemandRequest" d WHERE d.status NOT IN ('Closed', 'Rejected') ${inBranch('d."branchId"')} AND EXISTS (SELECT 1 FROM "DemandRequestTrade" t WHERE t."demandRequestId" = d.id AND t."approvedQuantity" IS NULL)`);
+  }
+  if (has("TIMESHEET")) {
+    parts.push(sql`SELECT count(*) FROM (SELECT 1 FROM "TimesheetEntry" WHERE status IN ('SUBMITTED', 'UNDER_REVIEW') ${inBranch('"branchId"')} GROUP BY "supplierId", "clientId", "month") g`);
+  }
+  if (has("CORRECTION")) {
+    parts.push(sql`SELECT count(*) FROM "AttendanceCorrectionRequest" c JOIN "Attendance" a ON a.id = c."attendanceId" WHERE c.status = 'PENDING' ${inBranch('a."branchId"')}`);
+  }
+  if (has("DEPLOYMENT")) parts.push(sql`SELECT count(*) FROM "ProjectAssignmentRequest" WHERE status = 'PENDING' ${inBranch('"branchId"')}`);
+  const rows = await prisma.$queryRaw<{ n: number }[]>(sql`SELECT (${Prisma.join(parts.map((p) => sql`(${p})`), " + ")})::int AS n`);
+  return Number(rows[0]?.n ?? 0);
+}
+
+export async function countPendingApprovalsByTable(scope: ApprovalScope): Promise<number> {
   const allowed = allowedKinds(scope.subject);
   const has = (k: ApprovalKind) => allowed.includes(k);
   const bw = branchWhere(scope.branchId);

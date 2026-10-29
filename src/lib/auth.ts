@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/db";
@@ -13,7 +14,11 @@ import {
   type PermissionSubject,
 } from "@/lib/permissions";
 
-export async function getCurrentUser() {
+/**
+ * The signed-in user. Cached for the length of one request: the layout, the page and every permission check all ask,
+ * and each used to run its own User, role, branch and session queries.
+ */
+export const getCurrentUser = cache(async () => {
   const session = await getSessionFromCookies();
   if (!session) return null;
   const user = await prisma.user.findUnique({
@@ -26,7 +31,7 @@ export async function getCurrentUser() {
   if (user && !user.isActive) return null;
   if (user && !(await sessionStillValid(session, user.sessionsValidAfter))) return null;
   return user;
-}
+});
 
 type UserWithRole = NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>;
 

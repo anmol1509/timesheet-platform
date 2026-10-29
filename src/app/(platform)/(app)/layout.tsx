@@ -45,7 +45,8 @@ export default async function AppLayout({
   // layout, which no per-page error boundary can catch (error.js doesn't
   // wrap the layout.js in its own segment). Degrade to an empty header
   // instead of crashing the whole shell.
-  const [alertsResult, branchesResult, inboxResult, unreadResult] = await Promise.allSettled([
+  // One round trip for everything the header and sidebar need, instead of four in a row.
+  const [alertsResult, branchesResult, inboxResult, unreadResult, aiResult, approvalsResult, ticketsResult] = await Promise.allSettled([
     getComplianceAlerts(branchId),
     // Only SUPER_ADMIN gets a switcher — everyone else has exactly one branch.
     prisma.branch.findMany({
@@ -59,6 +60,13 @@ export default async function AppLayout({
       select: { id: true, title: true, body: true, href: true, readAt: true },
     }),
     prisma.notification.count({ where: { userId: user.id, readAt: null } }),
+    // The AI credits bar is a header extra too: if the count can't be read it simply doesn't show.
+    branchId && !isSuperAdmin ? loadCreditStatus(branchId) : Promise.resolve(null),
+    // A failed count must never take the page down: the badge just doesn't show.
+    countPendingApprovals({ branchId, isSuperAdmin, subject: subjectOf(user), role: user.role }),
+    // Sidebar badges, only where somebody has to act: documents expiring or expired, and supplier tickets still
+    // waiting for a reply. Both degrade to "no badge" rather than failing the page.
+    prisma.supplierTicket.count({ where: { ...branchWhere(branchId), status: "OPEN" } }),
   ]);
   const inbox = inboxResult.status === "fulfilled"
     ? inboxResult.value.map((n) => ({ id: n.id, title: n.title, body: n.body, href: n.href, read: n.readAt !== null }))
@@ -66,18 +74,12 @@ export default async function AppLayout({
   const unreadCount = unreadResult.status === "fulfilled" ? unreadResult.value : 0;
   const alerts = alertsResult.status === "fulfilled" ? alertsResult.value : [];
   const branches = branchesResult.status === "fulfilled" ? branchesResult.value : [];
+  const aiStatus = aiResult.status === "fulfilled" ? aiResult.value : null;
+  const pendingApprovals = approvalsResult.status === "fulfilled" ? approvalsResult.value : 0;
+  const openTickets = ticketsResult.status === "fulfilled" ? ticketsResult.value : 0;
   const isAdmin = user.role !== "STAFF";
   const showOwner = ownerConsoleOn() && isOwnerUser(user);
-  // The AI credits bar is a header extra too: if the count can't be read it simply doesn't show.
-  const aiStatus = branchId && !isSuperAdmin ? await loadCreditStatus(branchId).catch(() => null) : null;
   const allowedModules = viewableModules(subjectOf(user));
-  // A failed count must never take the page down: the badge just doesn't show.
-  const pendingApprovals = await countPendingApprovals({ branchId, isSuperAdmin, subject: subjectOf(user), role: user.role }).catch(() => 0);
-
-  // Sidebar badges, only where somebody has to act: documents expiring or
-  // expired, and supplier tickets still waiting for a reply. Both degrade to
-  // "no badge" rather than failing the page.
-  const openTickets = await prisma.supplierTicket.count({ where: { ...branchWhere(branchId), status: "OPEN" } }).catch(() => 0);
   const badges: Record<string, number> = {
     "/employees/renewals": alerts.length,
     "/suppliers/tickets": openTickets,
