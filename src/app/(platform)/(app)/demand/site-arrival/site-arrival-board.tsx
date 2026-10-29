@@ -401,7 +401,6 @@ export function SiteArrivalBoard({
 
       <ArrivalModal
         target={rowAction}
-        sites={sites}
         onClose={() => setRowAction(null)}
         onDone={() => router.refresh()}
       />
@@ -499,12 +498,10 @@ function DisapproveForm({
 /** Asks for one worker's own arrival date. The bulk bar's date is only for the workers ticked there. */
 function ArrivalModal({
   target,
-  sites,
   onClose,
   onDone,
 }: {
   target: { row: ArrivalRow; mode: "confirm" | "record" } | null;
-  sites: { id: string; name: string; projectId: string }[];
   onClose: () => void;
   onDone: () => void;
 }) {
@@ -519,7 +516,6 @@ function ArrivalModal({
           <ArrivalForm
             key={target.row.id}
             target={target}
-            sites={sites.filter((s) => s.projectId === target.row.projectId)}
             onClose={onClose}
             onDone={onDone}
           />
@@ -531,18 +527,15 @@ function ArrivalModal({
 
 function ArrivalForm({
   target,
-  sites,
   onClose,
   onDone,
 }: {
   target: { row: ArrivalRow; mode: "confirm" | "record" };
-  sites: { id: string; name: string; projectId: string }[];
   onClose: () => void;
   onDone: () => void;
 }) {
   const { row, mode } = target;
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [siteId, setSiteId] = useState("");
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -551,7 +544,6 @@ function ArrivalForm({
     const body = new FormData();
     body.append("employeeId", row.id);
     body.append("siteArrivalDate", date);
-    if (siteId) body.append("siteId", siteId);
     startTransition(async () => {
       if (mode === "record") {
         const res = await recordMissingArrivalAction(body);
@@ -575,12 +567,6 @@ function ArrivalForm({
           {mode === "record" ? "Joined " + formatDate(row.joinDate ?? null) + ". Enter the day they really arrived." : "Due on site " + formatDate(row.mobilisationDate) + "."}
         </span>
       </label>
-      {sites.length > 0 && (
-        <label className="block">
-          <span className="mb-1 block text-xs font-medium text-muted">Site (optional)</span>
-          <Select value={siteId} onChange={setSiteId} placeholder="No site" options={sites.map((s) => ({ value: s.id, label: s.name }))} />
-        </label>
-      )}
       {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
       <DialogFooter>
         <button type="button" onClick={onClose} className="btn btn-secondary">Cancel</button>
