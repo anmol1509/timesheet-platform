@@ -258,7 +258,7 @@ export function SiteArrivalBoard({
           </div>
         )}
 
-        <div className="overflow-x-auto">
+        <div key={tab} className="step-enter overflow-x-auto">
           <table className="w-full min-w-[52rem] text-sm">
             <thead className="border-b border-default bg-surface-subtle text-left text-xs font-medium tracking-wide text-muted uppercase">
               <tr>
