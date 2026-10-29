@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/db";
@@ -13,11 +14,17 @@ import {
   type PermissionSubject,
 } from "@/lib/permissions";
 
-export async function getCurrentUser() {
+/**
+ * The signed-in user. Cached for the length of one request: the layout, the page and every permission check all ask,
+ * and each used to run its own User, role, branch and session queries.
+ */
+export const getCurrentUser = cache(async () => {
   const session = await getSessionFromCookies();
   if (!session) return null;
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
+    // One query with the role and branch joined in, instead of three in a row.
+    relationLoadStrategy: "join",
     include: { accessRole: { select: { id: true, name: true, permissions: true } }, branch: { select: { suspendedAt: true } } },
   });
   // A company the owner has suspended is signed out too (the owner's own account is never locked out of it).
@@ -26,7 +33,7 @@ export async function getCurrentUser() {
   if (user && !user.isActive) return null;
   if (user && !(await sessionStillValid(session, user.sessionsValidAfter))) return null;
   return user;
-}
+});
 
 type UserWithRole = NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>;
 

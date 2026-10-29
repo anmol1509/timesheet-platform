@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Building2, Sparkles, ChevronRight } from "lucide-react";
-import { BRAND_ICON, BRAND_LOGO, BRAND_LOGO_ASPECT } from "@/lib/brand-assets";
+import { BRAND_ICON_URL, BRAND_LOGO_URL, BRAND_LOGO_ASPECT } from "@/lib/brand-urls";
 import { cn } from "@/lib/cn";
 
 export type Brand = {
@@ -29,11 +29,11 @@ export function BrandMark({
       className="flex min-w-0 items-center gap-2.5"
       aria-label="ManpowerSync: dashboard"
     >
-      {/* eslint-disable @next/next/no-img-element -- data URIs, no loader needed */}
+      {/* eslint-disable @next/next/no-img-element -- a static file, no loader needed */}
       {collapsed ? (
-        <img src={BRAND_ICON} alt="" width={32} height={32} className="h-8 w-8 shrink-0" />
+        <img src={BRAND_ICON_URL} alt="" width={32} height={32} className="h-8 w-8 shrink-0" />
       ) : (
-        <img src={BRAND_LOGO} alt="ManpowerSync" width={Math.round(34 * BRAND_LOGO_ASPECT)} height={34} className="brand-logo h-[34px] w-auto max-w-full" />
+        <img src={BRAND_LOGO_URL} alt="ManpowerSync" width={Math.round(34 * BRAND_LOGO_ASPECT)} height={34} className="brand-logo h-[34px] w-auto max-w-full" />
       )}
       {/* eslint-enable @next/next/no-img-element */}
     </Link>
