@@ -1,5 +1,6 @@
 "use client";
 
+import { NewLink } from "@/components/PermissionsProvider";
 import Link from "next/link";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -200,7 +201,7 @@ export function PersonWizard({ docTypes, companies, people, existing, canAddDocs
             </div>
             {same.map((m) => (
               <p key={m.id} role="status" className="rounded-lg border border-[var(--warning-border)] bg-[var(--warning-soft)] px-4 py-3 text-sm text-[var(--warning)]">
-                <span className="font-medium">{m.name}</span> is already on the list. <Link href={`/my-companies/people/new?person=${m.id}`} className="font-medium underline">Assign companies to them instead</Link> so there is no duplicate.
+                <span className="font-medium">{m.name}</span> is already on the list. <NewLink href={`/my-companies/people/new?person=${m.id}`} className="font-medium underline">Assign companies to them instead</NewLink> so there is no duplicate.
               </p>
             ))}
           </section>

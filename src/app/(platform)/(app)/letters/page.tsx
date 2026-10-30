@@ -1,3 +1,4 @@
+import { NewLink } from "@/components/PermissionsProvider";
 import { MARGIN_BRANCH_SELECT, marginsOfBranch } from "@/lib/paperMargins";
 import Link from "next/link";
 import { FileSignature } from "lucide-react";
@@ -69,7 +70,7 @@ export default async function EmployeeLettersPage({ searchParams }: { searchPara
           { label: "Templates", value: String(templates.length) },
           { label: "Most requested", value: mostRequested },
         ]}
-        actions={<Link href="/operations/nocs/new" className={heroButton()}>New NOC</Link>}
+        actions={<NewLink href="/operations/nocs/new" className={heroButton()}>New NOC</NewLink>}
       />
 
       {!branchId ? (

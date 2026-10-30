@@ -1,5 +1,6 @@
 "use client";
 
+import { useCanAt, useCanWriteHere } from "@/components/PermissionsProvider";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Check, Loader2, X } from "lucide-react";
@@ -118,6 +119,10 @@ export function Button(props: ButtonAsButton | ButtonAsLink) {
     );
   }, [loading, autoOutcome, successProp, errorProp]);
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
+  // People who may not create at a "…/new" link, or may not change anything on this page, are not shown the button.
+  const hrefText = "href" in props && typeof props.href === "string" ? props.href : "";
+  const mayCreate = useCanAt(hrefText || "/", "create");
+  const mayWrite = useCanWriteHere();
 
   const success = successProp ?? auto === "success";
   const failed = !success && (errorProp ?? auto === "error");
@@ -130,6 +135,7 @@ export function Button(props: ButtonAsButton | ButtonAsLink) {
   );
 
   if ("href" in props && props.href) {
+    if (/\/new(\/|$)/.test(hrefText) && !mayCreate) return null;
     if (props.disabled) {
       return (
         <span aria-disabled data-variant={variant} className={cn(classes, "pointer-events-none opacity-50")}>
@@ -163,6 +169,7 @@ export function Button(props: ButtonAsButton | ButtonAsLink) {
 
   // Main buttons fill left to right while they work, then turn green with a tick (or red with a cross and a shake).
   // Secondary and quiet buttons swap their label for a spinner, then for a tick or a cross.
+  if ((rest as { type?: string }).type === "submit" && !mayWrite) return null;
   const fills = variant === "primary" || variant === "danger";
   const state = success ? "success" : failed ? "error" : loading ? "loading" : "idle";
   const tick = <Check className="h-4 w-4 shrink-0" strokeWidth={3} aria-hidden />;

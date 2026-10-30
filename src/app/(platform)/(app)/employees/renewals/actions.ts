@@ -3,7 +3,7 @@
 import { canSeeRenewal } from "@/lib/renewalAccess";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch, requireWrite, subjectOf } from "@/lib/auth";
+import { requireUserWithBranch, requireWrite, subjectOf, requirePermission } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { RENEWAL_STATUS_KEYS, type RenewalRef } from "@/lib/renewalCases";
@@ -19,6 +19,7 @@ const MAX_AT_ONCE = 300;
  */
 export async function updateRenewalsAction(refs: RenewalRef[], patch: RenewalPatch): Promise<{ ok: true; count: number } | { error: string }> {
   await requireWrite("workforce.renewals");
+  await requirePermission("workforce.renewals", "edit");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   if (!Array.isArray(refs) || refs.length === 0) return { error: "Choose at least one renewal." };
   if (refs.length > MAX_AT_ONCE) return { error: `Change at most ${MAX_AT_ONCE} renewals at a time.` };
@@ -104,6 +105,7 @@ export async function updateRenewalsAction(refs: RenewalRef[], patch: RenewalPat
 /** Sets the new expiry on a worker's record after a renewal, for documents the scanner doesn't read (medical, insurance, ...) or when its date needs correcting. */
 export async function setRenewalExpiryAction(input: { employeeId: string; field: string; expiry: string }): Promise<{ ok: true } | { error: string }> {
   await requireWrite("workforce.renewals");
+  await requirePermission("workforce.renewals", "edit");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const field = COMPLIANCE_FIELDS.find((f) => f.key === input.field);
   if (!field) return { error: "That isn't a renewable date." };

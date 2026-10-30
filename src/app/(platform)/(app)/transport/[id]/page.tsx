@@ -1,3 +1,4 @@
+import { NewLink } from "@/components/PermissionsProvider";
 import { Plus } from "lucide-react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -176,14 +177,14 @@ export default async function VehicleDetailPage({
       <div className="card p-5">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-primary">Routes</h2>
-          <Link
+          <NewLink
             href={`/transport/routes/new?vehicleId=${vehicle.id}`}
             className="inline-flex items-center gap-1 text-xs font-medium text-[var(--brand-primary)] hover:underline"
           >
             <Plus className="h-4 w-4" aria-hidden />
 
             New Route
-          </Link>
+          </NewLink>
         </div>
         {vehicle.routes.length === 0 ? (
           <p className="text-sm text-muted">No routes for this vehicle yet.</p>

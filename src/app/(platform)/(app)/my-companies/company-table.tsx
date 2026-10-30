@@ -1,5 +1,6 @@
 "use client";
 
+import { Allowed } from "@/components/PermissionsProvider";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ChevronRight, Pencil } from "lucide-react";
@@ -115,9 +116,9 @@ export function CompanyTable({ rows, canSuppliers, wizardData }: { rows: Company
         renderRowActions={(row) => (
           <div className="flex items-center justify-end gap-3">
             {canSuppliers && <SupplierEmployeePanel supplierId={row.id} supplierName={row.name} supplierBranchId={row.branchId} wizardData={wizardData} />}
-            <Link href={`/suppliers/${row.id}`} className="inline-flex items-center gap-1 text-xs font-medium text-[var(--brand-primary)] hover:underline">
+            <Allowed action="edit"><Link href={`/suppliers/${row.id}`} className="inline-flex items-center gap-1 text-xs font-medium text-[var(--brand-primary)] hover:underline">
               <Pencil className="h-3.5 w-3.5" /> Edit
-            </Link>
+            </Link></Allowed>
           </div>
         )}
         emptyState={<p className="px-4 py-8 text-center text-muted">No companies match.</p>}

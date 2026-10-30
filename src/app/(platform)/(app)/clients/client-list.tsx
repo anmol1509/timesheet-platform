@@ -1,5 +1,6 @@
 "use client";
 
+import { Allowed } from "@/components/PermissionsProvider";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
@@ -223,9 +224,9 @@ export function ClientList({ clients }: { clients: ClientRow[] }) {
       renderBulkActions={(ids, clear) => <DeleteClientsButton ids={ids} onDone={clear} />}
       renderRowActions={(c) => (
         <div className="flex items-center justify-end gap-3">
-          <Link href={`/clients/${c.id}`} className="inline-flex items-center gap-1 text-xs font-medium text-[var(--brand-primary)] hover:underline">
+          <Allowed action="edit"><Link href={`/clients/${c.id}`} className="inline-flex items-center gap-1 text-xs font-medium text-[var(--brand-primary)] hover:underline">
             <Pencil className="h-3.5 w-3.5" /> Edit
-          </Link>
+          </Link></Allowed>
           <DeleteButton
             action={deleteClientAction}
             hiddenFields={{ clientId: c.id }}

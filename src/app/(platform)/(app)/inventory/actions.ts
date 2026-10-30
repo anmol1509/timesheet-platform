@@ -25,6 +25,7 @@ export async function createInventoryItemAction(
   formData: FormData
 ): Promise<{ error: string | null }> {
   await requireWrite("facilities.inventory");
+  await requirePermission("facilities.inventory", "create");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const name = String(formData.get("name") || "").trim();
@@ -70,6 +71,7 @@ export async function createInventoryItemAction(
 
 export async function updateInventoryItemAction(formData: FormData): Promise<{ error: string | null }> {
   await requireWrite("facilities.inventory");
+  await requirePermission("facilities.inventory", "edit");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("itemId") || "");
@@ -152,6 +154,7 @@ export async function createVariantAction(
   formData: FormData
 ): Promise<{ error?: string } | void> {
   await requireWrite("facilities.inventory");
+  await requirePermission("facilities.inventory", "create");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const itemId = String(formData.get("itemId") || "");
@@ -183,6 +186,7 @@ export async function createVariantAction(
 
 export async function updateVariantStockAction(formData: FormData) {
   await requireWrite("facilities.inventory");
+  await requirePermission("facilities.inventory", "edit");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const variantId = String(formData.get("variantId") || "");

@@ -34,6 +34,7 @@ function parseStops(stopsJson: FormDataEntryValue | null): StopInput[] {
 
 export async function createRouteAction(formData: FormData) {
   await requireWrite("facilities.transport");
+  await requirePermission("facilities.transport", "create");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const name = String(formData.get("name") || "").trim();
@@ -77,6 +78,7 @@ export async function createRouteAction(formData: FormData) {
 
 export async function updateRouteAction(formData: FormData) {
   await requireWrite("facilities.transport");
+  await requirePermission("facilities.transport", "edit");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("routeId") || "");

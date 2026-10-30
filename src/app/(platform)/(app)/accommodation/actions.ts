@@ -37,6 +37,7 @@ export async function createCampWithRoomsAction(
   formData: FormData
 ): Promise<{ campId: string } | { error: string }> {
   await requireWrite("facilities.camps");
+  await requirePermission("facilities.camps", "create");
   assertContactsValid(formData);
   const { user, branchId } = await requireUserWithBranch();
   // A camp with no branch is invisible to every branch-scoped user, including
@@ -90,6 +91,7 @@ export async function createCampWithRoomsAction(
 
 export async function updateCampOwnershipAction(formData: FormData) {
   await requireWrite("facilities.camps");
+  await requirePermission("facilities.camps", "edit");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const campId = String(formData.get("campId") || "");
@@ -138,6 +140,7 @@ function intOrNull(value: FormDataEntryValue | null) {
 
 export async function createRoomAction(formData: FormData) {
   await requireWrite("facilities.camps");
+  await requirePermission("facilities.camps", "create");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const campId = String(formData.get("campId") || "");
@@ -180,6 +183,7 @@ export async function createRoomAction(formData: FormData) {
 
 export async function updateCampAction(formData: FormData) {
   await requireWrite("facilities.camps");
+  await requirePermission("facilities.camps", "edit");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const campId = String(formData.get("campId") || "");

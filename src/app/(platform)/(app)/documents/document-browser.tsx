@@ -1,5 +1,6 @@
 "use client";
 
+import { NewLink } from "@/components/PermissionsProvider";
 import { useLast } from "@/lib/useLast";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
@@ -475,7 +476,7 @@ function UploadForm({ employees, onDone }: { employees: EmployeeOption[]; onDone
   if (employees.length === 0) {
     return (
       <p className="rounded-lg bg-[var(--warning-soft)] px-4 py-3 text-sm text-[var(--warning)]">
-        No employees on record yet, <Link href="/employees/new" className="underline">add one</Link> before uploading documents.
+        No employees on record yet, <NewLink href="/employees/new" className="underline">add one</NewLink> before uploading documents.
       </p>
     );
   }

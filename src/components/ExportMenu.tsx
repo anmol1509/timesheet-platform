@@ -1,5 +1,6 @@
 "use client";
 
+import { useCanHere } from "@/components/PermissionsProvider";
 import { useEffect, useRef, useState } from "react";
 import * as Popover from "@radix-ui/react-popover";
 import { Check, ChevronDown, Download, Loader2, X } from "lucide-react";
@@ -26,6 +27,7 @@ export function ExportMenu({
   tableToolbar?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const mayExport = useCanHere("export");
   const [busy, setBusy] = useState(false);
   const [outcome, setOutcome] = useState<"done" | "failed" | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -48,6 +50,7 @@ export function ExportMenu({
     }
   }
 
+  if (!mayExport) return null;
   const item = "flex w-full items-center rounded-sm px-2.5 py-1.5 text-left text-[13px] text-secondary transition hover:bg-surface-hover hover:text-primary";
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>

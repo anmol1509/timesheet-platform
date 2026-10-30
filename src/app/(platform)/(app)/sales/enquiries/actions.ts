@@ -20,6 +20,7 @@ async function assertEnquiryInBranch(id: string, branchId: string | null, isSupe
 
 export async function createEnquiryAction(formData: FormData) {
   await requireWrite("sales.enquiries");
+  await requirePermission("sales.enquiries", "create");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const clientId = String(formData.get("clientId") || "");
@@ -56,6 +57,7 @@ export async function createEnquiryAction(formData: FormData) {
 
 export async function updateEnquiryAction(formData: FormData) {
   await requireWrite("sales.enquiries");
+  await requirePermission("sales.enquiries", "edit");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("enquiryId") || "");

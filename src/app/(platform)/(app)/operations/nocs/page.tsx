@@ -1,3 +1,4 @@
+import { NewLink } from "@/components/PermissionsProvider";
 import { HeroHeader, heroButton } from "@/components/HeroHeader";
 import Link from "next/link";
 import { FileText, Plus } from "lucide-react";
@@ -38,7 +39,7 @@ export default async function NocsPage() {
           { label: "Mobilization complete", value: String(nocs.filter((n) => n.status === "Mobilization Complete").length) },
           { label: "Workers covered", value: String(nocs.reduce((n, x) => n + x._count.employees, 0)) },
         ]}
-        actions={<Link href="/operations/nocs/new" className={heroButton(true)}><Plus className="h-4 w-4" aria-hidden /> New NOC</Link>}
+        actions={<NewLink href="/operations/nocs/new" className={heroButton(true)}><Plus className="h-4 w-4" aria-hidden /> New NOC</NewLink>}
       />
 
       {nocs.length === 0 ? (
@@ -47,7 +48,7 @@ export default async function NocsPage() {
           title="No NOCs yet"
           description="A NOC is made from a client's demand request: pick the demand, the workers and the wording, and the letter is numbered and saved here."
           action={
-            <Link href="/operations/nocs/new" className="btn btn-primary btn-sm">New NOC</Link>
+            <NewLink href="/operations/nocs/new" className="btn btn-primary btn-sm">New NOC</NewLink>
           }
         />
       ) : (

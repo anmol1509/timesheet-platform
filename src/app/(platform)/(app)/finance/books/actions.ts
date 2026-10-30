@@ -102,6 +102,7 @@ export type VoucherInput = { date: string; narration: string; lines: { accountId
 /** A manual journal voucher. Must balance, sit after the opening date and outside any locked period. */
 export async function createVoucherAction(input: VoucherInput): Promise<Result & { number?: string }> {
   await requireWrite("finance.books");
+  await requirePermission("finance.books", "create");
   const { user, branchId } = await requireUserWithBranch();
   if (!branchId) return { error: "Pick a company first." };
   const date = parseDay(input.date);
@@ -185,6 +186,7 @@ export async function saveAccountAction(input: { id?: string; code: string; name
 /** Hides an account that is no longer used. It must be empty, and system accounts stay. */
 export async function setAccountActiveAction(id: string, active: boolean): Promise<Result> {
   await requireWrite("finance.books");
+  await requirePermission("finance.books", "edit");
   const { user, branchId } = await requireUserWithBranch();
   if (!branchId) return { error: "Pick a company first." };
   const acc = await prisma.account.findUnique({ where: { id } });
@@ -394,6 +396,7 @@ export async function saveDefaultBanksAction(input: { receipt: string; payment: 
 /** Money moved between two of the company's own bank or cash accounts. */
 export async function createTransferAction(input: { from: string; to: string; date: string; amount: number; narration: string; fromForeign?: number; toForeign?: number }): Promise<Result & { number?: string }> {
   await requireWrite("finance.books");
+  await requirePermission("finance.books", "create");
   const { user, branchId } = await requireUserWithBranch();
   if (!branchId) return { error: "Pick a company first." };
   const date = parseDay(input.date);

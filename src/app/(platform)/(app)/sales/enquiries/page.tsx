@@ -1,3 +1,4 @@
+import { NewLink } from "@/components/PermissionsProvider";
 import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
 import { FileQuestion, Plus } from "lucide-react";
@@ -51,14 +52,14 @@ export default async function EnquiriesPage({
         />
         <div className="flex items-center gap-3">
           <ViewToggle base="/sales/enquiries" view={view} />
-          <Link
+          <NewLink
             href="/sales/enquiries/new"
             className="btn btn-primary"
           >
             <Plus className="h-4 w-4" aria-hidden />
 
             New Enquiry
-          </Link>
+          </NewLink>
         </div>
       </div>
 
@@ -74,9 +75,9 @@ export default async function EnquiriesPage({
           title="No enquiries yet"
           description="An enquiry is the first step in the sales pipeline. Log what a client is asking for, then raise a quotation against it."
           action={
-            <Link href="/sales/enquiries/new" className="btn btn-primary btn-sm">
+            <NewLink href="/sales/enquiries/new" className="btn btn-primary btn-sm">
               New enquiry
-            </Link>
+            </NewLink>
           }
         />
       ) : view === "board" ? (
@@ -98,9 +99,9 @@ export default async function EnquiriesPage({
                   <p className="truncate text-xs text-muted">{[e.requiredTrade, e.projectHint].filter(Boolean).join(" · ") || "—"}</p>
                   <div className="flex items-center justify-between gap-2 text-xs text-subtle">
                     <span>{e.source || "No source"}</span>
-                    <Link href={`/sales/quotations/new?enquiryId=${e.id}&clientId=${e.clientId}`} className="text-[var(--brand-primary)] hover:underline" draggable={false}>
+                    <NewLink href={`/sales/quotations/new?enquiryId=${e.id}&clientId=${e.clientId}`} className="text-[var(--brand-primary)] hover:underline" draggable={false}>
                       {e.quotations.length > 0 ? `${e.quotations.length} quote${e.quotations.length > 1 ? "s" : ""}` : "Quote →"}
-                    </Link>
+                    </NewLink>
                   </div>
                 </div>
               ),
@@ -163,12 +164,12 @@ export default async function EnquiriesPage({
                     <Badge color={STATUS_COLOR[e.status] ?? "slate"} dot>{e.status}</Badge>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <Link
+                    <NewLink
                       href={`/sales/quotations/new?enquiryId=${e.id}&clientId=${e.clientId}`}
                       className="text-xs font-medium text-[var(--brand-primary)] hover:underline"
                     >
                       Create Quotation →
-                    </Link>
+                    </NewLink>
                     <span className="ml-3 inline-block">
                       <DeleteButton
                         action={deleteEnquiryAction}

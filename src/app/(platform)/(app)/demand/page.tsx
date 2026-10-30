@@ -1,3 +1,4 @@
+import { NewLink } from "@/components/PermissionsProvider";
 import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
 import { ListChecks, Plus } from "lucide-react";
@@ -41,11 +42,11 @@ export default async function DemandRequestsPage({ searchParams }: { searchParam
         />
         <div className="flex items-center gap-3">
           <ViewToggle base="/demand" view={view} />
-          <Link href="/demand/new" className="btn btn-primary">
+          <NewLink href="/demand/new" className="btn btn-primary">
             <Plus className="h-4 w-4" aria-hidden />
 
             New Request
-          </Link>
+          </NewLink>
         </div>
       </div>
 
@@ -55,7 +56,7 @@ export default async function DemandRequestsPage({ searchParams }: { searchParam
           title="No demand requests yet"
           description="A demand request captures how many workers of each trade a project needs, then tracks allocation against it."
           action={
-            <Link href="/demand/new" className="btn btn-primary btn-sm">New demand request</Link>
+            <NewLink href="/demand/new" className="btn btn-primary btn-sm">New demand request</NewLink>
           }
         />
       ) : view === "board" ? (

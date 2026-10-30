@@ -1,3 +1,4 @@
+import { NewLink } from "@/components/PermissionsProvider";
 import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
@@ -63,14 +64,14 @@ export default async function ClientsPage() {
           icon={Building2}
           description={<>Manage your clients and contract details.</>}
         />
-        <Link
+        <NewLink
           href="/clients/new"
           className="btn btn-primary"
         >
           <Plus className="h-4 w-4" aria-hidden />
 
           Add Client
-        </Link>
+        </NewLink>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -122,9 +123,9 @@ export default async function ClientsPage() {
           title="No clients yet"
           description="Clients are who you invoice. Add one to start linking projects, agreeing trade rates, and raising invoices against approved timesheets."
           action={
-            <Link href="/clients/new" className="btn btn-primary btn-sm">
+            <NewLink href="/clients/new" className="btn btn-primary btn-sm">
               Add client
-            </Link>
+            </NewLink>
           }
           secondaryAction={
             <Link href="/import/new/clients" className="btn btn-secondary btn-sm">

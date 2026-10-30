@@ -59,6 +59,7 @@ export async function createProjectAction(
   formData: FormData
 ): Promise<{ error: string | null }> {
   await requireWrite("projects.projects");
+  await requirePermission("projects.projects", "create");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const name = String(formData.get("name") || "").trim();
@@ -123,6 +124,7 @@ export async function createProjectAction(
 // tab's form.
 export async function updateProjectAction(formData: FormData): Promise<{ error?: string } | void> {
   await requireWrite("projects.projects");
+  await requirePermission("projects.projects", "edit");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("projectId") || "");
@@ -188,6 +190,7 @@ export async function updateProjectAction(formData: FormData): Promise<{ error?:
 // Location Details tab.
 export async function updateProjectLocationAction(formData: FormData) {
   await requireWrite("projects.projects");
+  await requirePermission("projects.projects", "edit");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("projectId") || "");
@@ -221,6 +224,7 @@ export async function updateProjectLocationAction(formData: FormData) {
 // Other Details tab.
 export async function updateProjectOtherDetailsAction(formData: FormData) {
   await requireWrite("projects.projects");
+  await requirePermission("projects.projects", "edit");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("projectId") || "");
@@ -429,6 +433,7 @@ export async function addProjectContactAction(formData: FormData) {
 
 export async function updateProjectContactAction(formData: FormData) {
   await requireWrite("projects.projects");
+  await requirePermission("projects.projects", "edit");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const projectId = String(formData.get("projectId") || "");
@@ -596,6 +601,7 @@ export async function deleteProjectAction(formData: FormData) {
 
 export async function createSiteAction(formData: FormData) {
   await requireWrite("projects.projects");
+  await requirePermission("projects.projects", "create");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const projectId = String(formData.get("projectId") || "");
@@ -668,6 +674,7 @@ export async function addLpoAction(formData: FormData) {
 
 export async function updateLpoAction(formData: FormData) {
   await requireWrite("projects.projects");
+  await requirePermission("projects.projects", "edit");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const projectId = String(formData.get("projectId") || "");

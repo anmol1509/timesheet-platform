@@ -1,3 +1,4 @@
+import { NewLink } from "@/components/PermissionsProvider";
 import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
 import { Plus, ListChecks, Handshake } from "lucide-react";
@@ -68,9 +69,9 @@ export default async function OnboardingPage() {
             <Handshake className="h-4 w-4" aria-hidden /> Agencies
           </Link>
           {canEdit && (
-            <Link href="/onboarding/new" className="btn btn-primary">
+            <NewLink href="/onboarding/new" className="btn btn-primary">
               <Plus className="h-4 w-4" aria-hidden /> Add candidate
-            </Link>
+            </NewLink>
           )}
         </div>
       </div>

@@ -1,3 +1,4 @@
+import { NewLink } from "@/components/PermissionsProvider";
 import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
@@ -151,14 +152,14 @@ export default async function ClientTimesheetPage({
           >
             Daily Entry
           </Link>
-          <Link
+          <NewLink
             href="/invoices/client-timesheet/new"
             className="btn btn-primary"
           >
             <Plus className="h-4 w-4" aria-hidden />
 
             New Entry
-          </Link>
+          </NewLink>
         </div>
       </div>
 
@@ -190,7 +191,7 @@ export default async function ClientTimesheetPage({
           </p>
           {allEntries.length === 0 && (
             <div className="flex flex-wrap justify-center gap-2">
-              <Link href="/invoices/client-timesheet/new" className="btn btn-primary btn-sm">New entry</Link>
+              <NewLink href="/invoices/client-timesheet/new" className="btn btn-primary btn-sm">New entry</NewLink>
               {canImport && <Link href="/import/new/timesheets" className="btn btn-secondary btn-sm">Import timesheets</Link>}
             </div>
           )}

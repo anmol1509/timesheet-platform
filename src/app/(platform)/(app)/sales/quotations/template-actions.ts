@@ -9,6 +9,7 @@ import { COVER_FIELDS } from "@/lib/quotationCover";
 /** Saves a cover text (opening and closing paragraph) for quotations in this branch. */
 export async function createQuotationTemplateAction(name: string, intro: string, closing: string): Promise<{ id?: string; error?: string }> {
   await requireWrite("sales.quotations");
+  await requirePermission("sales.quotations", "create");
   const { branchId } = await requireUserWithBranch();
   if (!branchId) return { error: "Pick a company first." };
   const n = name.trim();

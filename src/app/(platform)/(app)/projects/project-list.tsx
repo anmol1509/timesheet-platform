@@ -1,5 +1,6 @@
 "use client";
 
+import { Allowed } from "@/components/PermissionsProvider";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { FolderKanban } from "lucide-react";
@@ -312,12 +313,12 @@ export function ProjectList({ projects, emptyState }: { projects: ProjectRow[]; 
       ]}
       renderRowActions={(p) => (
         <div className="flex items-center justify-end gap-3">
-          <Link
+          <Allowed action="edit"><Link
             href={`/projects/${p.id}`}
             className="inline-flex items-center gap-1 text-xs font-medium text-[var(--brand-primary)] hover:underline"
           >
             <Pencil className="h-3.5 w-3.5" aria-hidden /> Edit
-          </Link>
+          </Link></Allowed>
           <DeleteButton
             action={deleteProjectAction}
             hiddenFields={{ projectId: p.id }}

@@ -54,6 +54,7 @@ export async function createClientAction(
   formData: FormData
 ): Promise<{ error: string | null }> {
   await requireWrite("partners.clients");
+  await requirePermission("partners.clients", "create");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const name = String(formData.get("name") || "").trim();
@@ -113,6 +114,7 @@ export async function createClientAction(
 
 export async function updateClientAction(formData: FormData): Promise<{ error: string | null; warnings?: string[] }> {
   await requireWrite("partners.clients");
+  await requirePermission("partners.clients", "edit");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("clientId") || "");
@@ -240,6 +242,7 @@ export async function addClientContactAction(formData: FormData) {
 
 export async function updateClientContactAction(formData: FormData) {
   await requireWrite("partners.clients");
+  await requirePermission("partners.clients", "edit");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const clientId = String(formData.get("clientId") || "");

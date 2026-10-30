@@ -1,3 +1,4 @@
+import { NewLink } from "@/components/PermissionsProvider";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/PageHeader";
@@ -267,13 +268,13 @@ export default async function DashboardPage() {
               <FileText className="h-3.5 w-3.5" aria-hidden />
               Generate timesheets
             </Link>
-            <Link
+            <NewLink
               href="/employees/new"
               className="btn btn-primary btn-sm h-8 gap-1.5 rounded-control shadow-xs"
             >
               <UserPlus className="h-3.5 w-3.5" aria-hidden />
               Add employee
-            </Link>
+            </NewLink>
           </>
         }
       />

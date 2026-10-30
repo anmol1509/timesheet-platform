@@ -3,7 +3,7 @@
 import { amountError } from "@/lib/books/validate";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch, requireWrite } from "@/lib/auth";
+import { requireUserWithBranch, requireWrite, requirePermission } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { reserveNumbers } from "@/lib/books/sync";
 import { isLocked } from "@/lib/books/ledger";
@@ -95,6 +95,7 @@ export type PartyEntryInput = {
  */
 export async function createPartyEntryAction(input: PartyEntryInput): Promise<Result & { number?: string }> {
   await requireWrite("finance.books");
+  await requirePermission("finance.books", "create");
   const { user, branchId } = await requireUserWithBranch();
   if (!branchId) return { error: "Pick a company first." };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date)) return { error: "Choose a date." };
