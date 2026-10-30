@@ -4,6 +4,7 @@ import { useActionState, useRef, useTransition } from "react";
 import { replyToTicketAction, setTicketStatusAction } from "../actions";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 type State = { error: string | null; ok?: boolean };
 
 export function TicketReply({ ticketId, status, canReply }: { ticketId: string; status: string; canReply: boolean }) {
@@ -21,7 +22,7 @@ export function TicketReply({ ticketId, status, canReply }: { ticketId: string; 
         <form ref={ref} action={action} className="card space-y-3 p-5">
           <input type="hidden" name="ticketId" value={ticketId} />
           <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Reply (the supplier will see this) *</span><textarea name="body" required rows={4} maxLength={4000} className="input w-full" /></label>
-          <div className="flex flex-wrap items-center gap-3"><Button size="btn" type="submit" disabled={sending} loading={sending}>Send reply</Button>{state.error && <p role="alert" className="text-sm text-[var(--error)]">{state.error}</p>}</div>
+          <div className="flex flex-wrap items-center gap-3"><Button size="btn" type="submit" disabled={sending} loading={sending}>Send reply</Button>{state.error && <Alert>{state.error}</Alert>}</div>
         </form>
       )}
       <button type="button" className="btn btn-secondary" disabled={pending} onClick={() => setStatus(status === "CLOSED" ? "OPEN" : "CLOSED")}>{status === "CLOSED" ? "Reopen" : "Close conversation"}</button>

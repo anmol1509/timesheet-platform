@@ -6,6 +6,7 @@ import { Select } from "@/components/ui/Select";
 import { updateWpsAction } from "./actions";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 export type BankOption = { id: string; label: string; complete: boolean };
 
 export function WpsForm({
@@ -44,7 +45,7 @@ export function WpsForm({
       </label>
       <div className="flex items-center gap-3">
         <Button size="btn" type="submit" disabled={pending} loading={pending}>Save payroll details</Button>
-        {state.error && <p role="alert" className="text-sm text-[var(--danger-text,#b42318)]">{state.error}</p>}
+        {state.error && <Alert>{state.error}</Alert>}
         {state.ok && <p role="status" className="text-sm text-[var(--success-text,#067647)]">Saved.</p>}
       </div>
     </form>

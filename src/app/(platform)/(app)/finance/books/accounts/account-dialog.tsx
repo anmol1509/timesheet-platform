@@ -8,6 +8,7 @@ import { Select } from "@/components/ui/Select";
 import { Input } from "@/components/ui/Input";
 import { ACCOUNT_TYPES, TYPE_LABEL, type AccountType } from "@/lib/books/chart";
 import { saveAccountAction, setAccountActiveAction } from "../actions";
+import { Alert } from "@/components/Alert";
 
 type Existing = { id: string; code: string; name: string; type: string; isSystem: boolean; isActive: boolean };
 
@@ -35,7 +36,7 @@ export function AccountDialog({ account, defaultType }: { account?: Existing; de
             <div className="mt-1"><Select value={type} onChange={setType} disabled={account?.isSystem} options={ACCOUNT_TYPES.map((t) => ({ value: t, label: TYPE_LABEL[t] }))} /></div>
           </label>
           {account?.isSystem && <p className="text-xs text-muted">The system posts to this account automatically, so its type is fixed and it cannot be hidden.</p>}
-          {error && <p role="alert" className="text-sm text-error">{error}</p>}
+          {error && <Alert>{error}</Alert>}
         </div>
         <DialogFooter>
           {account && !account.isSystem && <Button type="button" variant="ghost" className="mr-auto" disabled={pending} onClick={() => run(() => setAccountActiveAction(account.id, !account.isActive))}>{account.isActive ? "Hide" : "Show again"}</Button>}

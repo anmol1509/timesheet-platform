@@ -7,6 +7,7 @@ import { INVENTORY_CATEGORIES } from "@/lib/formLists";
 import { NumberInput } from "@/components/ui/NumberInput";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 export function NewItemForm({ bare }: { bare?: boolean } = {}) {
   const [state, formAction, pending] = useActionState(createInventoryItemAction, {
     error: null,
@@ -35,9 +36,9 @@ export function NewItemForm({ bare }: { bare?: boolean } = {}) {
         <NumberInput name="quantity" defaultValue={0} min={0} step={1} className="w-full" />
       </label>
       {state.error && (
-        <p className="w-full rounded-lg bg-[var(--error-soft)] px-3 py-2 text-sm text-[var(--error)]">
+        <Alert className="w-full">
           {state.error}
-        </p>
+        </Alert>
       )}
       <Button size="btn" type="submit" disabled={pending} loading={pending}>
         + Add Item

@@ -14,6 +14,7 @@ import { AgencyPicker, type AgencyOption } from "./agency-picker";
 import { createCandidateAction, updateCandidateAction } from "./actions";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 const TRADE_OPTIONS = [{ value: "", label: "Not set" }, ...TRADES.map((t) => ({ value: t, label: t }))];
 
 type Option = { id: string; name: string };
@@ -44,7 +45,7 @@ type Candidate = {
 type State = { error: string | null; ok?: boolean };
 
 function Feedback({ state, saved }: { state: State; saved?: boolean }) {
-  if (state.error) return <p role="alert" className="text-sm text-[var(--error)]">{state.error}</p>;
+  if (state.error) return <Alert>{state.error}</Alert>;
   if (saved && state.ok) return <p role="status" className="text-sm text-[var(--success)]">Saved.</p>;
   return null;
 }

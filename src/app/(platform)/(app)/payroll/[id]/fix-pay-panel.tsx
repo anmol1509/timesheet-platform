@@ -10,6 +10,7 @@ import { structuresFor } from "@/lib/payFields";
 import { fixInactiveFromRunAction, setPayFromRunAction, type FixPayEntry } from "./fix-pay-actions";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 type Structure = "FLAT" | "ITEMISED" | "HOURLY";
 export type FixRow = {
   id: string; name: string; idNo: string; trade: string; reason: string; kind: "PAY" | "INACTIVE";
@@ -158,7 +159,7 @@ export function FixPayPanel({ runId, payType, canEdit, rows }: { runId: string; 
                 ) : <p className="text-xs text-muted">Someone with payroll access can fix this.</p>}
               </div>
             )}
-            {msg[r.id] && <p role="alert" className="pl-0 text-xs text-[var(--error)] sm:pl-7">{msg[r.id]}</p>}
+            {msg[r.id] && <Alert inline>{msg[r.id]}</Alert>}
           </li>
         ))}
       </ul>

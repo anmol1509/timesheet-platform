@@ -7,6 +7,7 @@ import { createEmployeesFromInsuranceAction, linkWorkmenCompCoverageAction } fro
 import type { ExtractedEmployeesResult } from "@/app/api/documents/extract-employees/route";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 type RowState = {
   id: string;
   employeeIdNo: string;
@@ -160,9 +161,9 @@ export function WorkmenCompImport({
 
       {extracting && <p className="text-sm text-muted">Reading the certificate…</p>}
       {error && (
-        <p className="rounded-lg bg-[var(--error-soft)] px-3 py-2 text-sm text-[var(--error)]">
+        <Alert>
           {error} You can still add rows manually below.
-        </p>
+        </Alert>
       )}
 
       {started && (

@@ -6,6 +6,7 @@ import type { Rates } from "@/lib/ownerCosts";
 import { computeUsdFor } from "@/lib/ownerCosts";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 const initial: OwnerState = { error: null };
 
 function Field({ name, label, value, hint }: { name: string; label: string; value: number; hint?: string }) {
@@ -48,7 +49,7 @@ export function RatesForm({ rates, customers }: { rates: Rates; customers: { cod
       </div>
       <div className="flex items-center gap-3">
         <Button size="btn" type="submit" disabled={pending} loading={pending}>Save rates</Button>
-        {state.error && <p role="alert" className="text-sm text-[var(--error)]">{state.error}</p>}
+        {state.error && <Alert>{state.error}</Alert>}
         {state.ok && <p role="status" className="text-sm text-[var(--success)]">Saved.</p>}
       </div>
     </form>

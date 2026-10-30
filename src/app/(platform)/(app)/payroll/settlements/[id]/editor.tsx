@@ -8,6 +8,7 @@ import { EXIT_REASONS } from "@/lib/exitReasons";
 import { approveSettlementAction, deleteSettlementAction, markSettlementPaidAction, updateSettlementAction } from "../actions";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 type State = { error: string | null; ok?: boolean };
 type Draft = { id: string; exitDate: string; reason: string; basic: number; unpaidSalaryDays: number; leavePay: number; noticePay: number; otherEarnings: number; loanBalance: number; otherDeductions: number; notes: string };
 
@@ -42,7 +43,7 @@ export function SettlementEditor({ s }: { s: Draft }) {
       <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Notes (say what any deduction is for)</span><input name="notes" defaultValue={s.notes} maxLength={500} className="input w-full" /></label>
       <div className="flex items-center gap-3">
         <Button size="btn" type="submit" disabled={pending} loading={pending}>Save and recalculate</Button>
-        {state.error && <p role="alert" className="text-sm text-[var(--error)]">{state.error}</p>}
+        {state.error && <Alert>{state.error}</Alert>}
         {state.ok && !state.error && <p role="status" className="text-sm text-[var(--success)]">Saved.</p>}
       </div>
     </form>
@@ -62,7 +63,7 @@ export function SettlementButtons({ id, status, canApprove, canDelete }: { id: s
       {status === "DRAFT" && canApprove && <button type="button" className="btn btn-primary" disabled={pending} onClick={run(approveSettlementAction)}>Approve</button>}
       {status === "APPROVED" && canApprove && <button type="button" className="btn btn-primary" disabled={pending} onClick={run(markSettlementPaidAction)}>Mark as paid</button>}
       {status === "DRAFT" && canDelete && <button type="button" className="btn btn-secondary" disabled={pending} onClick={run(deleteSettlementAction as (fd: FormData) => Promise<void>)}>Delete draft</button>}
-      {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
+      {error && <Alert>{error}</Alert>}
     </div>
   );
 }

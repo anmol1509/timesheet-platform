@@ -9,6 +9,7 @@ import type { QuoteSettings } from "@/lib/quotationMath";
 import { saveQuoteSettingsAction } from "./settings-actions";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 /** Quotation defaults, edited by an admin. Everything here is optional and only feeds suggestions and conversions. */
 export function QuoteSettingsDialog({ settings }: { settings: QuoteSettings }) {
   const router = useRouter();
@@ -80,7 +81,7 @@ export function QuoteSettingsDialog({ settings }: { settings: QuoteSettings }) {
               <span className="mb-1 block text-sm font-medium text-primary">Profit target <span className="font-normal text-muted">(optional)</span></span>
               <div className="flex items-center gap-2"><div className="w-28"><NumberInput value={s.targetProfit ? String(s.targetProfit) : ""} onChange={(v) => setS({ ...s, targetProfit: Number(v) > 0 ? Number(v) : null })} min={0} placeholder="none" /></div><span className="text-xs text-muted">per worker per month</span></div>
             </label>
-            {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
+            {error && <Alert>{error}</Alert>}
           </div>
           <DialogFooter>
             <button type="button" className="btn btn-secondary" onClick={() => setOpen(false)}>Cancel</button>

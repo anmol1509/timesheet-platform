@@ -15,6 +15,7 @@ import { Badge } from "@/components/Badge";
 import { EmployeeAvatar } from "@/components/Avatar";
 import { groupBeds } from "@/lib/bunk";
 import { cn } from "@/lib/cn";
+import { Alert } from "@/components/Alert";
 import {
   deleteRoomAction,
   addBedsToRoomAction,
@@ -236,7 +237,7 @@ export function CampView({
         </div>
       </div>
 
-      {moveError && <p role="alert" className="text-sm text-[var(--error)]">{moveError}</p>}
+      {moveError && <Alert>{moveError}</Alert>}
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_16rem]">
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:items-start">
           {rooms.map((room) => {
@@ -352,7 +353,7 @@ export function CampView({
           const occ = bed.employeeId ? employeeNames[bed.employeeId] : null;
           return (
             <DialogContent title={`${bed.label} · ${room.name}`} description={occ ? "Occupied" : "Vacant bed"} className="max-w-md">
-              {modalError && <p role="alert" className="mt-3 text-sm text-[var(--error)]">{modalError}</p>}
+              {modalError && <Alert className="mt-3">{modalError}</Alert>}
 
               {mode === "menu" && occ && (
                 <div className="mt-4 space-y-4">

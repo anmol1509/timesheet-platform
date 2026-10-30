@@ -10,6 +10,7 @@ import { MODULES, ROLE_PRESETS, describeAccess } from "@/lib/permissions";
 import { createUserAction } from "./actions";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 type Branch = { id: string; code: string; name: string };
 export type AccessRoleOption = { id: string; name: string; description: string | null; permissions: string[]; branchId: string | null };
 
@@ -279,7 +280,7 @@ export function AddMemberWizard({
             Add team member
           </Button>
         )}
-        {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
+        {error && <Alert>{error}</Alert>}
       </div>
     </div>
   );

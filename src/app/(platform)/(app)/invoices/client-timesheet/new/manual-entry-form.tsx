@@ -8,6 +8,7 @@ import { Combobox } from "@/components/ui/Combobox";
 import { MonthInput } from "@/components/ui/MonthInput";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 type RowState = {
   id: string;
   employeeIdNo: string;
@@ -114,9 +115,9 @@ export function ManualEntryForm({
       <input type="hidden" name="siteId" value={siteId} />
 
       {state.error && (
-        <p className="rounded-lg bg-[var(--error-soft)] px-3 py-2 text-sm text-[var(--error)]">
+        <Alert>
           {state.error}
-        </p>
+        </Alert>
       )}
 
       <div className="card flex flex-wrap items-end justify-between gap-3 p-4">

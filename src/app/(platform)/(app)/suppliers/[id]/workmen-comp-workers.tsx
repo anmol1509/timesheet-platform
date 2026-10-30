@@ -9,6 +9,7 @@ import { cn } from "@/lib/cn";
 import { addWorkmenCompEmployeeAction, undoWorkmenCompEmployeeAction, getWorkmenCompWorkersAction, saveInsuredNamesAction, setWorkmenCompLinkAction, type WcWorker, type WcWorkers } from "../actions";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 /**
  * Who is on one policy. Every name read off the certificate is listed with the workers it matches, and whether each is
  * linked to this policy, linked to another one, or not linked yet, with a button to link (the file is then filed on that
@@ -78,7 +79,7 @@ export function WorkmenCompWorkers({ supplierId, attachmentId, filename, canEdit
     setReading(false);
   }
 
-  if (error && !data) return <p role="alert" className="px-4 py-3 text-sm text-error">{error}</p>;
+  if (error && !data) return <Alert>{error}</Alert>;
   if (!data) return <p className="flex items-center gap-1.5 px-4 py-3 text-sm text-muted"><Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> Loading…</p>;
 
   const named = data.names ?? [];
@@ -196,7 +197,7 @@ export function WorkmenCompWorkers({ supplierId, attachmentId, filename, canEdit
         </div>
       )}
       <p className="text-xs text-muted">Linking files a copy of this certificate on the worker&rsquo;s profile (Documents, Insurance); unlinking takes it off again.</p>
-      {error && <p role="alert" className="text-sm text-error">{error}</p>}
+      {error && <Alert>{error}</Alert>}
     </div>
   );
 }

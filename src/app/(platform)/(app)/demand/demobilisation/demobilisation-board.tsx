@@ -13,6 +13,7 @@ import { demobiliseAction } from "./actions";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { Button } from "@/components/ui/Button";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/Dialog";
+import { Alert } from "@/components/Alert";
 
 export type DeployedRow = {
   id: string;
@@ -494,7 +495,7 @@ function DemobiliseOneForm({ row, onClose, onDone }: { row: DeployedRow; onClose
         <span className="mb-1 block text-xs font-medium text-muted">Reason {outcome === "OFF_BOOKS" && <span className="text-subtle">(kept on the record)</span>}</span>
         <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Project completed, visa expired, absconded…" className="input w-full" />
       </label>
-      {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
+      {error && <Alert>{error}</Alert>}
       <DialogFooter>
         <button type="button" onClick={onClose} className="btn btn-secondary">Cancel</button>
         <Button onClick={submit} disabled={!date} loading={pending} success={done} successLabel="Demobilised">Demobilise</Button>

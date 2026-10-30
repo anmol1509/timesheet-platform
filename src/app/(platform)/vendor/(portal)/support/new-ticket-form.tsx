@@ -6,6 +6,7 @@ import { createTicketAction } from "./actions";
 import { Select } from "@/components/ui/Select";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 type State = { error: string | null; ok?: boolean; id?: string };
 
 export function NewTicketForm() {
@@ -24,7 +25,7 @@ export function NewTicketForm() {
       <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Message *</span><textarea name="message" required rows={4} maxLength={4000} className="input w-full" /></label>
       <div className="flex flex-wrap items-center gap-3">
         <Button size="btn" type="submit" disabled={pending} loading={pending}>Send</Button>
-        {state.error && <p role="alert" className="text-sm text-[var(--error)]">{state.error}</p>}
+        {state.error && <Alert>{state.error}</Alert>}
         {state.ok && <span className="text-sm text-[var(--success)]">Sent. We&apos;ll reply here.</span>}
       </div>
     </form>

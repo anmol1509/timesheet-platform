@@ -13,6 +13,7 @@ import { daysUntil } from "@/lib/compliance";
 import { cn } from "@/lib/cn";
 import { AddVehicleDialog } from "./add-vehicle-dialog";
 import { VehicleBrowser } from "./vehicle-browser";
+import { Alert } from "@/components/Alert";
 
 export const metadata = { title: "Transport" };
 
@@ -80,7 +81,7 @@ export default async function TransportPage({ searchParams }: { searchParams: Pr
         </div>
       </div>
 
-      {error && <p className="rounded-lg border border-[var(--error-border)] bg-[var(--error-soft)] px-4 py-2 text-sm text-[var(--error)]">{error}</p>}
+      {error && <Alert>{error}</Alert>}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {tiles.map((t) => (

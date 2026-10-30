@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogFooter, DialogTrigger } from "@/components
 import { cn } from "@/lib/cn";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 type RoomDraft = { name: string; bedCount: number; bunkCount: number };
 const clamp = (v: unknown, min: number, max: number) => Math.max(min, Math.min(max, Number(String(v)) || 0));
 
@@ -126,7 +127,7 @@ function AddCampBody() {
         )}
       </div>
 
-      {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
+      {error && <Alert>{error}</Alert>}
 
       <DialogFooter>
         <Button size="btn" type="button" onClick={handleSubmit} disabled={!canSubmit || pending} loading={pending}>

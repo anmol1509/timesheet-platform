@@ -16,6 +16,7 @@ import { auditVerb, entityMeta } from "@/lib/auditPresentation";
 import { auditFields, auditSentence } from "@/lib/auditSentence";
 import { auditQueryString, type AuditQuery } from "@/lib/auditQuery";
 import { previewRevertAction, revertAuditEntryAction, type RevertPreview } from "./actions";
+import { Alert } from "@/components/Alert";
 
 type Entry = {
   id: string;
@@ -114,7 +115,7 @@ function RevertDialog({ entry, onClose }: { entry: Entry | null; onClose: () => 
     <Dialog open={!!entry} onOpenChange={(o) => !o && !pending && onClose()}>
       <DialogContent title="Put this change back?" description={entry ? `${entry.userName} ${auditSentence(entry, entry.name, { canSeePay: true })}` : undefined} className="max-w-xl">
         {!preview && <p className="mt-4 text-sm text-muted">Checking what the record holds now…</p>}
-        {preview && "error" in preview && <p role="alert" className="mt-4 text-sm text-[var(--error)]">{preview.error}</p>}
+        {preview && "error" in preview && <Alert className="mt-4">{preview.error}</Alert>}
         {preview && "fields" in preview && (
           <div className="mt-4 space-y-3">
             <div className="overflow-x-auto rounded-lg border border-default">
@@ -131,11 +132,11 @@ function RevertDialog({ entry, onClose }: { entry: Entry | null; onClose: () => 
                 </tbody>
               </table>
             </div>
-            {preview.problem && <p role="alert" className="text-sm text-[var(--warning)]">{preview.problem}</p>}
+            {preview.problem && <Alert tone="warning">{preview.problem}</Alert>}
             {!preview.problem && <p className="text-xs text-subtle">Only fields that still hold what this change wrote are put back, so nobody else&rsquo;s later edit is overwritten. This is recorded in the log.</p>}
           </div>
         )}
-        {error && <p role="alert" className="mt-3 text-sm text-[var(--error)]">{error}</p>}
+        {error && <Alert className="mt-3">{error}</Alert>}
         <DialogFooter>
           <button type="button" className="btn btn-secondary" onClick={onClose} disabled={pending}>Cancel</button>
           <Button onClick={go} disabled={!canGo} loading={pending} success={done} successLabel="Put back"><Undo2 className="h-4 w-4" aria-hidden />Put it back</Button>

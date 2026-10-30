@@ -6,6 +6,7 @@ import { Badge, type BadgeColor } from "@/components/Badge";
 import { Download } from "lucide-react";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { Select } from "@/components/ui/Select";
+import { Alert } from "@/components/Alert";
 
 export const metadata = { title: "Attendance report" };
 const COLOR: Record<string, BadgeColor> = { PRESENT: "green", ABSENT: "red", LEAVE: "amber" };
@@ -45,7 +46,7 @@ export default async function VendorAttendanceReportPage({ searchParams }: { sea
           </span>
         )}
       </form>
-      {!parsed.ok && <p role="alert" className="text-sm text-[var(--error)]">{parsed.error} Showing this month instead.</p>}
+      {!parsed.ok && <Alert>{parsed.error} Showing this month instead.</Alert>}
 
       {rows.length === 0 ? (
         <div className="card p-8 text-center text-sm text-muted">No attendance matches those dates and status.</div>

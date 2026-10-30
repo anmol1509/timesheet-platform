@@ -17,6 +17,7 @@ import { SegmentedControl } from "@/components/ui/RadioGroup";
 import { DatePicker } from "@/components/ui/DatePicker";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 type BedOption = { id: string; label: string; employeeId: string | null };
 type RoomOption = { id: string; name: string; beds: BedOption[] };
 type CampChoice = { id: string; name: string; rooms: RoomOption[] };
@@ -321,7 +322,7 @@ function MoveForm({ workers, camps, suppliers, clients, onClose, onDone }: { wor
         <button type="button" onClick={() => setDate(todayIso())} className={cn("mb-1 rounded-control border px-3 py-1.5 text-xs font-medium", date === todayIso() ? "border-[var(--brand-primary)] bg-brand-soft text-[var(--brand-primary)]" : "border-default text-secondary hover:bg-surface-hover")}>Today</button>
       </div>
 
-      {error && <p role="alert" className="mt-3 text-sm text-[var(--error)]">{error}</p>}
+      {error && <Alert className="mt-3">{error}</Alert>}
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-default pt-4">
         <p className="max-w-md text-xs text-muted">{one.bedId || many ? "The old bed becomes free and the move is added to the worker's history." : "The worker is placed and the placement is added to their history."}</p>
         <div className="flex gap-2">

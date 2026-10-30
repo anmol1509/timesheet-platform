@@ -5,11 +5,12 @@ import { useActionState } from "react";
 import { changePasswordAction, updateProfileAction } from "./actions";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 type State = { error: string | null; ok?: boolean };
 const INITIAL: State = { error: null };
 
 function Message({ state, success }: { state: State; success: string }) {
-  if (state.error) return <p role="alert" className="text-sm text-[var(--danger-text,#b42318)]">{state.error}</p>;
+  if (state.error) return <Alert>{state.error}</Alert>;
   if (state.ok) return <p role="status" className="text-sm text-[var(--success-text,#067647)]">{success}</p>;
   return null;
 }

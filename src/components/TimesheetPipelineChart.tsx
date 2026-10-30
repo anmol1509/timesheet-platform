@@ -4,6 +4,7 @@ import { m } from "motion/react";
 import { FileSpreadsheet, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/Badge";
 import type { TimesheetPipeline } from "@/lib/timesheetPipeline";
+import { Alert } from "@/components/Alert";
 
 function formatMonthLabel(month: string) {
   const [y, mo] = month.split("-");
@@ -85,12 +86,12 @@ export function TimesheetPipelineChart({ pipeline }: { pipeline: TimesheetPipeli
       </ul>
 
       {pipeline.rejected > 0 && (
-        <p className="flex items-center gap-2 rounded-control border border-[var(--error-border)] bg-[var(--error-soft)] px-3 py-2 text-xs text-[var(--error)]">
+        <Alert>
           <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden />
           <span className="flex-1">
             <Badge color="red">{pipeline.rejected}</Badge> rejected and awaiting rework.
           </span>
-        </p>
+        </Alert>
       )}
 
     </div>

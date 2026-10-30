@@ -14,6 +14,7 @@ import { CountrySelect } from "@/components/ui/CountrySelect";
 import { ComboSelect } from "@/components/ui/ComboSelect";
 import { SUPPLIER_CATEGORIES } from "@/lib/formLists";
 import { MaskedInput } from "@/components/ui/MaskedInput";
+import { Alert } from "@/components/Alert";
 
 type Supplier = {
   id: string;
@@ -250,9 +251,9 @@ export function SupplierCompanyForm({
         />
       )}
       {error && (
-        <p className="rounded-lg border border-[var(--error-border)] bg-[var(--error-soft)] px-4 py-2 text-sm text-[var(--error)]">
+        <Alert>
           {error}
-        </p>
+        </Alert>
       )}
       <FormSaveBar pending={pending} saved={saved} dirty={guard.dirty} />
     </form>

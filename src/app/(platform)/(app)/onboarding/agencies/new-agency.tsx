@@ -10,6 +10,7 @@ import { Dialog, DialogContent } from "@/components/ui/Dialog";
 import { createAgencyAction, type CreateAgencyResult } from "../actions";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 const lbl = "mb-1 block text-xs font-medium text-muted";
 
 /** Adds a brand-new recruitment agency. */
@@ -42,7 +43,7 @@ export function NewAgency() {
           </div>
           <div className="flex items-center gap-3 pt-1">
             <Button size="btn" type="submit" disabled={pending} loading={pending}>Add agency</Button>
-            {state.error && <p role="alert" className="text-sm text-[var(--error)]">{state.error}</p>}
+            {state.error && <Alert>{state.error}</Alert>}
           </div>
         </form>
       </DialogContent>

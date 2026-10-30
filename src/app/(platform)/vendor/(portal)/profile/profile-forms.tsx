@@ -11,6 +11,7 @@ import { DatePicker } from "@/components/ui/DatePicker";
 import { Select } from "@/components/ui/Select";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 type State = { error: string | null; ok?: boolean };
 export type PendingRow = { id: string; kind: string; status: string; note: string | null; changes: { label: string; value: string }[] };
 type Vals = Record<string, string>;
@@ -39,7 +40,7 @@ function ChangeForm({ kind, title, hint, values, fields, pending: hasPending }: 
       <div className="flex flex-wrap items-center gap-3">
         <Button variant="secondary" size="btn" type="submit" disabled={busy || hasPending} loading={busy}>Request this change</Button>
         {hasPending && <span className="text-xs text-muted">You have a change waiting for approval below.</span>}
-        {state.error && <p role="alert" className="text-sm text-[var(--error)]">{state.error}</p>}
+        {state.error && <Alert>{state.error}</Alert>}
         {state.ok && <span className="text-sm text-[var(--success)]">Sent for approval</span>}
       </div>
     </form>
@@ -60,7 +61,7 @@ export function ProfileForms({ contact, bank, maskedIban, requests, docTypes, do
       {requests.length > 0 && (
         <section className="card overflow-hidden">
           <div className="border-b border-default px-5 py-3"><h2 className="text-sm font-semibold text-primary">Your change requests</h2></div>
-          {error && <p role="alert" className="px-5 pt-3 text-sm text-[var(--error)]">{error}</p>}
+          {error && <Alert>{error}</Alert>}
           <ul className="divide-y divide-[var(--border)]">
             {requests.map((r) => (
               <li key={r.id} className="px-5 py-3 text-sm">
@@ -105,7 +106,7 @@ export function ProfileForms({ contact, bank, maskedIban, requests, docTypes, do
             <F t="Expiry date"><DatePicker name="expiryDate" className="w-full" /></F>
             <F t="File (PDF, JPG, PNG) *"><input type="file" name="file" required accept="application/pdf,image/jpeg,image/png" className="file-input w-full" /></F>
           </div>
-          <div className="flex flex-wrap items-center gap-3"><Button variant="secondary" size="btn" type="submit" disabled={uploading} loading={uploading}>Upload document</Button>{docState.error && <p role="alert" className="text-sm text-[var(--error)]">{docState.error}</p>}{docState.ok && <span className="text-sm text-[var(--success)]">Uploaded</span>}</div>
+          <div className="flex flex-wrap items-center gap-3"><Button variant="secondary" size="btn" type="submit" disabled={uploading} loading={uploading}>Upload document</Button>{docState.error && <Alert>{docState.error}</Alert>}{docState.ok && <span className="text-sm text-[var(--success)]">Uploaded</span>}</div>
         </form>
       </section>
     </>

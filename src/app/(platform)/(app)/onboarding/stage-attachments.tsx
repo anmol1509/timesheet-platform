@@ -9,6 +9,7 @@ import { MAX_UPLOAD_LABEL } from "@/lib/constants";
 import { readOtherDoc } from "@/components/otherDocRead";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 export type StageAttachmentRow = { id: string; filename: string };
 
 /** A compact per-stage file attach — the same generic Attachment model the
@@ -75,7 +76,7 @@ export function StageAttachments({
         </Button>
         <span className="text-[11px] text-subtle">{reading ? "Reading the file…" : `max ${MAX_UPLOAD_LABEL}`}</span>
       </form>}
-      {error && <p role="alert" className="mt-1 text-xs text-[var(--error)]">{error}</p>}
+      {error && <Alert inline className="mt-1">{error}</Alert>}
       {attachments.length > 0 && (
         <ul className="mt-2 flex flex-wrap gap-1.5">
           {attachments.map((a) => (

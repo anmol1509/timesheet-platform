@@ -22,6 +22,7 @@ import { ImportHeldNotice } from "@/components/HeldSuppliers";
 import type { CopilotResult } from "@/lib/importer/copilot";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 type Step = "upload" | "map" | "review" | "running" | "done";
 const STEPS: { key: Step; label: string }[] = [
   { key: "upload", label: "Upload" },
@@ -343,10 +344,10 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
       </ol>
 
       {error && (
-        <p className="flex items-start gap-2 rounded-lg border border-[var(--error-border)] bg-[var(--error-soft)] px-4 py-3 text-sm text-[var(--error)]">
+        <Alert>
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
           {error}
-        </p>
+        </Alert>
       )}
 
       {/* Keyed on the step so each one eases in rather than swapping abruptly. */}
@@ -559,9 +560,9 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
             </p>
           </div>
           {status?.status === "FAILED" && (
-            <p className="rounded-lg border border-[var(--error-border)] bg-[var(--error-soft)] px-4 py-3 text-sm text-[var(--error)]">
+            <Alert>
               {status.error ?? "Something went wrong."} What was saved before it stopped can be undone below.
-            </p>
+            </Alert>
           )}
           {(status?.summary ?? summary) && (
             <ReportView tiles={tilesFor(kind, (status?.summary ?? summary)!.counts)} rows={(status?.summary ?? summary)!.rows} notes={(status?.summary ?? summary)!.notes} truncated={(status?.summary ?? summary)!.truncated} />

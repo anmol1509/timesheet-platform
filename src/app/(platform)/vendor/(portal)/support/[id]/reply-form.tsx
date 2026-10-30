@@ -5,6 +5,7 @@ import { keepInput } from "@/lib/vendor/keepInput";
 import { replyTicketAction } from "../actions";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 type State = { error: string | null; ok?: boolean };
 
 export function ReplyForm({ ticketId }: { ticketId: string }) {
@@ -17,7 +18,7 @@ export function ReplyForm({ ticketId }: { ticketId: string }) {
     <form ref={ref} onSubmit={keepInput(action)} className="card space-y-3 p-5">
       <input type="hidden" name="ticketId" value={ticketId} />
       <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Your reply *</span><textarea name="body" required rows={3} maxLength={4000} className="input w-full" /></label>
-      <div className="flex flex-wrap items-center gap-3"><Button size="btn" type="submit" disabled={pending} loading={pending}>Send reply</Button>{state.error && <p role="alert" className="text-sm text-[var(--error)]">{state.error}</p>}</div>
+      <div className="flex flex-wrap items-center gap-3"><Button size="btn" type="submit" disabled={pending} loading={pending}>Send reply</Button>{state.error && <Alert>{state.error}</Alert>}</div>
     </form>
   );
 }

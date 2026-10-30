@@ -23,6 +23,7 @@ import {
 } from "@/lib/quotationMath";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 type Client = { id: string; name: string };
 type Contact = { id: string; name: string; designation: string | null; email: string | null };
 
@@ -419,7 +420,7 @@ export function QuotationForm({
           </label>
         )}
 
-        {error && <p role="alert" className="rounded-lg border border-[var(--error-border)] bg-[var(--error-soft)] px-3 py-2 text-sm text-[var(--error)]">{error}</p>}
+        {error && <Alert>{error}</Alert>}
         <Button size="btn" className="w-full" type="button" onClick={submit} disabled={pending || !clientId} loading={pending}>
           {editing ? (isRevision ? `Save as version ${(initial.version ?? 1) + 1}` : "Save changes") : "Create quotation"}
         </Button>

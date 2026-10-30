@@ -12,6 +12,7 @@ import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { groupLookups } from "@/lib/lookups";
 import { SupplierList } from "./supplier-list";
+import { Alert } from "@/components/Alert";
 
 export const metadata = { title: "Suppliers" };
 
@@ -123,9 +124,9 @@ export default async function SuppliersPage({
       />
 
       {error && (
-        <p className="rounded-lg border border-[var(--error-border)] bg-[var(--error-soft)] px-4 py-2 text-sm text-[var(--error)]">
+        <Alert>
           {error}
-        </p>
+        </Alert>
       )}
 
       {isSuperAdmin && !branchId && (

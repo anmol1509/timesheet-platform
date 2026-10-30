@@ -10,6 +10,7 @@ import { API_SCOPES } from "@/lib/api/keys";
 import { createApiKeyAction, revokeApiKeyAction } from "./actions";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 export type KeyRow = { id: string; name: string; prefix: string; scopes: string[]; createdAt: string; createdBy: string; expiresAt: string | null; lastUsedAt: string | null; revoked: boolean };
 type State = { error: string | null; secret?: string; name?: string };
 
@@ -140,7 +141,7 @@ export function DevelopersManager({ keys, enabled, branchName, baseUrl, salesEma
             <Plus className="h-4 w-4" aria-hidden /> Create API key
           </button>
         </div>
-        {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
+        {error && <Alert>{error}</Alert>}
         {keys.length === 0 ? (
           <div className="empty-state">
             <p className="text-sm text-muted">No API keys yet. Create one, choose what it may read, and paste it into the software you are connecting.</p>

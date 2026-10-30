@@ -8,6 +8,7 @@ import { DatePicker } from "@/components/ui/DatePicker";
 import { Select } from "@/components/ui/Select";
 import { Input } from "@/components/ui/Input";
 import { createTransferAction } from "./actions";
+import { Alert } from "@/components/Alert";
 
 /** Money moved between the company's own bank and cash accounts. */
 export function TransferDialog({ accounts, minDate, foreign = {} }: { accounts: { id: string; label: string }[]; minDate: string; foreign?: Record<string, { currency: string; rate: number | null }> }) {
@@ -42,7 +43,7 @@ export function TransferDialog({ accounts, minDate, foreign = {} }: { accounts: 
             </div>
           )}
           <label className="block text-sm font-medium text-primary">Note (optional)<Input className="mt-1" value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. Cash deposited" /></label>
-          {error && <p role="alert" className="text-sm text-error">{error}</p>}
+          {error && <Alert>{error}</Alert>}
         </div>
         <DialogFooter>
           <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>

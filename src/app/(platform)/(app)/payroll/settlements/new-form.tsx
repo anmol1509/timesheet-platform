@@ -7,6 +7,7 @@ import { EXIT_REASONS } from "@/lib/exitReasons";
 import { createSettlementAction } from "./actions";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 type State = { error: string | null; ok?: boolean };
 
 export function NewSettlementForm({ employees }: { employees: { id: string; label: string; exitDate: string }[] }) {
@@ -32,7 +33,7 @@ export function NewSettlementForm({ employees }: { employees: { id: string; labe
       </div>
       <div className="flex items-center gap-3">
         <Button size="btn" type="submit" disabled={pending || !employeeId} loading={pending}>Work out the settlement</Button>
-        {state.error && <p role="alert" className="text-sm text-[var(--error)]">{state.error}</p>}
+        {state.error && <Alert>{state.error}</Alert>}
       </div>
     </form>
   );

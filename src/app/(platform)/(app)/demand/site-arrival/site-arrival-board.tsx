@@ -13,6 +13,7 @@ import { useUndoToast } from "../use-undo-toast";
 import { confirmSiteArrivalAction, recordMissingArrivalAction, revertSiteArrivalAction, disapproveSiteArrivalAction } from "../actions";
 import { Button } from "@/components/ui/Button";
 import { DatePicker } from "@/components/ui/DatePicker";
+import { Alert } from "@/components/Alert";
 
 export type ArrivalRow = {
   id: string;
@@ -206,7 +207,7 @@ export function SiteArrivalBoard({
         </div>
       </div>
 
-      {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
+      {error && <Alert>{error}</Alert>}
       <div className="card overflow-hidden">
         {tab === "unrecorded" && (
           <p className="border-b border-default bg-[var(--warning-soft)] px-4 py-2.5 text-xs text-primary">
@@ -574,7 +575,7 @@ function ArrivalForm({
           {mode === "record" ? "Joined " + formatDate(row.joinDate ?? null) + ". Enter the day they really arrived." : "Due on site " + formatDate(row.mobilisationDate) + "."}
         </span>
       </label>
-      {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
+      {error && <Alert>{error}</Alert>}
       <DialogFooter>
         <button type="button" onClick={onClose} className="btn btn-secondary">Cancel</button>
         <Button onClick={submit} disabled={!date} loading={pending} success={done} successLabel="Saved">

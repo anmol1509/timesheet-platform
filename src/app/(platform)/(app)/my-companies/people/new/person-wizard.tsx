@@ -20,6 +20,7 @@ import { nameFromFile, otherDocProblem, trackedExpiry } from "@/lib/otherDoc";
 import type { ExtractedDocumentFields } from "@/app/api/documents/extract/route";
 import { UploadSlot, type UploadStatus } from "@/app/(platform)/(app)/employees/new/upload-slot";
 import { savePersonAction } from "../../people-actions";
+import { Alert } from "@/components/Alert";
 
 type DocType = { key: string; label: string; hasExpiry: boolean; required: boolean };
 type Slot = { file: File; expiry: string; noExpiry: boolean; status: "idle" | "reading" | "read" | "failed" };
@@ -247,7 +248,7 @@ export function PersonWizard({ docTypes, companies, people, existing, canAddDocs
         </div>
       )}
 
-      {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
+      {error && <Alert>{error}</Alert>}
       <div className="flex items-center justify-between border-t border-default pt-4">
         {step === 1 && !existing ? <button type="button" className="btn btn-secondary" disabled={saving} onClick={() => setStep(0)}>Previous</button> : <Link href="/my-companies/people" className="btn btn-secondary">Cancel</Link>}
         {step === 0 ? <Button type="button" onClick={goNext}>Next</Button> : <Button type="button" loading={saving} onClick={() => void save()}>{lines.length === 0 ? "Save without a company" : existing ? "Assign" : "Save"}</Button>}

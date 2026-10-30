@@ -16,6 +16,7 @@ import { MaskedInput } from "@/components/ui/MaskedInput";
 import { readFields } from "@/components/readFields";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 type State = { error: string | null; ok?: boolean };
 export type SubmissionRow = { id: string; name: string; trade: string; status: string; note: string | null; submittedAt: string };
 
@@ -86,7 +87,7 @@ function WorkerForm({ trades, onDone }: { trades: string[]; onDone: () => void }
       </fieldset>
       <div className="flex flex-wrap items-center gap-3">
         <Button size="btn" type="submit" disabled={pending} loading={pending}>Send for approval</Button>
-        {state.error && <p role="alert" className="text-sm text-[var(--error)]">{state.error}</p>}
+        {state.error && <Alert>{state.error}</Alert>}
       </div>
       <p className="text-xs text-subtle">The worker joins your list once our team approves. You&apos;ll see the decision here.</p>
     </form>
@@ -113,7 +114,7 @@ export function SubmissionList({ rows }: { rows: SubmissionRow[] }) {
   return (
     <section className="card overflow-hidden">
       <div className="border-b border-default px-5 py-3"><h2 className="text-sm font-semibold text-primary">Sent for approval</h2></div>
-      {error && <p role="alert" className="px-5 pt-3 text-sm text-[var(--error)]">{error}</p>}
+      {error && <Alert>{error}</Alert>}
       <ul className="divide-y divide-[var(--border)]">
         {rows.map((r) => (
           <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-sm">

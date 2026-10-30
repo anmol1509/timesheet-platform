@@ -42,6 +42,7 @@ import { primaryOptions, rootOf, sponsorFits, sponsorOptions } from "@/lib/suppl
 import { MaskedInput } from "@/components/ui/MaskedInput";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 type Project = { id: string; name: string; code: string };
 
 type Supplier = { id: string; name: string; parentSupplierId?: string | null };
@@ -909,9 +910,9 @@ export function EmployeeWizard({
         />
       )}
       {(state.error || stepError) && (
-        <p className="rounded-control border border-[var(--error-border)] bg-[var(--error-soft)] px-3 py-2 text-sm text-[var(--error)]">
+        <Alert>
           {state.error ?? stepError}
-        </p>
+        </Alert>
       )}
 
       {/* ---------------- Company ---------------- */}

@@ -21,6 +21,7 @@ import { createSupplierWizardAction } from "./actions";
 import { suggestSupplierCodeAction } from "../actions";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 const STEPS = ["Documents", "Details", "Review"] as const;
 const DOC_TYPES = [
   { value: "TRADE_LICENSE", label: "Trade licence" },
@@ -355,7 +356,7 @@ export function SupplierWizard() {
         </div>
       )}
 
-      {error && <p role="alert" className="rounded-lg border border-[var(--error-border)] bg-[var(--error-soft)] px-4 py-2 text-sm text-[var(--error)]">{error}</p>}
+      {error && <Alert>{error}</Alert>}
 
       <div className="flex items-center justify-between border-t border-[var(--border)] pt-4">
         <button type="button" className="btn btn-secondary" disabled={step === 0 || pending} onClick={() => setStep((s) => Math.max(0, s - 1))}>Previous</button>

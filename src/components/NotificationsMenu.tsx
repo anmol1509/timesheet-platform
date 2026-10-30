@@ -13,6 +13,7 @@ import type { ComplianceAlert } from "@/lib/dashboardAlerts";
 import { cn } from "@/lib/cn";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 /**
  * The bell. "For you" is what is waiting on this person (approvals they can
  * decide here, and unread messages), "Compliance" the documents running out, and
@@ -154,7 +155,7 @@ export function NotificationsMenu({
                               <Urgency days={d.ageDays} />
                             </div>
                             <p className="truncate text-xs text-muted">{d.requester ?? d.subtitle}{d.amount !== null && ` · AED ${aed(d.amount)}`} · {age(d.ageDays)}</p>
-                            {errors[d.key] && <p role="alert" className="mt-1 text-xs text-[var(--error)]">{errors[d.key]}</p>}
+                            {errors[d.key] && <Alert inline className="mt-1">{errors[d.key]}</Alert>}
                             <div className="mt-2 flex gap-2">
                               <Link href={d.href} onClick={close} className="btn btn-secondary btn-sm">Review</Link>
                               {d.quickApprove && <Button size="btn-sm" type="button" disabled={busy === d.key} onClick={() => void approve(d)} loading={busy === d.key}>Approve</Button>}

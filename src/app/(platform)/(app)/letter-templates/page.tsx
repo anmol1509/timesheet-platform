@@ -11,6 +11,7 @@ import { Copy } from "lucide-react";
 import { HeroHeader } from "@/components/HeroHeader";
 import { AddDefaultsButton, NewTemplateButton } from "./gallery";
 import { TemplateGallery, type TemplateCard } from "./template-gallery";
+import { Alert } from "@/components/Alert";
 
 export const metadata = { title: "Letter templates" };
 
@@ -81,7 +82,7 @@ export default async function LetterTemplatesPage({ searchParams }: { searchPara
           </>
         ) : undefined}
       />
-      {error && <p role="alert" className="text-sm text-[var(--danger-text,#b42318)]">{error}</p>}
+      {error && <Alert>{error}</Alert>}
 
       {branchId && templates.length > 0 && (
         <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Letter type">

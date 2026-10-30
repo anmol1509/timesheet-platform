@@ -6,6 +6,7 @@ import { acceptOfferAction, declineOfferAction } from "../actions";
 import { NumberInput } from "@/components/ui/NumberInput";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 type State = { error: string | null; ok?: boolean };
 
 /** Accept with a quote per trade, or decline with a reason. */
@@ -41,7 +42,7 @@ export function RespondForm({ offerId, trades }: { offerId: string; trades: { id
           <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Note (optional)</span><input name="note" className="input w-full" placeholder="e.g. Available from 1 October" /></label>
           <div className="flex flex-wrap items-center gap-3">
             <Button size="btn" type="submit" disabled={aPending} loading={aPending}>Send my quote</Button>
-            {aState.error && <p role="alert" className="text-sm text-[var(--error)]">{aState.error}</p>}
+            {aState.error && <Alert>{aState.error}</Alert>}
           </div>
         </form>
       ) : (
@@ -50,7 +51,7 @@ export function RespondForm({ offerId, trades }: { offerId: string; trades: { id
           <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Why can&apos;t you supply this? *</span><input name="note" required className="input w-full" placeholder="e.g. No carpenters available this month" /></label>
           <div className="flex flex-wrap items-center gap-3">
             <Button variant="secondary" size="btn" type="submit" disabled={dPending} loading={dPending}>Decline request</Button>
-            {dState.error && <p role="alert" className="text-sm text-[var(--error)]">{dState.error}</p>}
+            {dState.error && <Alert>{dState.error}</Alert>}
           </div>
         </form>
       )}

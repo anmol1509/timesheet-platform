@@ -10,6 +10,7 @@ import { RequestDetailsForm } from "./request-details-form";
 import { TradeAllocationSection } from "./trade-allocation-section";
 import { getIdleWorkers, supplyForTrade } from "@/lib/demandSupply";
 import { deleteDemandRequestAction } from "../actions";
+import { Alert } from "@/components/Alert";
 
 export const metadata = { title: "Demand request" };
 
@@ -79,7 +80,7 @@ export default async function DemandRequestDetailPage({
       </div>
 
       {error && (
-        <p className="rounded-lg border border-[var(--error-border)] bg-[var(--error-soft)] px-4 py-2 text-sm text-[var(--error)]">{error}</p>
+        <Alert>{error}</Alert>
       )}
 
       <RequestDetailsForm

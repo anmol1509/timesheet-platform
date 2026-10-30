@@ -12,6 +12,7 @@ import { requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { SupplierTabs as PageTabs } from "../../suppliers/[id]/supplier-tabs";
 import { PartyStatement, canSeeStatement } from "../../finance/books/parties/statement";
+import { Alert } from "@/components/Alert";
 
 export const metadata = { title: "Client" };
 
@@ -154,9 +155,9 @@ export default async function ClientDetailPage({
           {client.code || "No code assigned"}
         </p>
         {error && (
-          <p className="mt-3 rounded-lg bg-[var(--error-soft)] px-3 py-2 text-sm text-[var(--error)]">
+          <Alert className="mt-3">
             {error}
-          </p>
+          </Alert>
         )}
       </div>
 

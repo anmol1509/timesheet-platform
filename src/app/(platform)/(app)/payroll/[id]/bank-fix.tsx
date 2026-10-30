@@ -7,6 +7,7 @@ import { MaskedInput } from "@/components/ui/MaskedInput";
 import { Hint } from "@/components/Hint";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 /** "Fix now" beside a worker whose bank details are incomplete: fill the three WPS details, or mark them as paid in cash. */
 export function BankFix({ runId, employeeId, name, defaults }: { runId: string; employeeId: string; name: string; defaults: { personCode: string; routingCode: string; iban: string; bankName: string } }) {
   const router = useRouter();
@@ -43,7 +44,7 @@ export function BankFix({ runId, employeeId, name, defaults }: { runId: string; 
         <Button size="btn" className="h-8 px-3 text-xs" type="submit" disabled={pending} loading={pending}>Save and recalculate</Button>
         <button type="button" disabled={pending} className="text-xs font-medium text-secondary hover:underline" onClick={(e) => submit(e as unknown as React.FormEvent<HTMLFormElement>, "CASH")}>Paid in cash instead</button>
         <button type="button" className="text-xs text-muted hover:underline" onClick={() => setOpen(false)}>Cancel</button>
-        {error && <p role="alert" className="w-full text-xs text-[var(--error)]">{error}</p>}
+        {error && <Alert inline className="w-full">{error}</Alert>}
       </div>
     </form>
   );

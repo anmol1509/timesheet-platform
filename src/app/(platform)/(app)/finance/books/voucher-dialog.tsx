@@ -9,6 +9,7 @@ import { DatePicker } from "@/components/ui/DatePicker";
 import { Select } from "@/components/ui/Select";
 import { Input } from "@/components/ui/Input";
 import { createVoucherAction } from "./actions";
+import { Alert } from "@/components/Alert";
 
 type Line = { accountId: string; debit: string; credit: string; description: string };
 const blank = (): Line => ({ accountId: "", debit: "", credit: "", description: "" });
@@ -61,7 +62,7 @@ export function VoucherDialog({ accounts, minDate, label = "New voucher" }: { ac
           <span className="text-muted">Debit <span className="tabular font-medium text-primary">{aed(debit)}</span> · Credit <span className="tabular font-medium text-primary">{aed(credit)}</span></span>
           {debit === 0 && credit === 0 ? <span className="text-muted">Add amounts</span> : diff === 0 ? <span className="font-medium text-success">Balanced</span> : <span className="font-medium text-warning">Out by {aed(Math.abs(diff))}</span>}
         </div>
-        {error && <p role="alert" className="mt-3 text-sm text-error">{error}</p>}
+        {error && <Alert className="mt-3">{error}</Alert>}
         <DialogFooter>
           <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
           <Button type="button" disabled={pending || diff !== 0 || (debit === 0 && credit === 0)} onClick={save} loading={pending}>Post voucher</Button>

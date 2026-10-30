@@ -8,6 +8,7 @@ import { Dialog, DialogContent } from "@/components/ui/Dialog";
 import { createAgencyContactAction, type CreateContactResult } from "./actions";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 export type AgencyContactOption = { id: string; name: string; agencyId: string };
 
 /**
@@ -92,7 +93,7 @@ export function ContactPicker({
               <Button size="btn" type="submit" disabled={pending} loading={pending}>
                 <Plus className="h-4 w-4" aria-hidden /> Add contact
               </Button>
-              {state.error && <p role="alert" className="text-sm text-[var(--error)]">{state.error}</p>}
+              {state.error && <Alert>{state.error}</Alert>}
             </div>
           </form>
         </DialogContent>

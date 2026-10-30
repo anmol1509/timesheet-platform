@@ -11,6 +11,7 @@ import { DatePicker } from "@/components/ui/DatePicker";
 import { NumberInput } from "@/components/ui/NumberInput";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 export default function NewClientPage() {
   const [state, formAction, pending] = useActionState(createClientAction, {
     error: null,
@@ -36,9 +37,9 @@ export default function NewClientPage() {
         className="card space-y-6 p-8"
       >
         {state.error && (
-          <p className="rounded-lg bg-[var(--error-soft)] px-3 py-2 text-sm text-[var(--error)]">
+          <Alert>
             {state.error}
-          </p>
+          </Alert>
         )}
 
         <div className="grid grid-cols-1 items-start gap-x-6 gap-y-5 md:grid-cols-[minmax(0,1fr)_22rem]">

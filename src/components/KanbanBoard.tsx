@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { cn } from "@/lib/cn";
+import { Alert } from "@/components/Alert";
 
 export type KanbanColumn = { id: string; title: string; tone?: "slate" | "amber" | "blue" | "green" | "red"; hint?: string };
 export type KanbanCard = { id: string; columnId: string; content: React.ReactNode; /** Shown in the column header total. */ weight?: number };
@@ -59,7 +60,7 @@ export function KanbanBoard({
 
   return (
     <div className="space-y-2">
-      {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
+      {error && <Alert>{error}</Alert>}
       <div className="flex gap-3 overflow-x-auto pb-2">
         {columns.map((col) => {
           const inCol = cards.filter((c) => colOf(c) === col.id);

@@ -7,6 +7,7 @@ import { IssuerPicker, type IssuerPickerData } from "@/components/IssuerPicker";
 import { Checkbox } from "@/components/ui/Checkbox";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 type Row = { employeeIdNo: string; name: string; trade: string | null; hours: number; companyId: string; company: string; approved: boolean };
 
 export function EmployeeSheetPicker({ month, rows, issuer }: { month: string; rows: Row[]; issuer: IssuerPickerData }) {
@@ -182,7 +183,7 @@ export function EmployeeSheetPicker({ month, rows, issuer }: { month: string; ro
                 {`PDF for ${picked.size} selected`}
               </Button>
               <button type="button" className="btn btn-secondary" disabled={picked.size === 0 || busy} onClick={() => generateHours("xlsx")}>Excel</button>
-              {error && <p role="alert" className="whitespace-pre-line text-sm text-[var(--error)]">{error}</p>}
+              {error && <Alert className="whitespace-pre-line">{error}</Alert>}
             </div>
           </>
         ) : (
@@ -200,7 +201,7 @@ export function EmployeeSheetPicker({ month, rows, issuer }: { month: string; ro
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileArchive className="h-4 w-4" />}
             {`Generate for ${picked.size} selected`}
           </Button>
-          {error && <p role="alert" className="whitespace-pre-line text-sm text-[var(--error)]">{error}</p>}
+          {error && <Alert className="whitespace-pre-line">{error}</Alert>}
         </div>
           </>
         )}

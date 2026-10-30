@@ -8,6 +8,7 @@ import { cn } from "@/lib/cn";
 import { RENEWAL_STATUSES, type RenewalStatus } from "@/lib/renewalCases";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 export type Owner = { id: string; name: string };
 
 const STATUS_STYLE: Record<RenewalStatus, string> = {
@@ -171,7 +172,7 @@ export function ExportDialog({ open, onOpenChange, choices, busy, error, onExpor
             <li>Project and supplier, and the status, owner and note</li>
           </ul>
           <p className="text-xs text-muted">Grouped by document type, soonest first. Salary is never included.</p>
-          {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
+          {error && <Alert>{error}</Alert>}
           <div className="flex justify-end gap-2">
             <button type="button" className="btn btn-secondary" onClick={() => onOpenChange(false)}>Cancel</button>
             <Button size="btn" type="button" disabled={busy || !current} onClick={() => onExport(current)} loading={busy}><Download className="h-4 w-4" aria-hidden /> Download Excel</Button>

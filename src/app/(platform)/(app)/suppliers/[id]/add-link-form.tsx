@@ -7,6 +7,7 @@ import { EMPTY_PERSON, PersonPicker, type PersonOption, type PickerChoice } from
 import { addPartyLinkAction } from "./party-actions";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 const ROLES = [
   { value: "SPONSOR", label: "Sponsor" },
   { value: "MANAGER", label: "Manager" },
@@ -43,7 +44,7 @@ export function AddLinkForm({ supplierId, people, linked }: { supplierId: string
         <PersonPicker options={people} choice={choice} onChoice={setChoice} person={person} onPerson={setPerson} hideIds={hide} />
         <Button size="btn" type="button" disabled={pending} onClick={add} loading={pending}>Add</Button>
       </div>
-      {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
+      {error && <Alert>{error}</Alert>}
     </div>
   );
 }

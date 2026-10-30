@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { setSupplierPortalAction } from "../actions";
+import { Alert } from "@/components/Alert";
 
 export function PortalAccessCard({
   supplierId,
@@ -37,7 +38,7 @@ export function PortalAccessCard({
         <p className="mt-1 text-xs text-muted">
           {phones.length > 0 ? `Numbers on file: ${phones.join(", ")}` : "No phone number is on file yet. Add a contact, secondary or coordinator number first."}
         </p>
-        {error && <p role="alert" className="mt-1 text-xs text-[var(--danger-text,#b42318)]">{error}</p>}
+        {error && <Alert inline className="mt-1">{error}</Alert>}
       </div>
       {canEdit && (
         <button type="button" className={enabled ? "btn btn-secondary" : "btn btn-primary"} disabled={pending || (!enabled && phones.length === 0)} onClick={toggle}>

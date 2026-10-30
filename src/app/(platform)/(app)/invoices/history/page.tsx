@@ -6,6 +6,7 @@ import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { InvoiceHistoryList } from "./invoice-history-list";
 import { listBanks } from "@/lib/books/banks";
+import { Alert } from "@/components/Alert";
 
 export const metadata = { title: "Invoice history" };
 
@@ -60,9 +61,9 @@ export default async function InvoiceHistoryPage({
   return (
     <div className="space-y-5">
       {error && (
-        <p className="rounded-lg border border-[var(--error-border)] bg-[var(--error-soft)] px-4 py-2 text-sm text-[var(--error)]">
+        <Alert>
           {error}
-        </p>
+        </Alert>
       )}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <PageHeader

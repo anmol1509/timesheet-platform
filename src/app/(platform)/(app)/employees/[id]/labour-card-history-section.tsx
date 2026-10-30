@@ -7,6 +7,7 @@ import { readOtherDoc } from "@/components/otherDocRead";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { shrinkImage } from "@/lib/compressImage";
 import { Paperclip, X } from "lucide-react";
+import { Alert } from "@/components/Alert";
 
 type HistoryRow = {
   id: string;
@@ -153,7 +154,7 @@ export function LabourCardHistorySection({
               {file && <span className="text-xs text-muted">This replaces &ldquo;Link document&rdquo;.</span>}
             </div>
           </div>
-          {error && <p role="alert" className="sm:col-span-4 text-sm text-[var(--error)]">{error}</p>}
+          {error && <Alert className="sm:col-span-4">{error}</Alert>}
         </div>
 
         {entries.length === 0 ? (

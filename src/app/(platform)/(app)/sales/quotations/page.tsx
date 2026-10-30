@@ -11,6 +11,7 @@ import { KanbanBoard } from "@/components/KanbanBoard";
 import { ViewToggle } from "@/components/ViewToggle";
 import { QUOTATION_COLUMNS, QUOTATION_TRANSITIONS } from "@/lib/salesPipeline";
 import { deleteQuotationAction, moveQuotationAction } from "./actions";
+import { Alert } from "@/components/Alert";
 
 export const metadata = { title: "Quotations" };
 
@@ -67,9 +68,9 @@ export default async function QuotationsPage({
       </div>
 
       {error && (
-        <p className="rounded-lg border border-[var(--error-border)] bg-[var(--error-soft)] px-4 py-2 text-sm text-[var(--error)]">
+        <Alert>
           {error}
-        </p>
+        </Alert>
       )}
 
       {quotations.length === 0 ? (

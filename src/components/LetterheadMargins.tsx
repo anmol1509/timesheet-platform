@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useLetterheadImage } from "@/components/useLetterheadImage";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 export const DEFAULT_TOP_MM = 65;
 export const DEFAULT_BOTTOM_MM = 35;
 
@@ -78,7 +79,7 @@ export function LetterheadMargins({
           {!dirty && !pending && saved.top === topMm && <span className="text-xs text-muted">Saved</span>}
           <button type="button" className="ml-auto text-xs text-[var(--brand-primary)] hover:underline" onClick={() => { setTop(DEFAULT_TOP_MM); setBottom(DEFAULT_BOTTOM_MM); }}>Standard (65 / 35)</button>
         </div>
-        {error && <p role="alert" className="text-xs text-[var(--error)]">{error}</p>}
+        {error && <Alert inline>{error}</Alert>}
       </div>
     </div>
   );

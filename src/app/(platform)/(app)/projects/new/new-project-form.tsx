@@ -9,6 +9,7 @@ import { Select } from "@/components/ui/Select";
 import { DatePicker } from "@/components/ui/DatePicker";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 export function NewProjectForm({
   clients,
 }: {
@@ -34,9 +35,9 @@ export function NewProjectForm({
         className="card space-y-6 p-8"
       >
         {state.error && (
-          <p className="rounded-lg bg-[var(--error-soft)] px-3 py-2 text-sm text-[var(--error)]">
+          <Alert>
             {state.error}
-          </p>
+          </Alert>
         )}
 
         {clients.length === 0 ? (

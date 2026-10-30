@@ -7,6 +7,7 @@ import { Select } from "@/components/ui/Select";
 import { CHECKOUT_REASONS, checkoutKind, checkoutProblem, daysBetween, todayKey } from "@/lib/checkoutReasons";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 const fmt = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 
 /** The checkout form: why, and on what date. A later date schedules the checkout instead of doing it now. */
@@ -77,7 +78,7 @@ export function CheckoutForm({ employeeId, name, bedLabel, checkInDate, planned,
       {kind === "past" && daysBack > 30 && (
         <p className="rounded-lg border border-[var(--warning-border)] bg-[var(--warning-soft)] px-3 py-2 text-sm text-secondary">That&rsquo;s {daysBack} days ago. Check the date is right.</p>
       )}
-      {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
+      {error && <Alert>{error}</Alert>}
       <div className="flex justify-end gap-2">
         <button type="button" className="btn btn-secondary" onClick={onCancel} disabled={pending}>Cancel</button>
         <Button variant="danger" size="btn" type="button" onClick={submit} disabled={pending || !!problem} loading={pending}>

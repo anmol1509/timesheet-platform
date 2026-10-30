@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { addNoteAction, createInvoiceAction, creditsAction, decideRequestAction, recordPaymentAction, setStatusAction, syncCustomerAction, updateCustomerAction, voidInvoiceAction, type OwnerState } from "../actions";
+import { Alert } from "@/components/Alert";
 
 const initial: OwnerState = { error: null };
 const L = "block text-xs text-muted";
@@ -16,7 +17,7 @@ function Form({ action, hidden, submit, busy, children, className, tone = "prima
       {children}
       <div className="flex flex-wrap items-center gap-3">
         <button type="submit" className={tone === "primary" ? "btn btn-primary btn-sm" : tone === "danger" ? "btn btn-secondary btn-sm text-[var(--error)]" : "btn btn-secondary btn-sm"} disabled={pending}>{pending ? busy ?? "Saving…" : submit}</button>
-        {state.error && <p role="alert" className="text-xs text-[var(--error)]">{state.error}</p>}
+        {state.error && <Alert inline>{state.error}</Alert>}
         {state.ok && !state.error && <p className="text-xs text-[var(--success)]">Done.</p>}
       </div>
     </form>

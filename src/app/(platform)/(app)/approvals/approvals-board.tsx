@@ -15,6 +15,7 @@ import type { ApprovalItem, Chip } from "@/lib/approvals";
 import { decideApprovalAction } from "./actions";
 import { NumberInput } from "@/components/ui/NumberInput";
 import { Select } from "@/components/ui/Select";
+import { Alert } from "@/components/Alert";
 
 export type BoardItem = Omit<ApprovalItem, "at"> & { at: string; ageDays: number };
 type Tab = { key: string; label: string; count: number };
@@ -244,7 +245,7 @@ export function ApprovalsBoard({ items, tabs, filters, requesters, totalShown }:
                   </ul>
                 </div>
               )}
-              {errors[active.key] && <p role="alert" className="mt-3 text-sm text-[var(--error)]">{errors[active.key]}</p>}
+              {errors[active.key] && <Alert className="mt-3">{errors[active.key]}</Alert>}
 
               <div className="-mx-5 -mb-5 mt-6 rounded-b-card border-t border-default bg-brand-soft px-5 py-4">
                 <p className="text-xs text-secondary"><span className="font-semibold text-primary">What happens next: </span>{active.kind === "PAYROLL" ? "Approving releases this payroll for payment; sending it back returns it to the preparer." : "Approving records your decision straight away; rejecting sends your reason to the requester."}</p>
@@ -272,7 +273,7 @@ export function ApprovalsBoard({ items, tabs, filters, requesters, totalShown }:
               <span className="mb-1 block text-xs font-medium text-muted">{rejecting.rejectNeedsReason ? "Reason (the requester will see this) *" : "Reason (optional)"}</span>
               <input value={note} onChange={(e) => setNote(e.target.value)} className="input w-full" autoFocus />
             </label>
-            {rejectError && <p role="alert" className="mt-2 text-sm text-[var(--error)]">{rejectError}</p>}
+            {rejectError && <Alert className="mt-2">{rejectError}</Alert>}
             <div className="mt-4 flex justify-end gap-2">
               <button type="button" className="btn btn-secondary" onClick={() => setRejecting(null)}>Back</button>
               <Button size="btn" disabled={pending || (rejecting.rejectNeedsReason && !note.trim())} loading={pending && flash === null} success={flash?.key === rejecting.key && flash.decision === "REJECT"} successLabel={rejecting.kind === "PAYROLL" ? "Sent back" : "Rejected"} onClick={() => decide(rejecting, "REJECT", note, () => setRejecting(null))}>{rejecting.kind === "PAYROLL" ? "Send back" : "Reject"}</Button>

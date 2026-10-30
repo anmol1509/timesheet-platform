@@ -10,6 +10,7 @@ import { DatePicker } from "@/components/ui/DatePicker";
 import { NumberInput } from "@/components/ui/NumberInput";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 type State = { error: string | null; ok?: boolean };
 const aed = (n: number) => n.toLocaleString("en-AE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -88,7 +89,7 @@ export function ExpenseTools({
           ) : (
             <p className="text-sm text-secondary">{limit === null ? "No limit" : `AED ${aed(limit)}`}</p>
           )}
-          {lState.error && <p role="alert" className="mt-1 text-xs text-[var(--error)]">{lState.error}</p>}
+          {lState.error && <Alert inline className="mt-1">{lState.error}</Alert>}
           {lState.ok && <p className="mt-1 text-xs text-[var(--success)]">Saved</p>}
           <p className="mt-1.5 text-xs text-subtle">Expenses above this can only be approved by an admin.</p>
         </div>
@@ -113,7 +114,7 @@ export function ExpenseTools({
             <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Monthly limit (AED)</span><NumberInput name="monthlyLimit" min={0} step={0.01} className="w-full" /></label>
             <div className="flex items-center gap-3">
               <button type="submit" className="btn btn-primary">Save budget</button>
-              {bState.error && <p role="alert" className="text-sm text-[var(--error)]">{bState.error}</p>}
+              {bState.error && <Alert>{bState.error}</Alert>}
               {bState.ok && <span className="text-sm text-[var(--success)]">Saved</span>}
             </div>
           </form>
@@ -130,7 +131,7 @@ export function ExpenseTools({
             <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Note</span><input name="note" className="input w-full" placeholder="e.g. Withdrawn from ADCB" /></label>
             <div className="flex items-center gap-3">
               <Button size="btn" type="submit" disabled={tPending} loading={tPending}>Add to float</Button>
-              {tState.error && <p role="alert" className="text-sm text-[var(--error)]">{tState.error}</p>}
+              {tState.error && <Alert>{tState.error}</Alert>}
             </div>
           </form>
         </DialogContent>

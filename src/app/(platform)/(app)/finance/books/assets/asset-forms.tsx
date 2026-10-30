@@ -8,6 +8,7 @@ import { DatePicker } from "@/components/ui/DatePicker";
 import { Select } from "@/components/ui/Select";
 import { Input } from "@/components/ui/Input";
 import { deleteAssetAction, disposeAssetAction, saveAssetAction } from "./actions";
+import { Alert } from "@/components/Alert";
 
 type Opt = { id: string; label: string };
 const today = () => todayInUae();
@@ -34,7 +35,7 @@ export function AddAsset({ accounts, minDate }: { accounts: Opt[]; minDate: stri
           </div>
           <label className="block text-sm font-medium text-primary">Record the purchase, paid from<div className="mt-1"><Select value={f.paidFrom} onChange={set("paidFrom")} options={[{ value: "", label: "Already in the books (don't post)" }, ...accounts.map((a) => ({ value: a.id, label: a.label }))]} /></div></label>
           <p className="text-xs text-muted">Pick an account only if this purchase isn&apos;t in your books yet. Depreciation starts in the month of purchase{minDate ? ` and is posted from ${minDate} onwards` : ""}.</p>
-          {error && <p role="alert" className="text-sm text-error">{error}</p>}
+          {error && <Alert>{error}</Alert>}
         </div>
         <DialogFooter>
           <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
@@ -67,7 +68,7 @@ export function AssetRowActions({ id, name, moneyAccounts, sold = false }: { id:
               <label className="text-sm font-medium text-primary">Sale amount (AED)<Input className="mt-1 text-right" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" /></label>
             </div>
             <label className="block text-sm font-medium text-primary">Paid in to<div className="mt-1"><Select value={acct} onChange={setAcct} options={moneyAccounts.map((a) => ({ value: a.id, label: a.label }))} placeholder="Choose account" /></div></label>
-            {error && <p role="alert" className="text-sm text-error">{error}</p>}
+            {error && <Alert>{error}</Alert>}
           </div>
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>

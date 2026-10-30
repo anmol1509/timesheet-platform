@@ -13,6 +13,7 @@ import { nameFromFile, otherDocProblem, trackedExpiry } from "@/lib/otherDoc";
 import { Paperclip, X } from "lucide-react";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 type Doc = {
   id: string;
   type: string;
@@ -131,7 +132,7 @@ export function DocumentsSection({
                   <OtherDocFields name={r.name} onName={(v) => patch(r.key, { name: v })} track={r.track} onTrack={(v) => patch(r.key, { track: v })} expiry={r.expiry} onExpiry={(v) => patch(r.key, { expiry: v })} disabled={r.state === "uploading"} note={r.note} fileLabel={r.file.name} className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,1fr)_auto_14rem]" />
                   <button type="button" disabled={r.state === "uploading"} onClick={() => setRows((rs) => rs.filter((x) => x.key !== r.key))} aria-label={`Remove ${r.file.name}`} className="btn btn-secondary h-9 px-2.5"><X className="h-4 w-4" aria-hidden /></button>
                   {r.state === "uploading" && <p className="text-xs text-muted sm:col-span-2">Uploading…</p>}
-                  {r.state === "failed" && <p role="alert" className="text-xs text-[var(--error)] sm:col-span-2">{r.error}</p>}
+                  {r.state === "failed" && <Alert inline className="sm:col-span-2">{r.error}</Alert>}
                 </li>
               ))}
             </ul>

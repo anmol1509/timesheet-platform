@@ -7,6 +7,7 @@ import { DEFAULT_BOTTOM_MM, DEFAULT_TOP_MM } from "@/components/LetterheadMargin
 import { cn } from "@/lib/cn";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 type Action = (fd: FormData) => Promise<{ error?: string | null } | void>;
 
 /**
@@ -106,7 +107,7 @@ export function PaperMargins({
             {!dirty && !pending && <span className="text-xs text-muted">Saved</span>}
             <button type="button" className="ml-auto text-xs text-[var(--brand-primary)] hover:underline" onClick={() => setValues((all) => ({ ...all, [tab]: standard }))}>Standard ({standard.top} / {standard.bottom} / {standard.left} / {standard.right})</button>
           </div>
-          {error && <p role="alert" className="text-xs text-[var(--error)]">{error}</p>}
+          {error && <Alert inline>{error}</Alert>}
         </div>
       </div>
     </div>

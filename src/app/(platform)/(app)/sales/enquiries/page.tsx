@@ -11,6 +11,7 @@ import { KanbanBoard } from "@/components/KanbanBoard";
 import { ViewToggle } from "@/components/ViewToggle";
 import { ENQUIRY_COLUMNS } from "@/lib/salesPipeline";
 import { deleteEnquiryAction, moveEnquiryAction } from "./actions";
+import { Alert } from "@/components/Alert";
 
 export const metadata = { title: "Enquiries" };
 
@@ -62,9 +63,9 @@ export default async function EnquiriesPage({
       </div>
 
       {error && (
-        <p className="rounded-lg border border-[var(--error-border)] bg-[var(--error-soft)] px-4 py-2 text-sm text-[var(--error)]">
+        <Alert>
           {error}
-        </p>
+        </Alert>
       )}
 
       {enquiries.length === 0 ? (

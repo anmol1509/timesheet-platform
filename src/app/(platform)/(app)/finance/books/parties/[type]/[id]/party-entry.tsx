@@ -8,6 +8,7 @@ import { DatePicker } from "@/components/ui/DatePicker";
 import { Select } from "@/components/ui/Select";
 import { Input } from "@/components/ui/Input";
 import { createPartyEntryAction } from "../../actions";
+import { Alert } from "@/components/Alert";
 
 const aed = (n: number) => n.toLocaleString("en-AE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -49,7 +50,7 @@ export function PartyEntry({ type, partyId, moneyAccounts, minDate }: { type: "C
             )}
             <label className="block text-sm font-medium text-primary">What it is for<Input className="mt-1" value={narration} onChange={(e) => setNarration(e.target.value)} placeholder={note ? "e.g. Credit against INV-0042, 3 workers removed" : "e.g. Advance for November"} /></label>
             {note && num(amount) > 0 && <p className="text-sm text-muted">Total {aed(num(amount) + num(vat))}</p>}
-            {error && <p role="alert" className="text-sm text-error">{error}</p>}
+            {error && <Alert>{error}</Alert>}
           </div>
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => setKind(null)}>Cancel</Button>

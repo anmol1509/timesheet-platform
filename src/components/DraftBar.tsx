@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { CheckCircle2, FileClock, RotateCcw, Save, Trash2 } from "lucide-react";
 import { discardDraftAction, loadDraftAction, saveDraftAction } from "@/app/(platform)/(app)/drafts/actions";
 import type { DraftType } from "@/lib/draftTypes";
+import { Alert } from "@/components/Alert";
 
 const AUTOSAVE_MS = 8000;
 
@@ -119,7 +120,7 @@ export function DraftBar<S>({
         {note && <span className="text-subtle"> · {note}</span>}
       </span>
       <span className="flex items-center gap-2">
-        {error && <span role="alert" className="text-[var(--error)]">{error}</span>}
+        {error && <Alert>{error}</Alert>}
         {savedAt && <button type="button" onClick={discard} className="text-muted hover:text-primary hover:underline">Discard draft</button>}
         <button type="button" onClick={() => void save(true)} disabled={!hasContent || saving} className="btn btn-secondary btn-sm gap-1.5">
           <Save className="h-3.5 w-3.5" aria-hidden />Save as draft

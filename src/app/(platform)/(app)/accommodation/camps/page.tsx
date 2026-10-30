@@ -23,6 +23,7 @@ import { groupLookups } from "@/lib/lookups";
 import { cn } from "@/lib/cn";
 import { createRoomAction, updateCampAction } from "../actions";
 import { NumberInput } from "@/components/ui/NumberInput";
+import { Alert } from "@/components/Alert";
 
 export const metadata = { title: "Camps" };
 
@@ -120,9 +121,9 @@ export default async function CampsPage({
   return (
     <div className="space-y-6">
       {params.error && (
-        <p className="rounded-lg border border-[var(--error-border)] bg-[var(--error-soft)] px-4 py-2 text-sm text-[var(--error)]">
+        <Alert>
           {params.error}
-        </p>
+        </Alert>
       )}
 
       <PageHeader

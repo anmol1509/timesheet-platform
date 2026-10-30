@@ -8,6 +8,7 @@ import { ArrowRight, Building2, CalendarCheck, Check, ChevronDown, Cog, Lock, Ma
 import "flag-icons/css/flag-icons.min.css";
 import { COUNTRIES } from "@/lib/countries";
 import { BRAND_LOGO_URL, BRAND_LOGO_ASPECT } from "@/lib/brand-urls";
+import { Alert } from "@/components/Alert";
 
 const BRAND = "var(--brand-primary, #5645d4)";
 const SUBMIT_GRADIENT = "linear-gradient(90deg, #5b3df0, #4129d6)";
@@ -151,7 +152,7 @@ function DemoDialog({ onClose }: { onClose: () => void }) {
                 <Field label="Email" name="email" type="email" autoComplete="email" placeholder="you@company.com" icon={Mail} />
                 <PhoneRow country={country} onCountry={setCountry} dial={dial} number={number} onNumber={setNumber} />
                 <Field label="Company name" name="company" type="text" autoComplete="organization" placeholder="Your company name" icon={Building2} />
-                {status === "error" && <p role="alert" className="text-sm text-red-600">{error}</p>}
+                {status === "error" && <Alert>{error}</Alert>}
                 <button
                   type="submit"
                   disabled={status === "submitting"}

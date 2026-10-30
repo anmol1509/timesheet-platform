@@ -7,6 +7,7 @@ import { Select } from "@/components/ui/Select";
 import { markLostAction } from "./activity-actions";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 const REASONS = ["Price too high", "Went with another supplier", "Project cancelled or delayed", "No response", "Client hired directly", "Other"];
 
 /** "Mark as lost" with the reason, so the pipeline can later show why deals are lost. */
@@ -38,7 +39,7 @@ export function LostButton({ entity, id, label = "Mark as lost" }: { entity: "qu
           <div className="mt-4 space-y-3">
             <Select value={reason} onChange={setReason} searchable={false} placeholder="Choose a reason" options={REASONS.map((r) => ({ value: r, label: r }))} />
             <textarea value={extra} onChange={(e) => setExtra(e.target.value)} rows={2} placeholder="Anything to add (optional)" className="input w-full" />
-            {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
+            {error && <Alert>{error}</Alert>}
           </div>
           <DialogFooter>
             <button type="button" className="btn btn-secondary" onClick={() => setOpen(false)}>Cancel</button>

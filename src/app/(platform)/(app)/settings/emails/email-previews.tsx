@@ -5,6 +5,7 @@ import { cn } from "@/lib/cn";
 import { sendTestEmailAction } from "./actions";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 export type EmailSample = { key: string; label: string; subject: string; html: string };
 
 /** Every email the app sends, as it will look, with a button to send the admin a real test. */
@@ -26,7 +27,7 @@ export function EmailPreviews({ samples, email }: { samples: EmailSample[]; emai
           <div className="flex items-center gap-3">
             <Button variant="secondary" size="btn-sm" type="button" disabled={pending} onClick={() => { setResult(null); start(async () => setResult(await sendTestEmailAction())); }} loading={pending}>Send me a test</Button>
           </div>
-          {result?.error && <p role="alert" className="w-full text-xs text-[var(--error)]">{result.error}</p>}
+          {result?.error && <Alert inline className="w-full">{result.error}</Alert>}
           {result?.ok && <p className="w-full text-xs text-[var(--success)]">Sent to {email}. Check your inbox.</p>}
         </div>
         {current && (

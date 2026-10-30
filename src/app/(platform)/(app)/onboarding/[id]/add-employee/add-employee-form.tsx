@@ -12,6 +12,7 @@ import { TRADES } from "@/lib/trades";
 import { addCandidateAsEmployeeAction, type AddEmployeeState } from "../../add-employee-actions";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 type Opt = { id: string; name: string };
 type FileRow = { id: string; name: string; docType: string; expiry: string };
 type Initial = {
@@ -147,7 +148,7 @@ export function AddEmployeeForm({ candidateId, ready, canEditPay, proposedIds, s
       {state.warnings && state.warnings.length > 0 && dismissed !== state && (
         <SaveWarnings warnings={state.warnings} busy={pending} onDismiss={() => setDismissed(state)} onSaveAnyway={resend} />
       )}
-      {state.error && <p role="alert" className="rounded-control border border-[var(--error-border)] bg-[var(--error-soft)] px-3 py-2 text-sm text-[var(--error)]">{state.error}</p>}
+      {state.error && <Alert>{state.error}</Alert>}
 
       <div className="flex items-center gap-3">
         <Button size="btn" type="submit" disabled={pending} loading={pending}>Add to employees</Button>

@@ -7,6 +7,7 @@ import { FileText, Paperclip, Undo2, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useToastActions } from "@/components/ui/Toast";
 import { restoreDeletedAction } from "./actions";
+import { Alert } from "@/components/Alert";
 
 type Item = { id: string; kind: string; label: string; detail: string | null; deletedByName: string; deletedAt: string; daysLeft: number; sizeKb: number };
 type Done = { id: string; kind: string; label: string; restoredAt: string; restoredByName: string | null };
@@ -44,7 +45,7 @@ function Row({ item }: { item: Item }) {
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium text-primary">{item.label} <span className="ml-1 rounded-full bg-surface-sunken px-1.5 py-px text-[10.5px] font-medium text-secondary">{k.label}</span></p>
         <p className="truncate text-xs text-muted">{item.detail ? `${item.detail} · ` : ""}Deleted by {item.deletedByName} on {when(item.deletedAt)}</p>
-        {error && <p role="alert" className="mt-1 text-xs text-[var(--error)]">{error}</p>}
+        {error && <Alert inline className="mt-1">{error}</Alert>}
       </div>
       <span className="tabular text-xs text-muted">{item.daysLeft} day{item.daysLeft === 1 ? "" : "s"} left</span>
       <Button variant="secondary" size="btn-sm" loading={pending} success={done} successLabel="Restored" onClick={restore}><Undo2 className="h-3.5 w-3.5" aria-hidden />Restore</Button>

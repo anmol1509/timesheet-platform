@@ -6,6 +6,7 @@ import { DatePicker } from "@/components/ui/DatePicker";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/Dialog";
 import { Select } from "@/components/ui/Select";
 import { todayInUae } from "@/lib/today";
+import { Alert } from "@/components/Alert";
 
 /** Marks an invoice paid on the day the money really arrived, and says which company bank received it. */
 export function MarkPaidButton({
@@ -48,7 +49,7 @@ export function MarkPaidButton({
             {banks.length > 0 && (
               <label className="block text-sm font-medium text-primary">Received in<div className="mt-1"><Select name="bankId" value={bank} onChange={setBank} options={[{ value: "", label: "Default bank" }, ...banks.map((b) => ({ value: b.id, label: b.label }))]} searchable={false} /></div></label>
             )}
-            {error && <p role="alert" className="text-sm text-error">{error}</p>}
+            {error && <Alert>{error}</Alert>}
             <DialogFooter>
               <Button type="button" variant="secondary" onClick={() => setOpen(false)} disabled={pending}>Cancel</Button>
               <Button type="submit" disabled={pending} loading={pending}>Mark paid</Button>

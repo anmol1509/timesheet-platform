@@ -8,6 +8,7 @@ import { Dialog, DialogContent } from "@/components/ui/Dialog";
 import { createAgencyAction, type CreateAgencyResult } from "./actions";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 export type AgencyOption = { id: string; name: string };
 
 /** Same "pick existing, or add new inline" pattern as ContactPicker, one
@@ -92,7 +93,7 @@ export function AgencyPicker({
               <Button size="btn" type="submit" disabled={pending} loading={pending}>
                 <Plus className="h-4 w-4" aria-hidden /> Add agency
               </Button>
-              {state.error && <p role="alert" className="text-sm text-[var(--error)]">{state.error}</p>}
+              {state.error && <Alert>{state.error}</Alert>}
             </div>
           </form>
         </DialogContent>
