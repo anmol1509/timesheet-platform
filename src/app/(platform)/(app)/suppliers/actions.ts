@@ -336,6 +336,7 @@ export async function updateSupplierContactPaymentAction(formData: FormData) {
 
   const data = {
     contactPerson: stringOrNull(formData.get("contactPerson")),
+    contactDesignation: stringOrNull(formData.get("contactDesignation")),
     contactPhone: stringOrNull(formData.get("contactPhone")),
     contactEmail: stringOrNull(formData.get("contactEmail")),
     phone: stringOrNull(formData.get("phone")),

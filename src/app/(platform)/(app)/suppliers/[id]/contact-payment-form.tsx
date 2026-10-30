@@ -15,6 +15,7 @@ type Supplier = {
   id: string;
   country: string | null;
   contactPerson: string | null;
+  contactDesignation: string | null;
   contactPhone: string | null;
   contactEmail: string | null;
   phone: string | null;
@@ -68,6 +69,13 @@ export function SupplierContactPaymentForm({ supplier }: { supplier: Supplier })
           <input
             name="contactPerson"
             defaultValue={supplier.contactPerson || ""}
+            className="input w-full"
+          />
+        </Field>
+        <Field label="Designation">
+          <input
+            name="contactDesignation"
+            defaultValue={supplier.contactDesignation || ""}
             className="input w-full"
           />
         </Field>

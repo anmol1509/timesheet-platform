@@ -269,12 +269,15 @@ export async function createAgencyAction(_prev: CreateAgencyResult, formData: Fo
   const contactEmail = stringOrNull(formData.get("email"));
   const country = stringOrNull(formData.get("country"));
   const tradeLicenseNumber = stringOrNull(formData.get("licence"));
-  const created = await prisma.supplier.create({ data: { name, code, branchId, contactPhone, contactEmail, country, tradeLicenseNumber, isRecruitmentAgency: true, category: "Recruitment agency" } });
+  const contactPerson = stringOrNull(formData.get("contactPerson"));
+  const contactDesignation = stringOrNull(formData.get("contactDesignation"));
+  const location = stringOrNull(formData.get("address"));
+  const created = await prisma.supplier.create({ data: { name, code, branchId, contactPerson, contactDesignation, contactPhone, contactEmail, country, location, tradeLicenseNumber, isRecruitmentAgency: true, category: "Recruitment agency" } });
   await logAudit({
     entityType: "SUPPLIER",
     entityId: created.id,
     action: "CREATE",
-    after: { name, code, contactPhone, contactEmail, country, tradeLicenseNumber, recruitmentAgency: true },
+    after: { name, code, contactPerson, contactDesignation, contactPhone, contactEmail, country, location, tradeLicenseNumber, recruitmentAgency: true },
     userId: user.id,
     userName: user.name,
     branchId,

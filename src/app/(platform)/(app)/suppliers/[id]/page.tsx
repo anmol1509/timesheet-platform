@@ -371,6 +371,7 @@ export default async function SupplierDetailPage({
                   id: supplier.id,
                   country: supplier.country,
                   contactPerson: supplier.contactPerson,
+                  contactDesignation: supplier.contactDesignation,
                   contactPhone: supplier.contactPhone,
                   contactEmail: supplier.contactEmail,
                   phone: supplier.phone,
