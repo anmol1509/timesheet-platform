@@ -5,10 +5,8 @@ import { useRouter } from "next/navigation";
 import {
   ArrowDown,
   ArrowUp,
-  ChevronDown,
   ChevronsUpDown,
   Columns3,
-  Download,
   Search,
   X,
 } from "lucide-react";
@@ -23,6 +21,7 @@ import { toCsv, downloadCsv } from "@/lib/csv";
 import { downloadXlsx } from "@/lib/spreadsheet";
 import { Select } from "@/components/ui/Select";
 import { FilterPanel } from "./FilterPanel";
+import { ExportMenu } from "@/components/ExportMenu";
 import { ScrollRestore } from "@/components/ScrollRestore";
 import { cn } from "@/lib/cn";
 
@@ -276,10 +275,10 @@ export function DataTable<T extends { id: string }>({
     );
   }
 
-  function exportExcel() {
+  async function exportExcel() {
     if (!csvFilename) return;
     const { exportRows, cols } = exportCells();
-    void downloadXlsx(
+    await downloadXlsx(
       csvFilename.replace(/\.csv$/i, ".xlsx"),
       "Export",
       cols.map((c) => c.csvHeader ?? c.header),
@@ -454,33 +453,11 @@ export function DataTable<T extends { id: string }>({
               />
             )}
             {csvFilename && (
-              <Popover.Root>
-                <Popover.Trigger asChild>
-                  <button type="button" className={toolbarButton}>
-                    <Download className="h-3.5 w-3.5" aria-hidden />
-                    {selected.size > 0 ? `Export ${selected.size}` : "Export"}
-                    <ChevronDown className="h-3 w-3 text-muted" aria-hidden />
-                  </button>
-                </Popover.Trigger>
-                <Popover.Portal>
-                  <Popover.Content
-                    align="end"
-                    sideOffset={6}
-                    className="rx-popover z-50 w-44 rounded-card border border-default bg-surface p-1 shadow-popover"
-                  >
-                    <Popover.Close asChild>
-                      <button type="button" onClick={exportExcel} className="flex w-full items-center rounded-sm px-2.5 py-1.5 text-left text-[13px] text-secondary transition hover:bg-surface-hover hover:text-primary">
-                        Excel (.xlsx)
-                      </button>
-                    </Popover.Close>
-                    <Popover.Close asChild>
-                      <button type="button" onClick={exportCsv} className="flex w-full items-center rounded-sm px-2.5 py-1.5 text-left text-[13px] text-secondary transition hover:bg-surface-hover hover:text-primary">
-                        CSV (.csv)
-                      </button>
-                    </Popover.Close>
-                  </Popover.Content>
-                </Popover.Portal>
-              </Popover.Root>
+              <ExportMenu
+                tableToolbar
+                label={selected.size > 0 ? `Export ${selected.size}` : "Export"}
+                onExport={async (format) => (format === "xlsx" ? exportExcel() : exportCsv())}
+              />
             )}
           </div>
         </div>

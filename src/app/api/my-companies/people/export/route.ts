@@ -18,7 +18,7 @@ function addSheet(wb: ExcelJS.Workbook, name: string, headings: string[], widths
 }
 
 /** The owners and sponsors register as a workbook: one row per person, and one row per person-and-company link. */
-export async function GET() {
+export async function GET(request: Request) {
   const { user, branchId } = await requireUserWithBranch();
   if (!canMyCompanies(subjectOf(user))) return NextResponse.json({ error: "You don't have access to My Companies." }, { status: 403 });
   const people = await loadPeopleRegister(branchId);
@@ -45,11 +45,17 @@ export async function GET() {
       .flatMap((p) => p.companies.map((c) => [c.name, p.name, PARTY_ROLE_LABEL[c.role] ?? c.role, c.percent ?? "", p.nationality ?? "", p.phone ?? "", problemLabels(p).join("; ") || "In order"] as (string | number)[]))
       .sort((a, b) => String(a[0]).localeCompare(String(b[0])) || String(a[1]).localeCompare(String(b[1]))),
   );
+  const stamp = new Date().toISOString().slice(0, 10);
+  // A CSV holds one table, so it is the People sheet.
+  if (new URL(request.url).searchParams.get("format") === "csv") {
+    const csv = Buffer.from(await wb.csv.writeBuffer({ sheetName: "People" }));
+    return new NextResponse(new Uint8Array(csv), { headers: { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="owners-and-sponsors-${stamp}.csv"` } });
+  }
   const buf = Buffer.from(await wb.xlsx.writeBuffer());
   return new NextResponse(new Uint8Array(buf), {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename="owners-and-sponsors-${new Date().toISOString().slice(0, 10)}.xlsx"`,
+      "Content-Disposition": `attachment; filename="owners-and-sponsors-${stamp}.xlsx"`,
     },
   });
 }
