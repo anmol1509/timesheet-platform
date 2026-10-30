@@ -377,7 +377,8 @@ export default async function EmployeeDetailPage({
                 documents: note.documents,
               }))}
             />
-            <HistorySection employeeId={employee.id} employeeName={employee.name} canSeePay={canViewPay} canOpenLog={isAdminRole(user.role)} />
+            {/* The worker's change history is for people who may edit workers, not for view-only roles. */}
+            {can(subjectOf(user), "workforce.employees", "edit") && <HistorySection employeeId={employee.id} employeeName={employee.name} canSeePay={canViewPay} canOpenLog={isAdminRole(user.role)} />}
           </>
         }
         siteContent={
