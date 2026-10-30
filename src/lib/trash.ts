@@ -1,3 +1,4 @@
+import { canRecover } from "@/lib/permissions";
 import { prisma } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
 import { EMPLOYEE_CHILDREN } from "@/lib/trashConfig";
@@ -107,8 +108,8 @@ const labelOfType = (t: string) => t.toLowerCase().replace(/_/g, " ").replace(/^
 export type RestoreResult = { ok: true; label: string; href: string | null; notes: string[] } | { ok: false; error: string };
 
 /** Puts a deleted record back, with what was deleted along with it. Nothing is changed if any part can't go back. */
-export async function restoreDeleted(id: string, who: Who & { role: string }): Promise<RestoreResult> {
-  if (who.role === "STAFF") return { ok: false, error: "Only admins can restore deleted records." };
+export async function restoreDeleted(id: string, who: Who & { role: string; permissions?: string[] | null }): Promise<RestoreResult> {
+  if (!canRecover(who, "edit")) return { ok: false, error: "You don't have permission to restore deleted records." };
   const rec = await prisma.deletedRecord.findUnique({ where: { id } });
   if (!rec) return { ok: false, error: "That entry is gone. Copies are kept for 30 days." };
   if (who.branchId && rec.branchId !== who.branchId) return { ok: false, error: "That belongs to another company." };

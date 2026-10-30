@@ -2,7 +2,7 @@ import { History } from "lucide-react";
 import { HeroHeader, heroButton } from "@/components/HeroHeader";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch, subjectOf } from "@/lib/auth";
-import { can } from "@/lib/permissions";
+import { can, canRecover } from "@/lib/permissions";
 import { auditNames } from "@/lib/auditNames";
 import { branchWhere } from "@/lib/branch";
 import { AuditLogList } from "./audit-log-list";
@@ -27,7 +27,7 @@ export default async function AuditLogPage({ searchParams }: { searchParams: Pro
   const query = parseAuditQuery(sp);
   const pageNo = Math.max(1, Number(Array.isArray(sp.page) ? sp.page[0] : sp.page) || 1);
   const canSeePay = can(subjectOf(user), "payroll", "view");
-  const canRevert = user.role !== "STAFF";
+  const canRevert = canRecover(subjectOf(user), "edit");
 
   const where = await auditWhere(query, branchId);
   const todayStart = startOfUaeToday();

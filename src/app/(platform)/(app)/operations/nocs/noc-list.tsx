@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ProgressBar } from "@/components/ProgressBar";
 import { Badge } from "@/components/Badge";
 import { DataTable, type DataTableColumn } from "@/components/data-table/DataTable";
+import { optionsOf } from "@/components/data-table/filterOptions";
 
 type NocRow = {
   id: string;
@@ -85,5 +86,21 @@ export function NocList({ nocs }: { nocs: NocRow[] }) {
     },
   ];
 
-  return <DataTable rows={nocs} columns={columns} rowHref={(n) => `/operations/nocs/${n.id}`} />;
+  return (
+    <DataTable
+      rows={nocs}
+      columns={columns}
+      rowHref={(n) => `/operations/nocs/${n.id}`}
+      filters={[
+        { key: "status", label: "All statuses", options: optionsOf(nocs, (n) => n.status), get: (n) => n.status },
+        { key: "client", label: "All clients", options: optionsOf(nocs, (n) => n.clientName), get: (n) => n.clientName },
+        { key: "project", label: "All projects", options: optionsOf(nocs, (n) => n.projectName), get: (n) => n.projectName },
+        {
+          key: "mobilising", label: "Any mobilisation date",
+          options: [{ value: "week", label: "Within 7 days" }, { value: "month", label: "Within 30 days" }, { value: "later", label: "Later" }, { value: "past", label: "Date passed" }, { value: "none", label: "No date set" }],
+          get: (n) => (n.mobilizeInDays === null ? "none" : n.mobilizeInDays < 0 ? "past" : n.mobilizeInDays <= 7 ? "week" : n.mobilizeInDays <= 30 ? "month" : "later"),
+        },
+      ]}
+    />
+  );
 }

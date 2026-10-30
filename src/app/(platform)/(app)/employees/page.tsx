@@ -1,3 +1,4 @@
+import { isAdminRole } from "@/lib/roles";
 import { ExpiryFix } from "./[id]/profile-fixes";
 import Link from "next/link";
 import { FileSearch, UserPlus } from "lucide-react";
@@ -35,9 +36,8 @@ export default async function EmployeesPage({
 }) {
   const { filter, supplier: supplierId, sponsor: sponsorId, sponsorName, registered, trade, nationality, open: openId, tab: openTab, renew: openRenew } = await searchParams;
   const { user, branchId } = await requireUserWithBranch();
-  // Pay is only shown, exported and imported for people who may see (or edit) payroll.
+  // Pay is only shown and exported for people who may see (or edit) payroll.
   const canViewPay = can(subjectOf(user), "payroll", "view");
-  const canEditPay = can(subjectOf(user), "payroll", "edit");
 
   const [employees] = await Promise.all([
     prisma.employee.findMany({
@@ -250,7 +250,7 @@ export default async function EmployeesPage({
         </Insights>
       )}
 
-      <EmployeeList key={openId ?? "list"} employees={rows} filterOptions={filterOptions} currentFilters={currentFilters} initialFilter={filter} registeredId={registered} canViewPay={canViewPay} canEditPay={canEditPay} initialOpen={openId ? { id: openId, tab: openTab, renew: openRenew } : undefined} />
+      <EmployeeList key={openId ?? "list"} employees={rows} filterOptions={filterOptions} currentFilters={currentFilters} initialFilter={filter} registeredId={registered} canViewPay={canViewPay} canImport={isAdminRole(user.role)} initialOpen={openId ? { id: openId, tab: openTab, renew: openRenew } : undefined} />
     </div>
   );
 }

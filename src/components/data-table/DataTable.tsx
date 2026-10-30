@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowDown,
@@ -8,6 +9,7 @@ import {
   ChevronsUpDown,
   Columns3,
   Search,
+  Upload,
   X,
 } from "lucide-react";
 import * as Popover from "@radix-ui/react-popover";
@@ -91,6 +93,7 @@ export function DataTable<T extends { id: string }>({
   selectable = false,
   csvFilename,
   importConfig,
+  importLink,
   renderRowActions,
   renderBulkActions,
   emptyState,
@@ -101,7 +104,7 @@ export function DataTable<T extends { id: string }>({
   toolbarExtra,
   sortPresets,
   pageSize,
-  filters,
+  filters: allFilters,
   initialFilters,
   tree,
 }: {
@@ -114,6 +117,8 @@ export function DataTable<T extends { id: string }>({
   selectable?: boolean;
   csvFilename?: string;
   importConfig?: DataTableImportConfig;
+  /** A button to a guided import elsewhere, in place of the built-in file import. */
+  importLink?: { href: string; label: string };
   renderRowActions?: (row: T) => React.ReactNode;
   /** Rendered in the selection bar; receives the selected ids and a clear fn. */
   renderBulkActions?: (ids: string[], clear: () => void) => React.ReactNode;
@@ -137,6 +142,8 @@ export function DataTable<T extends { id: string }>({
   tree?: { parentId: (row: T) => string | null };
 }) {
   const router = useRouter();
+  // A filter with nothing to choose from (every row blank in that column) is left out rather than shown empty.
+  const filters = useMemo(() => allFilters?.filter((f) => f.options.length > 0), [allFilters]);
   const [sort, setSort] = useState<SortState>(null);
   const [query, setQuery] = useState("");
   const [filterValues, setFilterValues] = useState<Record<string, string>>(initialFilters ?? {});
@@ -308,7 +315,7 @@ export function DataTable<T extends { id: string }>({
 
   const hideable = columns.filter((c) => !c.locked);
   const showToolbar =
-    !!importConfig || !!csvFilename || searchable || !!toolbarExtra || hideable.length > 0 || !!filters?.length;
+    !!importConfig || !!importLink || !!csvFilename || searchable || !!toolbarExtra || hideable.length > 0 || !!filters?.length;
   const cellY = density === "compact" ? "py-2" : "py-3";
   const colSpan =
     visibleColumns.length + (selectable ? 1 : 0) + (renderRowActions ? 1 : 0);
@@ -442,6 +449,12 @@ export function DataTable<T extends { id: string }>({
                   </Popover.Content>
                 </Popover.Portal>
               </Popover.Root>
+            )}
+            {importLink && (
+              <Link href={importLink.href} className="btn btn-secondary px-3">
+                <Upload className="h-3.5 w-3.5" aria-hidden />
+                {importLink.label}
+              </Link>
             )}
             {importConfig && (
               <CsvImportDialog

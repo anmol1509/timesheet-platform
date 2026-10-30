@@ -1,3 +1,4 @@
+import { canSeeRenewal } from "@/lib/renewalAccess";
 import type Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/db";
 import { branchWhere } from "@/lib/branch";
@@ -264,7 +265,7 @@ async function getStats(input: Record<string, unknown>, ctx: ToolContext): Promi
     data = { totals: { beds: per.reduce((a, c) => a + c.beds, 0), occupied: per.reduce((a, c) => a + c.occupied, 0) }, camps: per.slice(0, 15) };
   } else if (metric === "renewals") {
     const days = Math.min(365, Math.max(1, Math.round(Number(input.days) || 60)));
-    const items = (await getRenewals(ctx.branchId, days)).filter((i) => i.days <= days);
+    const items = (await getRenewals(ctx.branchId, days)).filter((i) => i.days <= days && canSeeRenewal(ctx.subject, i));
     data = {
       withinDays: days,
       summary: summarise(items),
@@ -322,7 +323,7 @@ async function listRows(input: Record<string, unknown>, ctx: ToolContext): Promi
     table = { title: `Absent today (${day(today)})`, columns: ["Name", "ID", "Trade", "Project"], total: rows.length, rows: rows.slice(0, ROW_CAP).map((r) => [r.employee.name, r.employee.employeeIdNo, r.employee.trade ?? "", r.project?.name ?? ""]) };
   } else if (kind === "expiring_documents") {
     const days = Math.min(365, Math.max(1, Math.round(Number(input.days) || 30)));
-    const items = (await getRenewals(ctx.branchId, days)).filter((i) => i.days <= days);
+    const items = (await getRenewals(ctx.branchId, days)).filter((i) => i.days <= days && canSeeRenewal(ctx.subject, i));
     table = { title: `Documents expiring within ${days} days`, columns: ["Who", "Document", "Expires", "Days left"], total: items.length, rows: items.slice(0, ROW_CAP).map((i) => [i.subjectName, i.document, i.expiry.slice(0, 10), String(i.days)]) };
   } else if (kind === "timesheet_status") {
     const month = monthArg(input.month) ?? new Date().toISOString().slice(0, 7);
