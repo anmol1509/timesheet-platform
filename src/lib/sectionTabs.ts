@@ -14,6 +14,11 @@ export type SectionTab = {
 const under = (base: string) => (p: string) => p === base || p.startsWith(base + "/");
 
 export const SECTION_TABS: SectionTab[][] = [
+  // My Companies: the companies, and the people who own or sponsor them
+  [
+    { href: "/my-companies", label: "Companies", match: (p) => p.startsWith("/my-companies") && !p.startsWith("/my-companies/people") },
+    { href: "/my-companies/people", label: "Owners & sponsors", match: under("/my-companies/people") },
+  ],
   // Administration: the company itself
   [
     { href: "/settings/company", label: "Company profile", match: under("/settings/company") },

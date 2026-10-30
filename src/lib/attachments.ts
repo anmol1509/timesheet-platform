@@ -79,6 +79,10 @@ export async function uploadAttachmentAction(
     // Older files used types the registry doesn't list (e.g. WORKMEN_COMPENSATION_INSURANCE), so SUPPLIER keeps those.
     if (entityType !== "SUPPLIER" && !known) return { error: "Choose one of the listed document types." };
     if (known && !known.isActive) return { error: `"${known.label}" is switched off for this company.` };
+    // A type that carries an expiry needs a date (or a stated "no expiry"); otherwise the file is stored but never reminded about.
+    if (known?.hasExpiry && !expiryDate && String(formData.get("noExpiry") || "") !== "1") {
+      return { error: `Enter the expiry date for ${known.label.toLowerCase()}, or say that it has none.` };
+    }
   }
   // A candidate's file is a listed candidate document or a stage's own paper (offer, entry permit...); only a switched-off type is refused.
   if (entityType === "CANDIDATE_ONBOARDING") {

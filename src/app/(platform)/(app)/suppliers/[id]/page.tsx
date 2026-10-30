@@ -135,7 +135,7 @@ export default async function SupplierDetailPage({
   );
   // Upload the files for the listed document types without leaving the panel (not offered where the documents are restricted).
   const uploader = (items: typeof checklist) => (canEdit && !restricted ? (
-    <AttachmentUploader entityType="SUPPLIER" entityId={supplier.id} entityBranchId={supplier.branchId} revalidate={`/suppliers/${supplier.id}`} docTypeOptions={items.map((c) => ({ value: c.type.key, label: c.type.label }))} attachments={[]} />
+    <AttachmentUploader entityType="SUPPLIER" entityId={supplier.id} entityBranchId={supplier.branchId} revalidate={`/suppliers/${supplier.id}`} docTypeOptions={items.map((c) => ({ value: c.type.key, label: c.type.label, hasExpiry: c.type.hasExpiry }))} attachments={[]} />
   ) : null);
   if (missingRequired.length > 0) statusItems.push({ key: "required", tone: "danger", label: `${missingRequired.length} required document${missingRequired.length === 1 ? "" : "s"} missing`, title: "Required documents missing", description: "Upload each one here.", content: <div className="space-y-4">{docList(missingRequired)}{uploader(missingRequired)}</div> });
   if (lapsing.length > 0) statusItems.push({ key: "lapsing", tone: "warn", label: `${lapsing.length} expired or expiring`, title: "Documents expired or expiring", description: "Upload the renewed file here.", content: <div className="space-y-4">{docList(lapsing)}{uploader(lapsing)}</div> });

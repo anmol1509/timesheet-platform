@@ -51,7 +51,7 @@ export async function SupplierPartiesSection({ supplierId, branchId, types, canE
   const options: PersonOption[] = everyone.map((p) => ({ id: p.id, label: personLabel(p.name, p.links) }));
 
   const owners: OwnerRow[] = links.filter((l) => l.role === OWNER_ROLE).map((l) => ({ linkId: l.id, partyId: l.partyId, name: l.party.name, percent: l.ownershipPercent }));
-  const upload = activeDocTypes(types).map((t) => ({ value: t.key, label: t.label }));
+  const upload = activeDocTypes(types).map((t) => ({ value: t.key, label: t.label, hasExpiry: t.hasExpiry }));
 
   return (
     <div className="space-y-5">
@@ -72,7 +72,7 @@ export async function SupplierPartiesSection({ supplierId, branchId, types, canE
         const elsewhere = p.links.filter((l) => l.supplierId !== supplierId);
         const otherCompanies = new Set(elsewhere.map((l) => l.supplierId)).size;
         return (
-          <div key={p.id} className="space-y-3 rounded-2xl border border-default p-4">
+          <div key={p.id} id={`person-${p.id}`} className="scroll-mt-24 space-y-3 rounded-2xl border border-default p-4">
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div className="min-w-0">
                 <p className="font-medium text-primary">{p.name}</p>

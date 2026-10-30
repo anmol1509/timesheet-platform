@@ -35,7 +35,8 @@ export function AttachmentUploader({
   entityId: string;
   entityBranchId: string | null;
   revalidate: string;
-  docTypeOptions: { value: string; label: string }[];
+  /** `hasExpiry` marks a type whose files need an expiry date (or an explicit "no expiry"), so nothing goes untracked by accident. */
+  docTypeOptions: { value: string; label: string; hasExpiry?: boolean }[];
   attachments: AttachmentRow[];
   /** Only list the files: no upload form and no delete (a person who may only look). */
   readOnly?: boolean;
@@ -53,19 +54,31 @@ export function AttachmentUploader({
   const [readNumber, setReadNumber] = useState("");
   const [readIssue, setReadIssue] = useState("");
   const [note, setNote] = useState<string | null>(null);
-  const resetOther = () => { setName(""); setTrack(false); setExpiry(""); setPlainExpiry(""); setReadNumber(""); setReadIssue(""); setNote(null); };
+  // Where the date came from: a file is being read, a date was read from it, or nothing could be read.
+  const [readState, setReadState] = useState<"idle" | "reading" | "read" | "failed">("idle");
+  const [hasFile, setHasFile] = useState(false);
+  const [noExpiry, setNoExpiry] = useState(false);
+  const needsExpiry = !isOther && !!docTypeOptions.find((o) => o.value === type)?.hasExpiry;
+  // A document that carries an expiry must have a date (or be marked as having none) before it can be filed, or it is never tracked.
+  const blocked = needsExpiry && hasFile && (readState === "reading" || (!plainExpiry && !noExpiry));
+  const resetOther = () => { setName(""); setTrack(false); setExpiry(""); setPlainExpiry(""); setReadNumber(""); setReadIssue(""); setNote(null); setReadState("idle"); setHasFile(false); setNoExpiry(false); };
 
   async function onFile(file: File | undefined) {
+    setHasFile(!!file);
+    setNoExpiry(false);
+    setPlainExpiry("");
+    setReadState("idle");
     if (!file) return;
     if (!isOther) {
       setNote("Reading the file for its expiry date…");
+      setReadState("reading");
       // A supplier's papers have their own reader (licences, permits, TRN); every other record's files use the general one.
       const read = entityType === "SUPPLIER"
         ? await readCompanyDoc(file)
         : await readOtherDoc(file).then((r) => (r ? { expiry: r.expiry, number: r.docNumber, issue: r.issueDate } : null));
       if (read) { setReadNumber(read.number); setReadIssue(read.issue); }
-      if (read?.expiry) { setPlainExpiry(read.expiry); setNote("Expiry read from the file. Check it before uploading."); }
-      else setNote(null);
+      if (read?.expiry) { setPlainExpiry(read.expiry); setNote("Expiry read from the file. Check it before uploading."); setReadState("read"); }
+      else { setNote(null); setReadState("failed"); }
       return;
     }
     const guess = nameFromFile(file.name);
@@ -99,7 +112,7 @@ export function AttachmentUploader({
           formRef.current?.reset();
           resetOther();
         }}
-        className="flex flex-wrap items-end gap-3 rounded-2xl border border-dashed border-strong p-4"
+        className="flex flex-wrap items-start gap-3 rounded-2xl border border-dashed border-strong p-4"
       >
         <input type="hidden" name="entityType" value={entityType} />
         <input type="hidden" name="entityId" value={entityId} />
@@ -113,11 +126,23 @@ export function AttachmentUploader({
 <Select name="docType" value={type} onChange={(v) => { setType(v); if (v !== "OTHER") resetOther(); }} options={docTypeOptions.map((o) => ({ value: o.value, label: o.label }))} />
         </label>
         {!isOther && (
-          <label className="block">
-            <span className="mb-1 block text-xs font-medium text-muted">Expiry (optional)</span>
-            <DatePicker name="expiryDate" value={plainExpiry} onChange={setPlainExpiry} />
-          </label>
+          <div className="w-56">
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium text-muted">{needsExpiry ? <>Expiry date <span className="text-[var(--error)]">*</span></> : "Expiry (optional)"}</span>
+              <DatePicker name="expiryDate" value={plainExpiry} onChange={(v) => { setPlainExpiry(v); if (v) setNoExpiry(false); }} />
+            </label>
+            {needsExpiry && readState === "read" && plainExpiry && <span className="mt-1 block text-xs text-[var(--success)]">Read from the file. Check it before uploading.</span>}
+            {needsExpiry && readState === "reading" && <span className="mt-1 block text-xs text-muted">Reading the file for its date…</span>}
+            {needsExpiry && hasFile && readState === "failed" && !plainExpiry && !noExpiry && <span className="mt-1 block text-xs text-[var(--error)]">Couldn&rsquo;t read a date from this file. Enter it so you get a reminder.</span>}
+            {needsExpiry && hasFile && readState !== "reading" && (
+              <label className="mt-1.5 flex items-center gap-1.5 text-xs text-muted">
+                <input type="checkbox" checked={noExpiry} onChange={(e) => { setNoExpiry(e.target.checked); if (e.target.checked) setPlainExpiry(""); }} />
+                This document has no expiry
+              </label>
+            )}
+          </div>
         )}
+        {needsExpiry && noExpiry && <input type="hidden" name="noExpiry" value="1" />}
         <label className="block flex-1 min-w-[180px]">
           <span className="mb-1 block text-xs font-medium text-muted">
             File (max {MAX_UPLOAD_LABEL})
@@ -133,11 +158,13 @@ export function AttachmentUploader({
         {isOther && <OtherDocFields name={name} onName={setName} track={track} onTrack={setTrack} expiry={expiry} onExpiry={setExpiry} note={note} className="grid w-full grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,1fr)_auto_14rem]" />}
         <button
           type="submit"
-          className="btn btn-primary"
+          disabled={blocked}
+          title={blocked ? "Enter the expiry date, or tick that this document has no expiry." : undefined}
+          className="btn btn-primary mt-5 disabled:opacity-50"
         >
           Upload
         </button>
-        {!isOther && note && <p className="w-full text-xs text-muted">{note}</p>}
+        {!isOther && !needsExpiry && note && <p className="w-full text-xs text-muted">{note}</p>}
       </form>}
 
       {error && <p className="text-sm text-red-600">{error}</p>}
