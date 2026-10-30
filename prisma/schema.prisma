@@ -1786,6 +1786,28 @@ model AuditLog {
   @@index([branchId, userId, createdAt])
 }
 
+// A copy of a record taken just before it was deleted, so it can be restored for a while. The snapshot holds the row and
+// what was deleted with it (files included, as text), and is removed after expiresAt.
+model DeletedRecord {
+  id             String    @id @default(cuid())
+  kind           String // "EMPLOYEE" | "DOCUMENT" | "ATTACHMENT"
+  recordId       String // the id the record had
+  label          String // "Abdul Karim (DM-0021)"
+  detail         String? // "Site staff, 6 documents"
+  snapshot       Json
+  sizeBytes      Int       @default(0)
+  branchId       String?
+  deletedById    String
+  deletedByName  String
+  deletedAt      DateTime  @default(now())
+  expiresAt      DateTime
+  restoredAt     DateTime?
+  restoredByName String?
+
+  @@index([branchId, deletedAt])
+  @@index([expiresAt])
+}
+
 // A staffing request a project raises for more workers, broken down into
 // per-trade line items. Fulfilling a line item (see DemandRequestAllocation)
 // is a real project placement, so it also opens an EmployeeAssignmentHistory

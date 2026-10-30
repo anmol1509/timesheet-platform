@@ -12,6 +12,7 @@ import { can } from "@/lib/permissions";
 import { subjectOf } from "@/lib/auth";
 import { PAY_STRUCTURES } from "@/lib/payroll";
 import { logAudit } from "@/lib/audit";
+import { trashDocuments } from "@/lib/trash";
 import { DEFAULT_SKILL_LEVEL, clampSkillLevel } from "@/lib/skillLevel";
 import { recordProjectChange } from "@/lib/employeeAssignment";
 import { requestProjectAssignment } from "@/lib/projectAssignment";
@@ -567,6 +568,9 @@ export async function deleteDocumentAction(formData: FormData) {
   // any other branch's document id, so the target is checked against it.
   const existing = await prisma.document.findUnique({ where: { id } });
   if (!existing || existing.employeeId !== employeeId) return;
+  // A restorable copy first: if one can't be kept, nothing is deleted.
+  const kept = await trashDocuments([id], { id: user.id, name: user.name, branchId });
+  if (!kept.ok) return;
   await prisma.document.delete({ where: { id } });
 
   if (existing) {

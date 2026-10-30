@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/Checkbox";
 import { Select } from "@/components/ui/Select";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/Dialog";
 import { cn } from "@/lib/cn";
+import { useUndoToast } from "../use-undo-toast";
 import { confirmSiteArrivalAction, recordMissingArrivalAction, revertSiteArrivalAction, disapproveSiteArrivalAction } from "../actions";
 import { Button } from "@/components/ui/Button";
 import { DatePicker } from "@/components/ui/DatePicker";
@@ -65,6 +66,7 @@ export function SiteArrivalBoard({
   sites: { id: string; name: string; projectId: string }[];
 }) {
   const router = useRouter();
+  const offerUndo = useUndoToast();
   const [saving, startTransition] = useTransition();
   const [tab, setTab] = useState<"pending" | "arrived" | "unrecorded">(initialTab);
   const [error, setError] = useState<string | null>(null);
@@ -128,6 +130,7 @@ export function SiteArrivalBoard({
     startTransition(async () => {
       const res = await recordMissingArrivalAction(body);
       if (res?.error) { setError(res.error); return; }
+      offerUndo(res.recorded === 1 ? "Arrival recorded" : `Arrival recorded for ${res.recorded} workers`, res.undo);
       setPicked(new Set());
       setSiteId("");
       router.refresh();
@@ -143,7 +146,8 @@ export function SiteArrivalBoard({
     if (siteId && siteOptions.some((s) => s.id === siteId)) body.append("siteId", siteId);
     for (const id of picked) body.append("employeeId", id);
     startTransition(async () => {
-      await confirmSiteArrivalAction(body);
+      const res = await confirmSiteArrivalAction(body);
+      if (res?.confirmed) offerUndo(res.confirmed === 1 ? "Confirmed on site" : `${res.confirmed} workers confirmed on site`, res.undo);
       setPicked(new Set());
       // Clearing the selection empties the site list, and a Select holding a
       // value it can no longer find falls back to printing the raw id.
@@ -532,6 +536,7 @@ function ArrivalForm({
 }) {
   const { row, mode } = target;
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const offerUndo = useUndoToast();
   const [pending, startTransition] = useTransition();
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -546,9 +551,11 @@ function ArrivalForm({
         const res = await recordMissingArrivalAction(body);
         if (res?.error) return setError(res.error);
         if (!res?.recorded) return setError("Nothing was recorded. The worker may already have an arrival date.");
+        offerUndo("Arrival recorded", res.undo);
       } else {
         const res = await confirmSiteArrivalAction(body);
         if (!res?.confirmed) return setError("Couldn't confirm this worker. Check the date and try again.");
+        offerUndo("Confirmed on site", res.undo);
       }
       setDone(true);
       setTimeout(() => {
