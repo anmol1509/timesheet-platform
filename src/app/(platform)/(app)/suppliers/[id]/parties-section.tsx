@@ -72,7 +72,7 @@ export async function SupplierPartiesSection({ supplierId, branchId, types, canE
         const elsewhere = p.links.filter((l) => l.supplierId !== supplierId);
         const otherCompanies = new Set(elsewhere.map((l) => l.supplierId)).size;
         return (
-          <div key={p.id} className="space-y-3 rounded-2xl border border-default p-4">
+          <div key={p.id} id={`person-${p.id}`} className="scroll-mt-24 space-y-3 rounded-2xl border border-default p-4">
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div className="min-w-0">
                 <p className="font-medium text-primary">{p.name}</p>
