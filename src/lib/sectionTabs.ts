@@ -29,6 +29,7 @@ export const SECTION_TABS: SectionTab[][] = [
   // Administration: what happened, and what people told the assistant
   [
     { href: "/audit-log", label: "Audit log", match: under("/audit-log") },
+    { href: "/trash", label: "Recently deleted", match: under("/trash") },
     { href: "/settings/assistant", label: "Assistant feedback", match: under("/settings/assistant") },
     { href: "/settings/ai", label: "AI credits", match: under("/settings/ai") },
     { href: "/settings/emails", label: "Emails", match: under("/settings/emails") },

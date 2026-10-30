@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { requirePermission, requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
+import { trashDocuments } from "@/lib/trash";
 import { rereadExpiry } from "@/lib/importer/rereadExpiry";
 import { EXPIRY_FIELD } from "@/lib/importer/documentRead";
 
@@ -21,6 +22,10 @@ export async function deleteDocumentsAction(ids: string[]): Promise<{ deleted: n
   });
   const mine = docs.filter((d) => !isOutsideBranch(d.employee.branchId, branchId, isSuperAdmin));
   if (mine.length === 0) return { deleted: 0, error: "Those documents weren't found." };
+
+  // Restorable copies first: if they can't be kept, nothing is deleted.
+  const kept = await trashDocuments(mine.map((d) => d.id), { id: user.id, name: user.name, branchId });
+  if (!kept.ok) return { deleted: 0, error: kept.error };
 
   await prisma.document.deleteMany({ where: { id: { in: mine.map((d) => d.id) } } });
   for (const d of mine) {

@@ -308,7 +308,7 @@ export function adminGroup(): Entry {
       { href: "/settings/company", label: "Company", icon: Building, alsoMatch: ["/settings"] },
       { href: "/settings/team", label: "Team & Access", icon: UserCog, alsoMatch: ["/settings/roles", "/settings/developers"] },
       { href: "/import", label: "Data", icon: UploadIcon, alsoMatch: ["/data-health", "/lookups", "/settings/data-reset", "/settings/document-types"] },
-      { href: "/audit-log", label: "Audit & feedback", icon: History, alsoMatch: ["/settings/assistant"] },
+      { href: "/audit-log", label: "Audit & feedback", icon: History, alsoMatch: ["/settings/assistant", "/trash"] },
     ],
   };
 }

@@ -184,7 +184,7 @@ export async function deleteDemandRequestAction(formData: FormData) {
 // duplicating divergent logic.
 export async function allocateEmployeesAction(
   formData: FormData
-): Promise<{ allocated: number; requested: number }> {
+): Promise<{ allocated: number; requested: number; undo?: string[] }> {
   await requireWrite("demand");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
@@ -213,6 +213,8 @@ export async function allocateEmployeesAction(
   // the *same* project shouldn't be knocked back into "awaiting arrival"
   // when nothing about their placement changed.
   const projectChangedIds: string[] = [];
+  // The audit entries written here, so the screen can offer to undo them.
+  const undoIds: string[] = [];
   const rawDate = String(formData.get("mobilisationDate") || "").trim();
   const mobilisationDate = /^\d{4}-\d{2}-\d{2}$/.test(rawDate)
     ? new Date(rawDate + "T00:00:00.000Z")
@@ -263,7 +265,7 @@ export async function allocateEmployeesAction(
       projectChangedIds.push(employeeId);
     }
 
-    await logAudit({
+    const auditId = await logAudit({
       entityType: "DEMAND_REQUEST_ALLOCATION",
       entityId: employeeId,
       action: "CREATE",
@@ -273,6 +275,7 @@ export async function allocateEmployeesAction(
       branchId,
       ...batch,
     });
+    if (auditId) undoIds.push(auditId);
 
     revalidatePath(`/employees/${employeeId}`);
     mobilisedIds.push(employeeId);
@@ -307,7 +310,7 @@ export async function allocateEmployeesAction(
   // until something else happened to invalidate it, so a newly mobilised
   // worker appeared not to show up there at all.
   revalidatePath("/demand/site-arrival");
-  return { allocated, requested: employeeIds.length };
+  return { allocated, requested: employeeIds.length, undo: undoIds };
 }
 
 export async function unallocateEmployeeAction(formData: FormData) {
@@ -562,8 +565,9 @@ export async function confirmSiteArrivalAction(formData: FormData) {
     (await markOnSite(elsewhere.map((e) => e.id), siteArrivalDate, null));
 
   const batch = allowed.length > 1 ? { batchId: crypto.randomUUID(), batchLabel: `Confirmed ${allowed.length} workers on site, arrived ${rawDate}` } : {};
+  const undoIds: string[] = [];
   for (const employee of allowed) {
-    await logAudit({
+    const auditId = await logAudit({
       entityType: "EMPLOYEE_SITE_ARRIVAL",
       entityId: employee.id,
       action: "UPDATE",
@@ -578,12 +582,13 @@ export async function confirmSiteArrivalAction(formData: FormData) {
       branchId,
       ...batch,
     });
+    if (auditId) undoIds.push(auditId);
     revalidatePath(`/employees/${employee.id}`);
   }
 
   revalidatePath("/demand/site-arrival");
   revalidatePath("/employees");
-  return { confirmed, requested: employeeIds.length };
+  return { confirmed, requested: employeeIds.length, undo: undoIds };
 }
 
 /**
@@ -617,25 +622,27 @@ export async function recordMissingArrivalAction(formData: FormData) {
     if (site && !isOutsideBranch(site.project.branchId, branchId, isSuperAdmin)) siteProjectId = site.projectId;
   }
   const batch = allowed.length > 1 ? { batchId: crypto.randomUUID(), batchLabel: `Recorded arrival ${rawDate} for ${allowed.length} workers` } : {};
+  const undoIds: string[] = [];
   for (const e of allowed) {
     await prisma.employee.update({ where: { id: e.id }, data: { siteArrivalDate, ...(siteProjectId && e.projectId === siteProjectId ? { siteId } : {}) } });
-    await logAudit({
+    const auditId = await logAudit({
       entityType: "EMPLOYEE_SITE_ARRIVAL",
       entityId: e.id,
       action: "UPDATE",
       before: { status: "ACTIVE", siteArrivalDate: null },
-      after: { status: "ACTIVE", siteArrivalDate: rawDate },
+      after: { status: "ACTIVE", siteArrivalDate: rawDate, ...(siteProjectId && e.projectId === siteProjectId ? { siteId } : {}) },
       userId: user.id,
       userName: user.name,
       branchId,
       ...batch,
     });
+    if (auditId) undoIds.push(auditId);
     revalidatePath(`/employees/${e.id}`);
   }
   revalidatePath("/demand/site-arrival");
   revalidatePath("/attendance");
   revalidatePath("/employees");
-  return { recorded: allowed.length, requested: employeeIds.length };
+  return { recorded: allowed.length, requested: employeeIds.length, undo: undoIds };
 }
 
 /** Reverses a site-arrival confirmation entered against the wrong worker. */

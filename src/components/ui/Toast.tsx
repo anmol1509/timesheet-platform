@@ -14,11 +14,17 @@ import { cn } from "@/lib/cn";
 
 type ToastTone = "success" | "error" | "warning" | "info";
 
+/** A button on the toast, such as Undo. It stays for `duration` ms; pressing it runs `run` and shows what happened. */
+type ToastAction = { label: string; run: () => Promise<{ ok: boolean; message: string }> };
+
 type Toast = {
   id: number;
   tone: ToastTone;
   title: string;
   description?: string;
+  action?: ToastAction;
+  /** How long it stays, in ms. Default 4.5 s; errors stay until dismissed. */
+  duration?: number;
 };
 
 type ToastInput = Omit<Toast, "id" | "tone"> & { tone?: ToastTone };
@@ -88,7 +94,10 @@ const TONES: Record<
 };
 
 function ToastCard({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }) {
-  const { icon: Icon, className, iconClass } = TONES[toast.tone];
+  const [outcome, setOutcome] = useState<{ ok: boolean; message: string } | null>(null);
+  const [running, setRunning] = useState(false);
+  const tone: ToastTone = outcome ? (outcome.ok ? "success" : "error") : toast.tone;
+  const { icon: Icon, className, iconClass } = TONES[tone];
   const [leaving, setLeaving] = useState(false);
 
   // Slide out first, then remove; the card is gone from state only once it has left.
@@ -98,11 +107,18 @@ function ToastCard({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
   }, [onDismiss]);
 
   useEffect(() => {
-    // Errors stay until dismissed; everything else clears itself.
-    if (toast.tone === "error") return;
-    const timer = setTimeout(leave, 4500);
+    // Errors stay until dismissed; everything else clears itself. While an action is running the card stays.
+    if (tone === "error" || running) return;
+    const timer = setTimeout(leave, outcome ? 3000 : (toast.duration ?? 4500));
     return () => clearTimeout(timer);
-  }, [toast.tone, leave]);
+  }, [tone, leave, running, outcome, toast.duration]);
+
+  async function runAction() {
+    if (!toast.action || running) return;
+    setRunning(true);
+    try { setOutcome(await toast.action.run()); } catch { setOutcome({ ok: false, message: "That didn't work. Nothing was changed." }); }
+    setRunning(false);
+  }
 
   return (
     <div
@@ -114,11 +130,21 @@ function ToastCard({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
     >
       <Icon className={cn("mt-0.5 h-4 w-4 shrink-0", iconClass)} aria-hidden />
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-primary">{toast.title}</p>
-        {toast.description && (
+        <p className="text-sm font-medium text-primary">{outcome ? outcome.message : toast.title}</p>
+        {!outcome && toast.description && (
           <p className="mt-0.5 text-xs text-secondary">{toast.description}</p>
         )}
       </div>
+      {toast.action && !outcome && (
+        <button
+          type="button"
+          onClick={runAction}
+          disabled={running}
+          className="-my-0.5 shrink-0 rounded-md px-2 py-1 text-sm font-semibold text-[var(--brand-primary)] transition hover:bg-black/5 disabled:opacity-60"
+        >
+          {running ? "Undoing…" : toast.action.label}
+        </button>
+      )}
       <button
         type="button"
         onClick={leave}

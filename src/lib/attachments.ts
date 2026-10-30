@@ -10,6 +10,7 @@ import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
 import { resolveDocTypes, VEHICLE_EXPIRY_FIELD } from "@/lib/documentTypes";
 import { otherDocFilename } from "@/lib/otherDoc";
 import { logAudit } from "@/lib/audit";
+import { trashAttachment } from "@/lib/trash";
 
 /**
  * The record types a generic attachment may be filed against, each with a lookup
@@ -137,6 +138,9 @@ export async function deleteAttachmentAction(formData: FormData) {
     const owner = await prisma.supplier.findUnique({ where: { id: attachment.entityId }, select: { isOwnCompany: true } });
     if (owner?.isOwnCompany) return;
   }
+  // A restorable copy first: if one can't be kept, nothing is deleted.
+  const kept = await trashAttachment(id, { id: user.id, name: user.name, branchId });
+  if (!kept.ok) return;
   await prisma.attachment.delete({ where: { id } });
   await logAudit({
     entityType: "ATTACHMENT", entityId: id, action: "DELETE",

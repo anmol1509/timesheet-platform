@@ -45,7 +45,8 @@ export function DeleteEmployeesButton({
 
       if (result.deleted > 0) {
         toast.success(
-          `Deleted ${result.deleted} employee${result.deleted === 1 ? "" : "s"}.`
+          `Deleted ${result.deleted} employee${result.deleted === 1 ? "" : "s"}.`,
+          "Kept for 30 days in Recently deleted, where an admin can restore them."
         );
         onDone?.();
         router.refresh();
@@ -87,7 +88,7 @@ export function DeleteEmployeesButton({
       <Dialog open={confirming} onOpenChange={setConfirming}>
         <DialogContent
           title="Confirm delete"
-          description={`Delete ${label}? Any documents, skills and photos on file go too. Employees with timesheet or attendance history can't be deleted. You'll be offered to deactivate those instead.`}
+          description={`Delete ${label}? Their documents, skills and photo go with them, but a copy is kept for 30 days in Recently deleted. Employees with timesheet or attendance history can't be deleted. You'll be offered to deactivate those instead.`}
         >
           <DialogFooter>
             <button

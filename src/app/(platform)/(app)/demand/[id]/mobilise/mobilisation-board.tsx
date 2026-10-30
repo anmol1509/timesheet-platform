@@ -19,6 +19,7 @@ import {
 import { DatePicker } from "@/components/ui/DatePicker";
 import { HeldSuppliersList } from "@/components/HeldSuppliers";
 import { Button } from "@/components/ui/Button";
+import { useUndoToast } from "../../use-undo-toast";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/Dialog";
 
 type Line = {
@@ -77,6 +78,7 @@ export function MobilisationBoard({
   canApproveSuppliers: boolean;
 }) {
   const router = useRouter();
+  const offerUndo = useUndoToast();
   const [pending, startTransition] = useTransition();
   const [activeLineId, setActiveLineId] = useState(lines[0]?.id ?? "");
   const [tab, setTab] = useState<"matching" | "other">("matching");
@@ -165,7 +167,8 @@ export function MobilisationBoard({
     body.append("mobilisationDate", mobilisationDate);
     for (const id of picked) body.append("employeeId", id);
     startTransition(async () => {
-      await allocateEmployeesAction(body);
+      const res = await allocateEmployeesAction(body);
+      if (res?.allocated) offerUndo(res.allocated === 1 ? "Mobilised" : `${res.allocated} workers mobilised`, res.undo);
       setPicked(new Set());
       router.refresh();
     });
@@ -177,7 +180,8 @@ export function MobilisationBoard({
     body.append("mobilisationDate", date);
     body.append("employeeId", w.id);
     startTransition(async () => {
-      await allocateEmployeesAction(body);
+      const res = await allocateEmployeesAction(body);
+      if (res?.allocated) offerUndo("Mobilised", res.undo);
       setOneDone(true);
       setTimeout(() => {
         setOne(null);

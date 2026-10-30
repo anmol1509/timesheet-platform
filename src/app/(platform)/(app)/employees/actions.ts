@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { requireUserWithBranch, requirePermission, requireWrite } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
+import { trashEmployee } from "@/lib/trash";
 
 export type DeleteEmployeesResult = {
   deleted: number;
@@ -77,6 +78,13 @@ export async function deleteEmployeesAction(
         employeeIdNo: employee.employeeIdNo,
         reason,
       });
+      continue;
+    }
+
+    // A restorable copy first: if one can't be kept, nothing is deleted.
+    const kept = await trashEmployee(employee.id, { id: user.id, name: user.name, branchId });
+    if (!kept.ok) {
+      blocked.push({ id: employee.id, name: employee.name, employeeIdNo: employee.employeeIdNo, reason: kept.error });
       continue;
     }
 
