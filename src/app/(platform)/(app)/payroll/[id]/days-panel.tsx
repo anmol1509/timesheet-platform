@@ -141,7 +141,17 @@ export function DaysButton({ runId, employeeId, name }: { runId: string; employe
             {view.hourly && view.rateInfo.hourlyRate <= 0 && (
               <p className="rounded-md border border-[var(--warning-border)] bg-[var(--warning-soft)] px-3 py-2 text-sm text-[var(--warning)]">No hourly rate is set for {view.rateInfo.trade ?? "this worker"}: add one on the employee or on the trade.</p>
             )}
-            {view.hourly && view.rateInfo.source === "TRADE" && view.rateInfo.others.length > 0 && (
+            {view.hourly && view.rateInfo.byTrade.length > 1 && (
+              <div className="rounded-md border border-default bg-surface-subtle px-3 py-2 text-sm text-secondary">
+                <p className="mb-1 font-medium text-primary">Worked as more than one trade this month. Each day is paid at that trade&apos;s rate.</p>
+                <ul className="space-y-0.5">
+                  {view.rateInfo.byTrade.map((t) => (
+                    <li key={t.trade} className="flex flex-wrap items-baseline justify-between gap-2"><span>{t.trade} <span className="text-xs text-muted">{t.hours} h at AED {aed(t.rate)} /h{t.fromTrade ? "" : " (usual rate)"}</span></span><span className="tabular-nums">AED {aed(t.pay)}</span></li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {view.hourly && view.rateInfo.byTrade.length <= 1 && view.rateInfo.source === "TRADE" && view.rateInfo.others.length > 0 && (
               <p className="rounded-md border border-default bg-surface-subtle px-3 py-2 text-sm text-secondary">Paid at the <span className="font-medium text-primary">{view.rateInfo.rateTrade}</span> rate (AED {aed(view.rateInfo.hourlyRate)} / hour). This worker also has a rate for {view.rateInfo.others.map((o) => `${o.trade} (AED ${aed(o.rate)})`).join(", ")}; the one that matches the worker&apos;s own trade is used.</p>
             )}
             {!view.hourly && (
@@ -171,8 +181,8 @@ export function DaysButton({ runId, employeeId, name }: { runId: string; employe
                             </select>
                           ) : <span className={cn(r.kind === "absent" && "font-medium text-[var(--error)]", r.kind === "unrecorded" && "text-subtle")}>{r.label}</span>}
                         </td>
-                        <td className="px-3 py-1.5 text-secondary">{view.rateInfo.trade ?? "—"}</td>
-                        <td className="px-3 py-1.5 text-right tabular-nums text-secondary" title={view.rateInfo.source === "TRADE" ? `From the ${view.rateInfo.rateTrade ?? "trade"} rate` : view.rateInfo.source === "EMPLOYEE" ? "Set on the employee" : undefined}>{view.hourly && view.rateInfo.hourlyRate > 0 && r.hours > 0 ? `${aed(view.rateInfo.hourlyRate)} /h` : "—"}</td>
+                        <td className="px-3 py-1.5 text-secondary">{view.hourly ? (r.hours > 0 ? r.trade ?? view.rateInfo.trade ?? "—" : "—") : view.rateInfo.trade ?? "—"}</td>
+                        <td className="px-3 py-1.5 text-right tabular-nums text-secondary" title={view.rateInfo.source === "TRADE" ? `From the ${view.rateInfo.rateTrade ?? "trade"} rate` : view.rateInfo.source === "EMPLOYEE" ? "Set on the employee" : undefined}>{view.hourly && r.hours > 0 && (r.rate ?? view.rateInfo.hourlyRate) > 0 ? `${aed(r.rate ?? view.rateInfo.hourlyRate)} /h` : "—"}</td>
                         <td className="px-3 py-1.5 text-right tabular-nums">
                           {editing === r.date && draft.status === "PRESENT" ? (
                             <span className="inline-flex items-center gap-1">
