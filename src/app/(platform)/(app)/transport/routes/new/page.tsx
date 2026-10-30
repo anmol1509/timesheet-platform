@@ -20,7 +20,7 @@ export default async function NewRoutePage({
   ]);
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="form-comfy max-w-5xl space-y-6">
       <PageHeader
         title="New Route"
         icon={FilePlus2}

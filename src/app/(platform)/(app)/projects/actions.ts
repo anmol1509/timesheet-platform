@@ -5,6 +5,7 @@ import { parseWeekdays } from "@/components/WeekdayPicker";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
+import { nextCode } from "@/lib/nextCode";
 import { requireUserWithBranch, requirePermission, requireWrite } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { refsBelongToBranch } from "@/lib/refScope";
@@ -46,13 +47,11 @@ function numberOrNull(value: FormDataEntryValue | null) {
 }
 
 async function nextProjectCode() {
-  const count = await prisma.project.count();
-  return `PRJ${String(count + 1).padStart(3, "0")}`;
+  return nextCode("PRJ", 3, (await prisma.project.findMany({ select: { code: true } })).map((p) => p.code));
 }
 
 async function nextLpoNumber() {
-  const count = await prisma.lpo.count();
-  return `LPO-${String(count + 1).padStart(6, "0")}`;
+  return nextCode("LPO-", 6, (await prisma.lpo.findMany({ where: { lpoNumber: { startsWith: "LPO-" } }, select: { lpoNumber: true } })).map((l) => l.lpoNumber));
 }
 
 export async function createProjectAction(
@@ -81,7 +80,7 @@ export async function createProjectAction(
   if (people.error) return { error: people.error };
 
   const data = {
-    code: await nextProjectCode(),
+    code: "",
     name,
     clientId,
     branchId,
@@ -92,7 +91,17 @@ export async function createProjectAction(
     status: String(formData.get("status") || "PLANNING"),
   };
 
-  const project = await prisma.project.create({ data });
+  // Two people adding a project at once can be given the same next code; the loser simply takes the following one.
+  let project: Awaited<ReturnType<typeof prisma.project.create>> | null = null;
+  for (let attempt = 0; attempt < 4 && !project; attempt++) {
+    data.code = await nextProjectCode();
+    try {
+      project = await prisma.project.create({ data });
+    } catch (e) {
+      if ((e as { code?: string })?.code !== "P2002") throw e;
+    }
+  }
+  if (!project) return { error: "Couldn't give the project a code. Please try again." };
 
   await logAudit({
     entityType: "PROJECT",
@@ -768,7 +777,7 @@ export async function bulkImportProjectsAction(rows: Record<string, string>[]): 
   const byName = new Map(existingProjects.map((p) => [nameKey(p.name), p]));
   let codeCounter = await prisma.project.count();
   const takenCodes = new Set((await prisma.project.findMany({ select: { code: true } })).map((p) => p.code.toLowerCase()));
-  const nextCode = () => {
+  const nextImportCode = () => {
     do codeCounter++; while (takenCodes.has(`prj${String(codeCounter).padStart(3, "0")}`));
     const code = `PRJ${String(codeCounter).padStart(3, "0")}`;
     takenCodes.add(code.toLowerCase());
@@ -837,7 +846,7 @@ export async function bulkImportProjectsAction(rows: Record<string, string>[]): 
         Object.assign(existing, changes);
         results.push({ row: i + 2, name, status: "updated", notes });
       } else {
-        const code = codeCell || nextCode();
+        const code = codeCell || nextImportCode();
         takenCodes.add(code.toLowerCase());
         const created = await prisma.project.create({ data: { code, name, clientId: clientId!, branchId, status: "PLANNING", ...data } as never });
         await logAudit({ entityType: "PROJECT", entityId: created.id, action: "CREATE", after: { code, name, clientId, ...data }, userId: user.id, userName: user.name, branchId });

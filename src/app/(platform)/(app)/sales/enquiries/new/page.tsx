@@ -16,7 +16,7 @@ export default async function NewEnquiryPage() {
   });
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="form-comfy max-w-5xl space-y-6">
       <PageHeader
         title="New Enquiry"
         icon={FilePlus2}

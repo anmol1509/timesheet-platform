@@ -56,7 +56,7 @@ export default async function InventoryItemPage({
   }));
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="form-comfy max-w-5xl space-y-6">
       <div>
         <Link href="/inventory" className="text-sm text-muted hover:underline">
           ← Inventory

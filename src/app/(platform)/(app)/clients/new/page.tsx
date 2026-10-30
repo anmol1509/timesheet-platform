@@ -17,7 +17,7 @@ export default function NewClientPage() {
   const [billingType, setBillingType] = useState("");
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="form-comfy max-w-5xl space-y-6">
       <div>
         <Link href="/clients" className="text-sm text-muted hover:underline">
           ← Clients

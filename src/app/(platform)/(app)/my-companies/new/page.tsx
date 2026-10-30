@@ -26,7 +26,7 @@ export default async function AddCompanyPage() {
   const slim = (t: { key: string; label: string; hasExpiry: boolean }) => ({ key: t.key, label: t.label, hasExpiry: t.hasExpiry });
 
   return (
-    <div className="mx-auto max-w-4xl space-y-5">
+    <div className="form-comfy mx-auto max-w-5xl space-y-6">
       <PageHeader
         title="Add company"
         description="Upload the company's documents and the details are read out of them for you to review. Then add its owners and sponsors with their documents."

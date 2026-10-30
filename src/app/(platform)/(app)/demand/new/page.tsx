@@ -24,7 +24,7 @@ export default async function NewDemandRequestPage() {
   const tradeOptions = [...TRADES];
 
   return (
-    <div className="space-y-6">
+    <div className="form-comfy space-y-6">
       <PageHeader
         title="Raise Demand"
         icon={FilePlus2}

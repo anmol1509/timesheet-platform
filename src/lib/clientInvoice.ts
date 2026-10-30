@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { nextCode } from "@/lib/nextCode";
 
 export const VAT_RATE = 0.05; // UAE standard VAT
 
@@ -66,6 +67,5 @@ export function summarizeInvoice(
 }
 
 export async function nextInvoiceNumber(): Promise<string> {
-  const count = await prisma.clientInvoice.count();
-  return `INV-${String(count + 1).padStart(6, "0")}`;
+  return nextCode("INV-", 6, (await prisma.clientInvoice.findMany({ where: { invoiceNumber: { startsWith: "INV-" } }, select: { invoiceNumber: true } })).map((i) => i.invoiceNumber));
 }
