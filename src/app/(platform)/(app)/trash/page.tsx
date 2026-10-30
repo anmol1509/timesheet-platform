@@ -13,7 +13,7 @@ export default async function TrashPage({ searchParams }: { searchParams: Promis
   const { user, branchId } = await requireUserWithBranch();
   const { q } = await searchParams;
   if (!canRecover(subjectOf(user), "view")) {
-    return <div className="empty-state"><p className="text-sm text-muted">You don't have access to recently deleted records. Ask an administrator to give your role “Recently deleted & put-back”.</p></div>;
+    return <div className="empty-state"><p className="text-sm text-muted">You don&apos;t have access to recently deleted records. Ask an administrator to give your role “Recently deleted & put-back”.</p></div>;
   }
   await purgeExpired();
   const where = { ...branchWhere(branchId), ...(q ? { label: { contains: q, mode: "insensitive" as const } } : {}) };

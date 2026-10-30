@@ -528,7 +528,7 @@ export function EmployeeList({
       searchPlaceholder="Filter by name, ID, trade…"
       pageSize={PAGE_SIZE}
       csvFilename={`employees-${new Date().toISOString().slice(0, 10)}.csv`}
-      importLink={canImport ? { href: "/import/new/workers", label: "Import workers" } : undefined}
+      importLink={canImport ? { href: "/import/new/workers", label: "Import" } : undefined}
       getRowClassName={(e) =>
         cn(
           complianceRowClass(e.worstStatus),
