@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ArrowUp, Sparkles } from "lucide-react";
 
-const GRADIENT = "linear-gradient(135deg, var(--brand-primary), #7c3aed)";
+const GRADIENT = "linear-gradient(135deg, var(--brand-primary), color-mix(in srgb, var(--brand-primary) 70%, #7c3aed))";
 const CHIPS = ["Who is available for Project X?", "Which visas expire this month?", "Show workers on bench"];
 
 function ask(text: string) {

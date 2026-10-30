@@ -368,7 +368,7 @@ export function Preview({ now, doc, index, total, onPrev, onNext, onPrint, onDel
   const row = "flex items-center justify-between gap-4 border-b border-default py-2.5 text-sm last:border-b-0";
   return (
     <>
-      <div className="bg-gradient-to-br from-[#4f46e5] to-[#7c3aed] px-5 py-4 text-white">
+      <div className="bg-[image:var(--hero-gradient)] px-5 py-4 text-white">
         <div className="flex items-center justify-between text-xs text-white/80">
           <span className="flex items-center gap-1">
             <button type="button" onClick={onPrev} disabled={!onPrev} aria-label="Previous document" className="rounded p-0.5 hover:bg-white/15 disabled:opacity-40"><ChevronLeft className="h-4 w-4" aria-hidden /></button>

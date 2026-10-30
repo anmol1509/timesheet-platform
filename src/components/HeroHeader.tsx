@@ -10,7 +10,7 @@ export type HeroPill = { label: string; value: string; /** Amber: something here
  */
 export function HeroHeader({ icon: Icon, title, subtitle, pills = [], actions, className, eyebrow, aside, children }: { icon: LucideIcon; title: string; subtitle: React.ReactNode; pills?: HeroPill[]; actions?: React.ReactNode; className?: string; /** Small label above the title. */ eyebrow?: string; /** Decoration on the right, hidden on small screens. */ aside?: React.ReactNode; /** Extra content under the subtitle, e.g. a row of reassurances. */ children?: React.ReactNode }) {
   return (
-    <header className={cn("relative overflow-hidden rounded-[var(--radius-overlay,20px)] px-5 py-5 text-white sm:px-7 sm:py-6", className)} style={{ background: "linear-gradient(135deg,#43359f 0%,#5b49d8 55%,#7a4fe3 100%)" }}>
+    <header className={cn("relative overflow-hidden rounded-[var(--radius-overlay,20px)] px-5 py-5 text-white sm:px-7 sm:py-6", className)} style={{ background: "var(--hero-gradient)" }}>
       <span aria-hidden className="pointer-events-none absolute -top-16 -right-10 h-64 w-64 rounded-full bg-white/[0.07]" />
       <span aria-hidden className="pointer-events-none absolute -bottom-24 right-32 h-52 w-52 rounded-full bg-white/5" />
       <div className="relative flex flex-wrap items-center gap-3">
@@ -40,4 +40,4 @@ export function HeroHeader({ icon: Icon, title, subtitle, pills = [], actions, c
 
 /** A button for use inside the banner: `solid` is the main one, the rest sit quietly on the gradient. */
 export const heroButton = (solid?: boolean) =>
-  cn("inline-flex h-9 items-center gap-1.5 rounded-[11px] px-3.5 text-sm font-semibold transition", solid ? "bg-white text-[#43359f] hover:bg-white/90" : "border border-white/25 bg-white/15 text-white hover:bg-white/25");
+  cn("inline-flex h-9 items-center gap-1.5 rounded-[11px] px-3.5 text-sm font-semibold transition", solid ? "bg-white text-[var(--hero-ink)] hover:bg-white/90" : "border border-white/25 bg-white/15 text-white hover:bg-white/25");
