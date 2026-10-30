@@ -1,4 +1,3 @@
-import { canRecover } from "@/lib/permissions";
 import { prisma } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
 import { entityMeta } from "@/lib/auditPresentation";
@@ -25,7 +24,7 @@ type Loaded =
   | { entry: NonNullable<Awaited<ReturnType<typeof prisma.auditLog.findUnique>>>; target: { delegate: string; model: string }; fields: Record<string, FieldInfo>; current: Record<string, unknown> };
 
 async function load(entryId: string, who: Who): Promise<Loaded> {
-  if (!canRecover(who, "edit")) return { error: "You don't have permission to put changes back." };
+  if (who.role !== "SUPER_ADMIN" && who.role !== "BRANCH_ADMIN") return { error: "Only administrators can put changes back." };
   const entry = await prisma.auditLog.findUnique({ where: { id: entryId } });
   if (!entry) return { error: "That entry no longer exists." };
   if (who.branchId && entry.branchId !== who.branchId) return { error: "That entry belongs to another company." };

@@ -1,3 +1,4 @@
+import { isAdminRole } from "@/lib/roles";
 import { toPlain } from "@/lib/plain";
 import { settleDueCheckouts } from "@/lib/accommodationCheckout";
 import { dayKey } from "@/lib/checkoutReasons";
@@ -376,7 +377,7 @@ export default async function EmployeeDetailPage({
                 documents: note.documents,
               }))}
             />
-            <HistorySection employeeId={employee.id} employeeName={employee.name} canSeePay={canViewPay} />
+            <HistorySection employeeId={employee.id} employeeName={employee.name} canSeePay={canViewPay} canOpenLog={isAdminRole(user.role)} />
           </>
         }
         siteContent={

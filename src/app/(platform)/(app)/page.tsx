@@ -101,7 +101,8 @@ export default async function DashboardPage() {
     getEmployeeTypeCounts(branchId),
     getEntityCounts(branchId),
     getDeploymentPipeline(branchId),
-    getRecentActivity(branchId),
+    // The recent-activity panel shows audit entries, so it is for administrators only.
+    isAdminRole(user.role) ? getRecentActivity(branchId) : Promise.resolve([]),
     // Only the dates — enough to draw the six-month headcount line.
     prisma.employee.findMany({ where: branchScope, select: { createdAt: true } }),
     prisma.project.findMany({
@@ -230,7 +231,7 @@ export default async function DashboardPage() {
   };
 
   const todoCount = buildTodo(data).length;
-  const hiddenWidgets = preference?.hiddenWidgets ?? [];
+  const hiddenWidgets = [...(preference?.hiddenWidgets ?? []), ...(isAdminRole(user.role) ? [] : ["activity"])];
   const fullOrder = mergeWidgetOrder(preference?.widgetOrder ?? []);
   const visibleWidgets = orderedVisibleWidgets(hiddenWidgets, fullOrder);
 
@@ -250,7 +251,7 @@ export default async function DashboardPage() {
         actions={
           <>
             <CustomizeDashboardButton
-              widgets={DASHBOARD_WIDGETS.map((w) => ({ id: w.id, label: w.label }))}
+              widgets={DASHBOARD_WIDGETS.filter((w) => w.id !== "activity" || isAdminRole(user.role)).map((w) => ({ id: w.id, label: w.label }))}
               initialOrder={fullOrder}
               initialHidden={hiddenWidgets}
             />
