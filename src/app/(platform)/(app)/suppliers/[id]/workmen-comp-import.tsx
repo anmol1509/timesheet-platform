@@ -2,7 +2,7 @@
 
 import { Plus } from "lucide-react";
 import { useState, useTransition } from "react";
-import { uploadAttachmentAction } from "@/lib/attachments";
+import { uploadAttachment } from "@/lib/uploadAttachment";
 import { createEmployeesFromInsuranceAction, linkWorkmenCompCoverageAction } from "../actions";
 import type { ExtractedEmployeesResult } from "@/app/api/documents/extract-employees/route";
 
@@ -54,7 +54,8 @@ export function WorkmenCompImport({
     attachmentForm.append("docType", "WORKMEN_COMPENSATION_INSURANCE");
     attachmentForm.append("revalidate", `/suppliers/${supplierId}`);
     attachmentForm.append("file", file);
-    await uploadAttachmentAction(attachmentForm);
+    const filed = await uploadAttachment(attachmentForm);
+    if (filed?.error) { setError(filed.error); setStarted(false); return; }
 
     // Extract the employee table from the same file.
     setExtracting(true);

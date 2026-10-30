@@ -1,3 +1,4 @@
+import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
 import { linkWorkmenCompCoverageAction, uploadWorkmenCompAction } from "../actions";
 
 export type WcIngest = { id?: string; expiry: string; names: string[]; linked: number; unmatched: string[]; error?: string };
@@ -9,6 +10,8 @@ export type WcIngest = { id?: string; expiry: string; names: string[]; linked: n
  * behaves the same wherever it is added.
  */
 export async function ingestWorkmenComp(supplierId: string, file: File, expiryOverride?: string): Promise<WcIngest> {
+  // Refused up front: the server drops a larger request without a reason, which left the person on an error page.
+  if (file.size > MAX_UPLOAD_BYTES) return { expiry: "", names: [], linked: 0, unmatched: [], error: `This file is ${(file.size / (1024 * 1024)).toFixed(1)} MB, and the most that can be uploaded is ${MAX_UPLOAD_LABEL}. Reduce its size (a lower-quality scan or a compressed PDF) and try again.` };
   const meta = new FormData();
   meta.append("file", file);
   const [c, e] = await Promise.all([
@@ -23,7 +26,7 @@ export async function ingestWorkmenComp(supplierId: string, file: File, expiryOv
   form.append("file", file);
   if (expiry) form.append("expiryDate", expiry);
   if (names.length > 0) form.append("names", JSON.stringify(names));
-  const up = await uploadWorkmenCompAction(form);
+  const up = await uploadWorkmenCompAction(form).catch(() => ({ id: undefined, error: `The file couldn't be uploaded. It may be larger than ${MAX_UPLOAD_LABEL}, or the connection dropped. Try again.` }));
   if (!up.id) return { expiry, names, linked: 0, unmatched: [], error: up.error ?? "Could not upload." };
   const link = names.length > 0 ? await linkWorkmenCompCoverageAction(supplierId, names, up.id) : { linked: 0, unmatched: [] as string[] };
   return { id: up.id, expiry, names, linked: link.linked, unmatched: link.unmatched };

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo } from "react";
 import { CompanyDrawer, type CompanyAdapter, type CompanyGap, type CompanyView } from "@/components/quick-view/CompanyDrawer";
 import { Pill } from "@/components/quick-view/fields";
-import { uploadAttachmentAction } from "@/lib/attachments";
+import { uploadAttachment } from "@/lib/uploadAttachment";
 import { cn } from "@/lib/cn";
 import { WorkmenCompPanel } from "./[id]/workmen-comp-panel";
 import { ingestWorkmenComp } from "./[id]/workmen-comp-ingest";
@@ -66,7 +66,7 @@ export function SupplierDrawer({ id, order, people, onNavigate, onClose, initial
       form.append("expiryDate", expiry);
       form.append("revalidate", `/suppliers/${sid}`);
       form.append("file", file);
-      const r = await uploadAttachmentAction(form);
+      const r = await uploadAttachment(form);
       return r && "error" in r && r.error ? r.error : null;
     },
     docTypes: DOC_TYPES,

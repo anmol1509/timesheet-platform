@@ -5,7 +5,8 @@ import { OtherDocFields } from "@/components/OtherDocFields";
 import { readOtherDoc } from "@/components/otherDocRead";
 import { readCompanyDoc } from "@/components/companyDocRead";
 import { nameFromFile, otherDocProblem, trackedExpiry } from "@/lib/otherDoc";
-import { uploadAttachmentAction, deleteAttachmentAction } from "@/lib/attachments";
+import { deleteAttachmentAction } from "@/lib/attachments";
+import { uploadAttachment } from "@/lib/uploadAttachment";
 import { MAX_UPLOAD_LABEL } from "@/lib/constants";
 import { DeleteButton } from "@/components/DeleteButton";
 import { Select } from "@/components/ui/Select";
@@ -104,7 +105,7 @@ export function AttachmentUploader({
             formData.set("name", name.trim());
             formData.set("expiryDate", trackedExpiry(track, expiry));
           }
-          const result = await uploadAttachmentAction(formData);
+          const result = await uploadAttachment(formData);
           if (result?.error) {
             setError(result.error);
             return;
