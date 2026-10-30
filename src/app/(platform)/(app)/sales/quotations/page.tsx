@@ -1,3 +1,4 @@
+import { NewLink } from "@/components/PermissionsProvider";
 import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
 import { FileSignature, Plus } from "lucide-react";
@@ -56,14 +57,14 @@ export default async function QuotationsPage({
         />
         <div className="flex items-center gap-3">
           <ViewToggle base="/sales/quotations" view={view} />
-          <Link
+          <NewLink
             href="/sales/quotations/new"
             className="btn btn-primary"
           >
             <Plus className="h-4 w-4" aria-hidden />
 
             New Quotation
-          </Link>
+          </NewLink>
         </div>
       </div>
 
@@ -79,9 +80,9 @@ export default async function QuotationsPage({
           title="No quotations yet"
           description="Quotations turn an enquiry into priced trade line items. Once a client accepts one, it converts straight into a project and its LPOs."
           action={
-            <Link href="/sales/quotations/new" className="btn btn-primary btn-sm">
+            <NewLink href="/sales/quotations/new" className="btn btn-primary btn-sm">
               New quotation
-            </Link>
+            </NewLink>
           }
         />
       ) : view === "board" ? (

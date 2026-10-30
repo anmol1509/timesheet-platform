@@ -64,10 +64,33 @@ export async function isBlockedByPermissions(user: UserWithRole): Promise<boolea
     : !canWrite(subject, mod);
 }
 
+/**
+ * Turns a person away. Opening a page they can't use goes to the "no access" page. But a button or form refused while they were
+ * on a page sends them straight back to that page with `?denied=1`, and a notice there says why, so they keep their place.
+ */
+async function refuse(): Promise<never> {
+  const h = await headers();
+  let back: string | null = null;
+  if (h.get("next-action")) {
+    try {
+      const ref = h.get("referer");
+      const u = ref ? new URL(ref) : null;
+      // Only ever back to a page on this same site.
+      if (u && u.host === h.get("host")) {
+        u.searchParams.set("denied", "1");
+        back = `${u.pathname}${u.search}`;
+      }
+    } catch {
+      back = null;
+    }
+  }
+  redirect(back ?? "/no-access");
+}
+
 export async function requireUser() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  if (await isBlockedByPermissions(user)) redirect("/no-access");
+  if (await isBlockedByPermissions(user)) return refuse();
   return user;
 }
 
@@ -81,21 +104,21 @@ export async function requirePermission(target: string, action: PermissionAction
     const here = moduleForPath((await headers()).get("x-pathname") ?? "");
     if (here && isPageKey(here) && moduleOf(here) === target) t = here;
   }
-  if (!can(subjectOf(user), t, action)) redirect("/no-access");
+  if (!can(subjectOf(user), t, action)) return refuse();
   return user;
 }
 
 /** For server actions that change data: the person must be able to write to this page (or module). */
 export async function requireWrite(target: string) {
   const user = await requireUser();
-  if (!canWrite(subjectOf(user), target)) redirect("/no-access");
+  if (!canWrite(subjectOf(user), target)) return refuse();
   return user;
 }
 
 /** For server actions that only read: the person must be able to view this page (or module). */
 export async function requireView(target: string) {
   const user = await requireUser();
-  if (!can(subjectOf(user), target, "view")) redirect("/no-access");
+  if (!can(subjectOf(user), target, "view")) return refuse();
   return user;
 }
 

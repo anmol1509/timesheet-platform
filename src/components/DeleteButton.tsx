@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 import { ConfirmDialog } from "./ui/ConfirmDialog";
+import { useCanHere } from "./PermissionsProvider";
 
 export function DeleteButton({
   action,
@@ -17,6 +18,9 @@ export function DeleteButton({
   className?: string;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
+  // Someone without the Delete right is not shown the button; the action refuses them anyway.
+  const allowed = useCanHere("delete");
+  if (!allowed) return null;
 
   return (
     <>

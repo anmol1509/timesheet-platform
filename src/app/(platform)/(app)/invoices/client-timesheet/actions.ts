@@ -456,6 +456,7 @@ export async function lockTimesheetAction(formData: FormData) {
 
 export async function updateDailyHoursAction(formData: FormData) {
   await requireWrite("timesheets.client-timesheet");
+  await requirePermission("timesheets.client-timesheet", "edit");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const entryId = String(formData.get("entryId") || "");

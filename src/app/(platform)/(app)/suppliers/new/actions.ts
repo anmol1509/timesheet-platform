@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch, requireWrite } from "@/lib/auth";
+import { requireUserWithBranch, requireWrite, requirePermission } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { findSupplierByName, uniqueSupplierCode } from "@/lib/entityCode";
 import { normalizeCode } from "@/lib/partyCode";
@@ -36,6 +36,7 @@ export async function createSupplierWizardAction(formData: FormData): Promise<{ 
 
 async function createSupplier(formData: FormData): Promise<{ error: string | null; id?: string }> {
   await requireWrite("partners.suppliers");
+  await requirePermission("partners.suppliers", "create");
   const bad = contactsError(formData);
   if (bad) return { error: bad };
   const { user, branchId } = await requireUserWithBranch();

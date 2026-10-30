@@ -4,7 +4,7 @@ import { findSupplierByName, uniqueSupplierCode } from "@/lib/entityCode";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch, requireWrite } from "@/lib/auth";
+import { requireUserWithBranch, requireWrite, requirePermission } from "@/lib/auth";
 import { employeeFieldsFromStage, passportProblem } from "@/lib/onboardingEmployee";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
@@ -92,6 +92,7 @@ async function findDuplicate(branchId: string, passportNumber: string | null, em
 
 export async function createCandidateAction(_prev: State, formData: FormData): Promise<State> {
   await requireWrite("onboarding.tracker");
+  await requirePermission("onboarding.tracker", "create");
   try {
     { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
   } catch (e) {
@@ -128,6 +129,7 @@ export async function createCandidateAction(_prev: State, formData: FormData): P
 
 export async function updateCandidateAction(_prev: State, formData: FormData): Promise<State> {
   await requireWrite("onboarding.tracker");
+  await requirePermission("onboarding.tracker", "edit");
   try {
     { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
   } catch (e) {
@@ -179,6 +181,7 @@ export async function updateCandidateAction(_prev: State, formData: FormData): P
  * readyToJoin from the fresh set of statuses — never entered by hand. */
 export async function updateStageAction(_prev: State, formData: FormData): Promise<State> {
   await requireWrite("onboarding.tracker");
+  await requirePermission("onboarding.tracker", "edit");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("id") || "");
   const stageKey = String(formData.get("stage") || "") as StageKey;
@@ -249,6 +252,7 @@ export type CreateAgencyResult = { error: string | null; agency?: { id: string; 
  * just with an inline result instead of a redirect. */
 export async function createAgencyAction(_prev: CreateAgencyResult, formData: FormData): Promise<CreateAgencyResult> {
   await requireWrite("onboarding.tracker");
+  await requirePermission("onboarding.tracker", "create");
   try {
     { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
   } catch (e) {
@@ -296,6 +300,7 @@ export type CreateContactResult = { error: string | null; contact?: { id: string
  * free-text field re-typed every time. */
 export async function createAgencyContactAction(_prev: CreateContactResult, formData: FormData): Promise<CreateContactResult> {
   await requireWrite("onboarding.tracker");
+  await requirePermission("onboarding.tracker", "create");
   try {
     { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
   } catch (e) {
@@ -463,6 +468,7 @@ export async function reinstateCandidateAction(formData: FormData) {
 }
 
 export async function deleteCandidateAction(formData: FormData) {
+  await requirePermission("onboarding.tracker", "delete");
   await requireWrite("onboarding.tracker");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("id") || "");

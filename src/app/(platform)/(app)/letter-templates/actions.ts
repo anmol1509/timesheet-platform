@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { requireAdmin, requireUserWithBranch } from "@/lib/auth";
+import { requireAdmin, requireUserWithBranch, requirePermission } from "@/lib/auth";
 import { branchWhere, isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { LETTER_PRESETS, categoriesFor, presetByKey, presetHtml } from "@/lib/letterPresets";
@@ -138,6 +138,7 @@ export async function resetToPresetAction(formData: FormData): Promise<State> {
 }
 
 export async function deleteTemplateAction(formData: FormData): Promise<State> {
+  await requirePermission("workforce.letters", "delete");
   { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
   const { user, template } = await ownTemplate(str(formData.get("id")));
   if (!template) return { error: "Template not found." };

@@ -1,3 +1,4 @@
+import { NewLink } from "@/components/PermissionsProvider";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
@@ -99,9 +100,9 @@ export default async function ClientDetailPage({
         {client.projects.length === 0 ? (
           <p className="empty-state py-8 text-sm text-muted">
             No projects for this client yet.{" "}
-            <Link href="/projects/new" className="underline">
+            <NewLink href="/projects/new" className="underline">
               Add one
-            </Link>
+            </NewLink>
             .
           </p>
         ) : (

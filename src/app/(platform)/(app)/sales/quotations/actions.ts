@@ -127,6 +127,7 @@ async function contactOk(contactId: string | null, clientId: string) {
 
 export async function createQuotationAction(formData: FormData) {
   await requireWrite("sales.quotations");
+  await requirePermission("sales.quotations", "create");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const clientId = String(formData.get("clientId") || "");
@@ -190,6 +191,7 @@ const EDITABLE = ["DRAFT", "SENT", "NEGOTIATION"];
  */
 export async function updateQuotationAction(formData: FormData) {
   await requireWrite("sales.quotations");
+  await requirePermission("sales.quotations", "edit");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("quotationId") || "");

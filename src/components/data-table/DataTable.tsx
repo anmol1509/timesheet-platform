@@ -1,5 +1,6 @@
 "use client";
 
+import { useCanHere } from "@/components/PermissionsProvider";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -144,6 +145,7 @@ export function DataTable<T extends { id: string }>({
   const router = useRouter();
   // A filter with nothing to choose from (every row blank in that column) is left out rather than shown empty.
   const filters = useMemo(() => allFilters?.filter((f) => f.options.length > 0), [allFilters]);
+  const mayCreate = useCanHere("create");
   const [sort, setSort] = useState<SortState>(null);
   const [query, setQuery] = useState("");
   const [filterValues, setFilterValues] = useState<Record<string, string>>(initialFilters ?? {});
@@ -450,13 +452,13 @@ export function DataTable<T extends { id: string }>({
                 </Popover.Portal>
               </Popover.Root>
             )}
-            {importLink && (
+            {importLink && mayCreate && (
               <Link href={importLink.href} className="btn btn-secondary px-3">
                 <Upload className="h-3.5 w-3.5" aria-hidden />
                 {importLink.label}
               </Link>
             )}
-            {importConfig && (
+            {importConfig && mayCreate && (
               <CsvImportDialog
                 entityLabel={importConfig.entityLabel}
                 columns={importConfig.columns}

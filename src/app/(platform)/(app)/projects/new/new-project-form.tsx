@@ -1,5 +1,6 @@
 "use client";
 
+import { NewLink } from "@/components/PermissionsProvider";
 import { keepInput } from "@/lib/vendor/keepInput";
 import { useActionState } from "react";
 import Link from "next/link";
@@ -43,9 +44,9 @@ export function NewProjectForm({
         {clients.length === 0 ? (
           <p className="rounded-lg bg-[var(--warning-soft)] px-3 py-2 text-sm text-[var(--warning)]">
             You need at least one client before adding a project.{" "}
-            <Link href="/clients/new" className="underline">
+            <NewLink href="/clients/new" className="underline">
               Add a client
-            </Link>{" "}
+            </NewLink>{" "}
             first.
           </p>
         ) : (

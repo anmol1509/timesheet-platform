@@ -36,6 +36,7 @@ type TradeInput = {
 
 export async function createDemandRequestAction(formData: FormData) {
   await requireWrite("demand");
+  await requirePermission("demand", "create");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const clientId = String(formData.get("clientId") || "");
@@ -107,6 +108,7 @@ export async function createDemandRequestAction(formData: FormData) {
 
 export async function updateDemandRequestAction(formData: FormData) {
   await requireWrite("demand");
+  await requirePermission("demand", "edit");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("requestId") || "");

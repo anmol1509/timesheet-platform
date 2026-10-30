@@ -47,3 +47,15 @@ test("recovering deleted records is for admins and for roles that name it", () =
   assert.equal(canRecover(staff(["recovery:edit"]), "edit"), true);
   for (const p of ROLE_PRESETS) assert.equal(p.permissions.some((k) => k.startsWith("recovery:")), false, p.name);
 });
+
+test("a role without Delete is refused it on the pages where its buttons sit", async () => {
+  const { can, moduleForPath } = await import("./permissions");
+  const noDelete = staff(["partners:view", "partners:create", "partners:edit", "workforce:view", "workforce:edit"]);
+  for (const path of ["/banks", "/banks/abc", "/clients", "/suppliers/abc", "/employees", "/employees/abc"]) {
+    const target = moduleForPath(path);
+    assert.ok(target, path);
+    assert.equal(can(noDelete, target!, "edit"), true, `${path} edit`);
+    assert.equal(can(noDelete, target!, "delete"), false, `${path} delete`);
+  }
+  assert.equal(can(staff(["partners.banks:delete", "partners.banks:view"]), moduleForPath("/banks")!, "delete"), true);
+});

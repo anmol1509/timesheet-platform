@@ -14,6 +14,7 @@ const MIN_SKILL_NAME = 3;
 
 export async function createSkillAction(formData: FormData) {
   await requireWrite("workforce.trades");
+  await requirePermission("workforce.trades", "create");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const name = String(formData.get("name") || "").trim().replace(/\s+/g, " ");
@@ -58,6 +59,7 @@ export async function createSkillAction(formData: FormData) {
 
 export async function updateSkillAction(formData: FormData) {
   await requireWrite("workforce.trades");
+  await requirePermission("workforce.trades", "edit");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("skillId") || "");
@@ -88,6 +90,7 @@ export async function updateSkillAction(formData: FormData) {
 
 export async function toggleTrendingAction(formData: FormData) {
   await requireWrite("workforce.trades");
+  await requirePermission("workforce.trades", "edit");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("skillId") || "");

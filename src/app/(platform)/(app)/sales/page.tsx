@@ -1,3 +1,4 @@
+import { NewLink } from "@/components/PermissionsProvider";
 import Link from "next/link";
 import { Plus, Clock3, FileText, PhoneCall, AlertTriangle, Send } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
@@ -143,8 +144,8 @@ export default async function SalesPipelinePage() {
         actions={
           <>
             {isAdminRole(user.role) && <QuoteSettingsDialog settings={settings} />}
-            <Link href="/sales/enquiries/new" className="btn btn-secondary btn-sm"><Plus className="h-3.5 w-3.5" aria-hidden />Enquiry</Link>
-            <Link href="/sales/quotations/new" className="btn btn-primary btn-sm"><Plus className="h-3.5 w-3.5" aria-hidden />Quotation</Link>
+            <NewLink href="/sales/enquiries/new" className="btn btn-secondary btn-sm"><Plus className="h-3.5 w-3.5" aria-hidden />Enquiry</NewLink>
+            <NewLink href="/sales/quotations/new" className="btn btn-primary btn-sm"><Plus className="h-3.5 w-3.5" aria-hidden />Quotation</NewLink>
           </>
         }
       />
@@ -163,7 +164,7 @@ export default async function SalesPipelinePage() {
           icon={AlertTriangle}
           title="Nothing in the pipeline yet"
           description="Log an enquiry when a client asks for workers, then raise a quotation against it. They will appear here, stage by stage."
-          action={<Link href="/sales/enquiries/new" className="btn btn-primary btn-sm">New enquiry</Link>}
+          action={<NewLink href="/sales/enquiries/new" className="btn btn-primary btn-sm">New enquiry</NewLink>}
         />
       ) : (
         <KanbanBoard

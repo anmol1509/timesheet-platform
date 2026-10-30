@@ -1,3 +1,4 @@
+import { NewLink } from "@/components/PermissionsProvider";
 import { redirect } from "next/navigation";
 import { Building2, Clock, FileWarning, UsersRound } from "lucide-react";
 import { PageHeader, CountPill } from "@/components/PageHeader";
@@ -35,7 +36,7 @@ export default async function PeopleRegisterPage() {
             {rows.length > 0 && (
               <ExportButton url="/api/my-companies/people/export" />
             )}
-            {canEdit && <Link href="/my-companies/people/new" className="btn btn-primary btn-sm"><Plus className="h-3.5 w-3.5" aria-hidden /> Add owner or sponsor</Link>}
+            {canEdit && <NewLink href="/my-companies/people/new" className="btn btn-primary btn-sm"><Plus className="h-3.5 w-3.5" aria-hidden /> Add owner or sponsor</NewLink>}
           </div>
         }
         description="Everyone who owns, sponsors, partners or manages one of your companies, once each, with how many companies they are linked to and whether their documents are on file and in date."

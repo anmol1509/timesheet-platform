@@ -24,6 +24,7 @@ function stringOrNull(value: FormDataEntryValue | null) {
  */
 export async function createSiteAction(formData: FormData) {
   await requireWrite("projects.sites");
+  await requirePermission("projects.sites", "create");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const name = String(formData.get("name") || "").trim();
@@ -55,6 +56,7 @@ export async function createSiteAction(formData: FormData) {
 
 export async function updateSiteAction(formData: FormData) {
   await requireWrite("projects.sites");
+  await requirePermission("projects.sites", "edit");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("siteId") || "");

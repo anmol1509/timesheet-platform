@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { getOrCreateSkill } from "@/lib/skillScope";
-import { requireUserWithBranch, requireView, requireWrite } from "@/lib/auth";
+import { requireUserWithBranch, requireView, requireWrite, requirePermission } from "@/lib/auth";
 import { branchWhere, isOutsideBranch } from "@/lib/branch";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
 import {
@@ -187,6 +187,7 @@ export async function createEmployeeAction(
   formData: FormData
 ): Promise<{ error: string | null; createdId?: string; warnings?: string[] }> {
   await requireWrite("workforce.employees");
+  await requirePermission("workforce.employees", "create");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
 

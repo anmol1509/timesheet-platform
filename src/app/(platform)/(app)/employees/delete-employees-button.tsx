@@ -1,5 +1,6 @@
 "use client";
 
+import { useCanHere } from "@/components/PermissionsProvider";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
@@ -32,6 +33,7 @@ export function DeleteEmployeesButton({
   variant?: "row" | "bulk";
   onDone?: () => void;
 }) {
+  const allowedToDelete = useCanHere("delete");
   const router = useRouter();
   const toast = useToastActions();
   const [pending, startTransition] = useTransition();
@@ -69,6 +71,7 @@ export function DeleteEmployeesButton({
     });
   }
 
+  if (!allowedToDelete) return null;
   return (
     <>
       <button

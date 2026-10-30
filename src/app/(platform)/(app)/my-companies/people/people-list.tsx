@@ -1,5 +1,7 @@
 "use client";
 
+import { NewLink } from "@/components/PermissionsProvider";
+import { useCanHere } from "@/components/PermissionsProvider";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -35,6 +37,7 @@ function badges(r: PersonRow): { color: BadgeColor; label: string }[] {
 }
 
 export function PeopleList({ rows, canEdit }: { rows: PersonRow[]; canEdit: boolean }) {
+  const canDelete = useCanHere("delete");
   const router = useRouter();
   const [filter, setFilter] = useState<"all" | PersonFlag>("all");
   const [role, setRole] = useState("ALL");
@@ -122,11 +125,11 @@ export function PeopleList({ rows, canEdit }: { rows: PersonRow[]; canEdit: bool
                     <td className="px-4 py-3 text-right whitespace-nowrap">
                       {home && <Link href={home} className="text-xs font-medium text-[var(--brand-primary)] hover:underline">Open documents</Link>}
                       {canEdit && (
-                        <Link href={`/my-companies/people/new?person=${r.id}`} className={`text-xs font-medium text-[var(--brand-primary)] hover:underline ${home ? "ml-3" : ""}`}>
+                        <NewLink href={`/my-companies/people/new?person=${r.id}`} className={`text-xs font-medium text-[var(--brand-primary)] hover:underline ${home ? "ml-3" : ""}`}>
                           {r.companies.length === 0 ? "Assign" : "Add company"}
-                        </Link>
+                        </NewLink>
                       )}
-                      {canEdit && r.companies.length === 0 && (
+                      {canEdit && canDelete && r.companies.length === 0 && (
                         <ConfirmDialog
                           title={`Delete ${r.name}?`}
                           description={`${r.name} is on the list but has no company. Deleting them also deletes their ${r.docs} document${r.docs === 1 ? "" : "s"}, and this can't be undone here.`}

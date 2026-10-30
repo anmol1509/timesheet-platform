@@ -1,3 +1,4 @@
+import { NewLink } from "@/components/PermissionsProvider";
 import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
 import { MapPin, Route, Plus } from "lucide-react";
@@ -26,14 +27,14 @@ export default async function RoutesPage() {
           icon={Route}
           description={<>Named pickup routes with ordered stops, driven by a vehicle.</>}
         />
-        <Link
+        <NewLink
           href="/transport/routes/new"
           className="btn btn-primary"
         >
           <Plus className="h-4 w-4" aria-hidden />
 
           New Route
-        </Link>
+        </NewLink>
       </div>
 
       {routes.length === 0 ? (
@@ -42,7 +43,7 @@ export default async function RoutesPage() {
           title="No routes yet"
           description="A route is an ordered set of pickup stops served by one vehicle. Create one to plan daily site transport."
           action={
-            <Link href="/transport/routes/new" className="btn btn-primary btn-sm">New route</Link>
+            <NewLink href="/transport/routes/new" className="btn btn-primary btn-sm">New route</NewLink>
           }
         />
       ) : (

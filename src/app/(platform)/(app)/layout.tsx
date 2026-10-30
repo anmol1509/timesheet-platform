@@ -1,3 +1,5 @@
+import { DeniedNotice } from "@/components/DeniedNotice";
+import { PermissionsProvider } from "@/components/PermissionsProvider";
 import { countPendingApprovals } from "@/lib/approvals";
 import { Suspense } from "react";
 import { cookies } from "next/headers";
@@ -125,10 +127,14 @@ export default async function AppLayout({
   );
 
   return (
+    <PermissionsProvider subject={subjectOf(user)}>
     <ToastProvider>
       <AppAnalytics userId={user.id} role={user.role} />
       <Suspense fallback={null}>
         <ProgressBar />
+      </Suspense>
+      <Suspense fallback={null}>
+        <DeniedNotice />
       </Suspense>
       <LazyShortcutsSheet />
       <LazyNavAssistant isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} allowedModules={allowedModules} />
@@ -148,5 +154,6 @@ export default async function AppLayout({
         {children}
       </AppShell>
     </ToastProvider>
+    </PermissionsProvider>
   );
 }

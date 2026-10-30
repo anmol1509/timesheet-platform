@@ -28,6 +28,7 @@ function numberOrNull(value: FormDataEntryValue | null) {
 
 export async function createVehicleAction(formData: FormData) {
   await requireWrite("facilities.transport");
+  await requirePermission("facilities.transport", "create");
   assertContactsValid(formData);
   const { user, branchId } = await requireUserWithBranch();
   const plateNumber = String(formData.get("plateNumber") || "").trim();
@@ -67,6 +68,7 @@ export async function createVehicleAction(formData: FormData) {
 
 export async function updateVehicleAction(formData: FormData): Promise<{ error: string | null }> {
   await requireWrite("facilities.transport");
+  await requirePermission("facilities.transport", "edit");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("vehicleId") || "");
@@ -232,6 +234,7 @@ export async function addVehicleProjectAction(formData: FormData) {
 }
 
 export async function removeVehicleProjectAction(formData: FormData) {
+  await requirePermission("facilities.transport", "delete");
   await requireWrite("facilities.transport");
   assertContactsValid(formData);
   const { branchId, isSuperAdmin } = await requireUserWithBranch();

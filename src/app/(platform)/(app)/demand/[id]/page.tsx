@@ -1,3 +1,4 @@
+import { NewLink } from "@/components/PermissionsProvider";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
@@ -59,12 +60,12 @@ export default async function DemandRequestDetailPage({
             Request #{request.requestNo}: {request.client.name}
           </h1>
           <div className="flex items-center gap-2">
-            <Link
+            <NewLink
               href={`/operations/nocs/new?demandRequestId=${request.id}`}
               className="btn btn-primary px-3"
             >
               Create NOC
-            </Link>
+            </NewLink>
             <DeleteButton
               action={deleteDemandRequestAction}
               hiddenFields={{ requestId: request.id }}

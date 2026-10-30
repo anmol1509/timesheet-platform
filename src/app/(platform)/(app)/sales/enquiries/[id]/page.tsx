@@ -1,3 +1,4 @@
+import { NewLink } from "@/components/PermissionsProvider";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
@@ -46,7 +47,7 @@ export default async function EnquiryDetailPage({ params }: { params: Promise<{ 
             {e.status === "Lost" && e.lostReason && <p className="mt-1 text-sm text-[var(--error)]">Lost: {e.lostReason}</p>}
           </div>
           <div className="flex flex-wrap gap-2">
-            {live && canQuote && <Link href={`/sales/quotations/new?enquiryId=${e.id}&clientId=${e.clientId}`} className="btn btn-primary">{e.quotations.length ? "Another quotation" : "Create quotation"}</Link>}
+            {live && canQuote && <NewLink href={`/sales/quotations/new?enquiryId=${e.id}&clientId=${e.clientId}`} className="btn btn-primary">{e.quotations.length ? "Another quotation" : "Create quotation"}</NewLink>}
             {live && writable && e.quotations.length === 0 && <LostButton entity="enquiry" id={id} />}
           </div>
         </div>

@@ -41,6 +41,7 @@ function numberOrNull(value: FormDataEntryValue | null) {
 
 export async function createSupplierAction(formData: FormData) {
   await requireWrite("partners.suppliers");
+  await requirePermission("partners.suppliers", "create");
   const badContact = contactsError(formData);
   if (badContact) redirect(`/suppliers?error=${encodeURIComponent(badContact)}`);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
@@ -111,6 +112,7 @@ export async function createSubsidiaryAction(
   formData: FormData
 ): Promise<{ error: string } | { id: string }> {
   await requireWrite("partners.suppliers");
+  await requirePermission("partners.suppliers", "create");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const parentSupplierId = String(formData.get("parentSupplierId") || "").trim();
@@ -154,6 +156,7 @@ export async function createSubsidiaryAction(
 // tab's form, so a save here never touches Contact/Payment fields.
 export async function updateSupplierCompanyAction(formData: FormData): Promise<{ error: string | null; warnings?: string[] }> {
   await requireWrite("partners.suppliers");
+  await requirePermission("partners.suppliers", "edit");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("supplierId") || "");
@@ -266,6 +269,7 @@ export async function setSupplierParentAction(
   parentId: string | null,
 ): Promise<{ error: string | null }> {
   await requireWrite("partners.suppliers");
+  await requirePermission("partners.suppliers", "edit");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const s = await prisma.supplier.findUnique({
     where: { id: supplierId },
@@ -324,6 +328,7 @@ export async function suggestSupplierCodeAction(name: string, supplierId?: strin
 // tab's form, so a save here never touches Company/Compliance fields.
 export async function updateSupplierContactPaymentAction(formData: FormData) {
   await requireWrite("partners.suppliers");
+  await requirePermission("partners.suppliers", "edit");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("supplierId") || "");
@@ -506,6 +511,7 @@ export async function createEmployeesFromInsuranceAction(
   rows: InsuranceEmployeeRow[]
 ): Promise<{ created: number; requested: number; errors: { row: number; message: string }[] }> {
   await requireWrite("partners.suppliers");
+  await requirePermission("partners.suppliers", "create");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const errors: { row: number; message: string }[] = [];
   if (!branchId) {
@@ -742,6 +748,7 @@ export async function getWorkmenCompWorkersAction(supplierId: string, attachment
 /** Links one worker to a certificate (moving them off any other policy) or takes them off it. The file goes on, or comes off, their profile. */
 export async function setWorkmenCompLinkAction(supplierId: string, attachmentId: string, employeeId: string, linked: boolean): Promise<{ error?: string }> {
   await requireWrite("partners.suppliers");
+  await requirePermission("partners.suppliers", "edit");
   const { user } = await requireUserWithBranch();
   if (!(await ownCertificate(supplierId, attachmentId))) return { error: "Certificate not found." };
   const worker = await prisma.employee.findFirst({ where: { id: employeeId, ...(await wcFamilyRoster(supplierId)) }, select: { id: true, name: true, wcAttachmentId: true } });
@@ -846,6 +853,7 @@ export async function getWorkmenCompOverviewAction(supplierId: string): Promise<
 /** Sets or clears the expiry date of one workmen compensation certificate (and of the copies on its workers' profiles). */
 export async function setWorkmenCompExpiryAction(supplierId: string, attachmentId: string, date: string | null): Promise<{ error?: string }> {
   await requireWrite("partners.suppliers");
+  await requirePermission("partners.suppliers", "edit");
   if (!(await ownCertificate(supplierId, attachmentId))) return { error: "Certificate not found." };
   const d = date ? new Date(date) : null;
   if (date && (Number.isNaN(d!.getTime()) || !/^\d{4}-\d{2}-\d{2}$/.test(date))) return { error: "That date isn't valid." };
@@ -861,6 +869,7 @@ export async function setWorkmenCompExpiryAction(supplierId: string, attachmentI
 /** Removes one certificate, with the copies on its workers' profiles; the workers it covered are no longer recorded as covered by anything. */
 export async function deleteWorkmenCompAction(supplierId: string, attachmentId: string): Promise<{ error?: string }> {
   await requireWrite("partners.suppliers");
+  await requirePermission("partners.suppliers", "delete");
   const cert = await ownCertificate(supplierId, attachmentId);
   if (!cert) return { error: "Certificate not found." };
   await prisma.$transaction([
@@ -1110,6 +1119,7 @@ export async function uploadSupplierLetterImageAction(formData: FormData) {
 }
 
 export async function removeSupplierLetterImageAction(formData: FormData) {
+  await requirePermission("partners.suppliers", "delete");
   const ctx = await loadLetterSupplier(formData);
   const kind = imageKind(formData.get("kind"));
   if (!ctx || !kind) return { error: "Supplier not found." };
@@ -1139,6 +1149,7 @@ export async function saveSupplierSignatoryAction(formData: FormData) {
  */
 export async function setCompanyHeaderFieldsAction(supplierId: string, fields: { trn?: string; location?: string; phone?: string; contactEmail?: string }): Promise<{ error: string | null; ok?: boolean }> {
   await requireWrite("partners.suppliers");
+  await requirePermission("partners.suppliers", "edit");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const existing = await prisma.supplier.findUnique({ where: { id: supplierId }, select: { id: true, branchId: true, isOwnCompany: true, trn: true, location: true, phone: true, contactEmail: true } });
   if (!existing || isOutsideBranch(existing.branchId, branchId, isSuperAdmin)) return { error: "Company not found." };
