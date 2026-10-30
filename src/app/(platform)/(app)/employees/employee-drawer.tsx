@@ -39,18 +39,20 @@ type DocDef = (typeof DOCS)[number];
 /** Not added yet: no file of its type and no date recorded. */
 const isMissingDoc = (d: QuickView, doc: DocDef) => !d.docs.some((x) => x.type === doc.type) && !d.expiry[doc.field];
 const SCANNABLE_GAPS = new Set(["passportNumber", "emiratesId", "nationality", "dateOfBirth", "scan"]);
-const SCAN_TYPES = new Set(["PASSPORT", "VISA", "EMIRATES_ID"]);
 const fmtDate = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" }) : "—");
 
 /** What the person still has to supply, in the order the profile form asks for it. */
 function gapsFor(d: QuickView) {
-  const hasScan = d.docs.some((x) => SCAN_TYPES.has(x.type));
+  // A typed number or date is not enough: the passport and the Emirates ID each need their own file on record.
+  const hasPassportFile = d.docs.some((x) => x.type === "PASSPORT");
+  const hasEidFile = d.docs.some((x) => x.type === "EMIRATES_ID");
+  const scanLabel = !hasPassportFile && !hasEidFile ? "Passport and Emirates ID scans" : !hasPassportFile ? "Passport scan" : "Emirates ID scan";
   const items: { key: string; label: string; done: boolean; level: "Required" | "Recommended" }[] = [
     { key: "passportNumber", label: "Passport number", done: !!d.passportNumber, level: "Required" },
     { key: "emiratesId", label: "Emirates ID", done: !!d.emiratesId, level: "Required" },
     { key: "nationality", label: "Nationality", done: !!d.nationality, level: "Required" },
     { key: "dateOfBirth", label: "Date of birth", done: !!d.dateOfBirth, level: "Required" },
-    { key: "scan", label: "Passport, visa or Emirates ID scan", done: hasScan, level: "Required" },
+    { key: "scan", label: scanLabel, done: hasPassportFile && hasEidFile, level: "Required" },
     { key: "mobileNumber", label: "Mobile number", done: !!d.mobileNumber, level: "Recommended" },
   ];
   if (d.category === "SITE_STAFF") items.push({ key: "projectId", label: "Project", done: !!d.projectId, level: "Recommended" });
@@ -244,6 +246,7 @@ export function EmployeeDrawer({ id, order, people, onNavigate, onClose, initial
                       <li key={d.field} className="border-b border-default last:border-b-0">
                         <div className="flex items-center gap-3 px-3 py-2.5 text-sm">
                           <div className="min-w-0 flex-1"><p className="font-medium text-primary">{d.label}</p><p className="text-xs text-muted">{fmtDate(data.expiry[d.field])}{files > 0 && ` · ${files} file${files === 1 ? "" : "s"}`}</p></div>
+                          {files === 0 && !!data.expiry[d.field] && <Pill tone="warn">Date typed, no file</Pill>}
                           <Pill tone={st.tone}>{st.text}</Pill>
                           <button type="button" aria-expanded={isOpen} onClick={() => setOpenDoc(isOpen ? null : d.field)} className="btn btn-secondary btn-sm">{data.expiry[d.field] || files > 0 ? "Renew" : "Add"}</button>
                         </div>
@@ -266,6 +269,11 @@ export function EmployeeDrawer({ id, order, people, onNavigate, onClose, initial
               <p className="text-sm"><b>{gaps.length - open.length} of {gaps.length} profile items done.</b><br /><span className="text-xs text-muted">{open.length ? "Scan first; type only what is left." : "Nothing is missing."}</span></p>
             </div>
             {scan && <ScanSummary outcome={scan} onUse={useScanValue} onDismiss={() => setScanState(null)} />}
+            {open.some((g) => g.key === "scan") && (
+              <Alert tone="warning" title={`${open.find((g) => g.key === "scan")!.label} needed`}>
+                {data.passportNumber || data.emiratesId ? "A typed number is not enough: upload the scan so it is on file and can be checked." : "Upload the scan so it is on file and can be checked."}
+              </Alert>
+            )}
             {open.some((g) => SCANNABLE_GAPS.has(g.key)) && (
               <ScanUpload employeeId={id} docType="COMBINED" multiple hasPhoto={data.hasPhoto} title="Scan the documents" hint="Passport, Emirates ID, labour card, visa. Drop them together and the details are filled in." onDone={onScanDone} />
             )}

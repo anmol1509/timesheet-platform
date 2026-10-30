@@ -1,4 +1,5 @@
-const COMPLETING_DOC_TYPES = new Set(["PASSPORT", "VISA", "EMIRATES_ID"]);
+/** Files a profile needs before it counts as complete: a typed number is not proof, so each has to be backed by its own scan. */
+const REQUIRED_FILES = ["PASSPORT", "EMIRATES_ID"] as const;
 
 export function isEmployeeComplete(e: {
   passportNumber: string | null;
@@ -9,6 +10,6 @@ export function isEmployeeComplete(e: {
 }): boolean {
   const fieldsFilled =
     !!e.passportNumber && !!e.emiratesId && !!e.nationality && !!e.dateOfBirth;
-  const hasDoc = e.documents.some((d) => COMPLETING_DOC_TYPES.has(d.type));
-  return fieldsFilled && hasDoc;
+  const hasFiles = REQUIRED_FILES.every((t) => e.documents.some((d) => d.type === t));
+  return fieldsFilled && hasFiles;
 }

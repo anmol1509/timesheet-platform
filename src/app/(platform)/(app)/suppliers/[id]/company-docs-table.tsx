@@ -257,13 +257,15 @@ function RowUploader({ row, supplierId, revalidate, onDone }: { row: DocRow; sup
   const [track, setTrack] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [warn, setWarn] = useState<string | null>(null);
+  // When the file reads as a different document, saving needs a deliberate "it is the right one".
+  const [accepted, setAccepted] = useState(false);
   const [reading, setReading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
   async function choose(f: File | undefined) {
     if (!f) return;
-    setFile(f); setError(null); setWarn(null);
+    setFile(f); setError(null); setWarn(null); setAccepted(false);
     if (isOther) {
       const guess = nameFromFile(f.name);
       setName((n) => n || guess);
@@ -330,11 +332,19 @@ function RowUploader({ row, supplierId, revalidate, onDone }: { row: DocRow; sup
             </label>
           </>
         )}
-        <Button size="btn" type="button" disabled={pending || reading || !file} onClick={save} loading={pending}>{reading ? "Reading…" : "Save"}</Button>
+        <Button size="btn" type="button" disabled={pending || reading || !file || (!!warn && !accepted)} onClick={save} loading={pending}>{reading ? "Reading…" : "Save"}</Button>
       </div>
       {isOther && <OtherDocFields name={name} onName={setName} track={track} onTrack={setTrack} expiry={expiry} onExpiry={setExpiry} note={null} />}
       {note && <p className="flex items-center gap-1.5 text-xs text-muted">{reading && <Loader2 className="h-3 w-3 animate-spin" aria-hidden />}{note}</p>}
-      {warn && <p role="status" className="text-xs text-[var(--warning)]">{warn}</p>}
+      {warn && (
+        <Alert tone="warning" title="Is this the right file?">
+          {warn}
+          <label className="mt-2 flex items-center gap-2 text-sm text-primary">
+            <input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} />
+            Yes, this is the right document. Save it here.
+          </label>
+        </Alert>
+      )}
       {error && <Alert>{error}</Alert>}
     </div>
   );
