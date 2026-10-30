@@ -1,3 +1,4 @@
+import { DeniedNotice } from "@/components/DeniedNotice";
 import { PermissionsProvider } from "@/components/PermissionsProvider";
 import { countPendingApprovals } from "@/lib/approvals";
 import { Suspense } from "react";
@@ -131,6 +132,9 @@ export default async function AppLayout({
       <AppAnalytics userId={user.id} role={user.role} />
       <Suspense fallback={null}>
         <ProgressBar />
+      </Suspense>
+      <Suspense fallback={null}>
+        <DeniedNotice />
       </Suspense>
       <LazyShortcutsSheet />
       <LazyNavAssistant isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} allowedModules={allowedModules} />
