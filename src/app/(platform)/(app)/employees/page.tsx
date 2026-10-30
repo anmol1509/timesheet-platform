@@ -1,6 +1,6 @@
 import { ExpiryFix } from "./[id]/profile-fixes";
 import Link from "next/link";
-import { FileSearch, UserPlus, X } from "lucide-react";
+import { FileSearch, UserPlus } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { prisma } from "@/lib/db";
@@ -39,7 +39,7 @@ export default async function EmployeesPage({
   const canViewPay = can(subjectOf(user), "payroll", "view");
   const canEditPay = can(subjectOf(user), "payroll", "edit");
 
-  const [employees, entityFilter] = await Promise.all([
+  const [employees] = await Promise.all([
     prisma.employee.findMany({
       where: {
         ...branchWhere(branchId),
@@ -66,21 +66,6 @@ export default async function EmployeesPage({
       },
       orderBy: { name: "asc" },
     }),
-    trade
-      ? Promise.resolve({ label: "Trade", name: trade })
-      : nationality
-        ? Promise.resolve({ label: "Nationality", name: nationality })
-        : supplierId
-      ? prisma.supplier.findUnique({ where: { id: supplierId }, select: { name: true } }).then(
-          (s) => (s ? { label: "Supplier", name: s.name } : null)
-        )
-      : sponsorName
-        ? Promise.resolve({ label: "Sponsor", name: sponsorName })
-      : sponsorId
-        ? prisma.supplier
-            .findUnique({ where: { id: sponsorId }, select: { name: true } })
-            .then((s) => (s ? { label: "Sponsor", name: s.name } : null))
-        : Promise.resolve(null),
   ]);
 
   // The choices for the filter boxes: every supplier, sponsor, trade and nationality in this company, with how many workers each has,
@@ -263,19 +248,6 @@ export default async function EmployeesPage({
             </div>
           </div>
         </Insights>
-      )}
-
-      {entityFilter && (
-        <div className="flex items-center gap-1.5 self-start rounded-control bg-brand-soft py-1 pr-1 pl-2.5 text-xs font-medium text-[var(--brand-primary)]">
-          {entityFilter.label}: {entityFilter.name}
-          <Link
-            href="/employees"
-            className="rounded-xs p-0.5 transition hover:bg-white/70"
-            aria-label="Clear filter"
-          >
-            <X className="h-3 w-3" />
-          </Link>
-        </div>
       )}
 
       <EmployeeList key={openId ?? "list"} employees={rows} filterOptions={filterOptions} currentFilters={currentFilters} initialFilter={filter} registeredId={registered} canViewPay={canViewPay} canEditPay={canEditPay} initialOpen={openId ? { id: openId, tab: openTab, renew: openRenew } : undefined} />

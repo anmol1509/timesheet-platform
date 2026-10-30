@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Select } from "@/components/ui/Select";
+import { EmployeeFilters } from "./employee-filters";
 import { AlertTriangle, BadgeCheck, Check, CircleX, Pencil, UserPlus, Users, X } from "lucide-react";
 import { Badge } from "@/components/Badge";
 import { EmployeeAvatar } from "@/components/Avatar";
@@ -615,26 +615,7 @@ export function EmployeeList({
               { value: "our-workers", label: "Our Employees" },
             ]}
           />
-          {filterOptions && currentFilters && (
-            <div className="flex flex-wrap items-center gap-2">
-              {([
-                ["supplier", "Supplier", "All suppliers", filterOptions.suppliers],
-                ["sponsor", "Sponsor", "All sponsors", filterOptions.sponsors],
-                ["trade", "Trade", "All trades", filterOptions.trades],
-                ["nationality", "Nationality", "All nationalities", filterOptions.nationalities],
-              ] as const).map(([key, label, all, opts]) => (
-                <div key={key} className="w-48" aria-label={label}>
-                  <Select
-                    value={currentFilters[key]}
-                    onChange={(v) => setFilterParam(key, v)}
-                    placeholder={all}
-                    searchable
-                    options={[{ value: "", label: all }, ...opts.map((o) => ({ value: o.value, label: `${o.label} (${o.count})` }))]}
-                  />
-                </div>
-              ))}
-            </div>
-          )}
+          {filterOptions && currentFilters && <EmployeeFilters options={filterOptions} values={currentFilters} onChange={setFilterParam} />}
           {activeChip && (
             <span className="inline-flex items-center gap-1 rounded-control bg-brand-soft py-1 pr-1 pl-2.5 text-xs font-medium text-[var(--brand-primary)]">
               {activeChip}
