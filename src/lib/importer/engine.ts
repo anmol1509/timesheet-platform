@@ -15,6 +15,7 @@ import { applyCamps } from "./apply/camps";
 import { applyVehicles } from "./apply/vehicles";
 import { applyClients } from "./apply/clients";
 import { applyWorkers } from "./apply/workers";
+import { applyLoans } from "./apply/loans";
 import { applyTimesheets } from "./apply/timesheets";
 
 const UNDO_DAYS = 30;
@@ -63,6 +64,7 @@ async function apply(kind: ImportKind, ctx: ApplyCtx, batch: { fileData: Uint8Ar
   if (kind === "MOBILISATION") return applyMobilisation(ctx, rows, mapping.workerDecisions ?? {}, mapping.supplierDecisions ?? {}, mapping.mobilisationOptions ?? {});
   if (kind === "CAMPS") return applyCamps(ctx, rows, mapping.workerDecisions ?? {}, mapping.campOptions ?? {});
   if (kind === "VEHICLES") return applyVehicles(ctx, rows);
+  if (kind === "LOANS") return applyLoans(ctx, rows);
   return applyWorkers(ctx, rows, mapping.fixes ?? [], mapping.supplierDecisions ?? {});
 }
 

@@ -7,6 +7,7 @@ import { DatePicker } from "@/components/ui/DatePicker";
 import { MaskedInput } from "@/components/ui/MaskedInput";
 import { Select } from "@/components/ui/Select";
 import { setRenewalExpiryAction } from "../renewals/actions";
+import { ScanUpload } from "../scan-upload";
 import { setEmployeeBankAction, setEmployeePayAction } from "./fix-actions";
 
 import { Button } from "@/components/ui/Button";
@@ -81,14 +82,37 @@ function BankFix({ employeeId, d }: { employeeId: string; d: BankDefaults }) {
   );
 }
 
-/** A date to set (a renewed document): the new expiry with Save, here instead of on another tab. */
+/** The document type a renewable date belongs to, for the ones a scan can be read for. */
+const DOC_OF: Record<string, string> = { passportExpiry: "PASSPORT", emiratesIdExpiry: "EMIRATES_ID", laborCardExpiry: "LABOR_CARD", visaExpiry: "VISA" };
+
+/** A renewed document: upload the new scan and its expiry is read and put on the record, or just type the new date. */
 export function ExpiryFix({ employeeId, field, current }: { employeeId: string; field: string; current: string }) {
   const { pending, error, run } = useSave();
+  const router = useRouter();
   const [date, setDate] = useState(current);
+  const [msg, setMsg] = useState<{ tone: "ok" | "warn"; text: string } | null>(null);
+  const docType = DOC_OF[field];
   return (
-    <div className="mt-2 flex flex-wrap items-end gap-2">
-      <label className="block w-44"><span className="mb-1 block text-xs font-medium text-muted">New expiry date</span><DatePicker value={date} onChange={setDate} /></label>
-      <Button size="btn-sm" type="button" disabled={pending || !date} onClick={() => run(() => setRenewalExpiryAction({ employeeId, field, expiry: date }))} loading={pending}>Save date</Button>
+    <div className="mt-2 space-y-2">
+      {docType && (
+        <ScanUpload
+          employeeId={employeeId}
+          docType={docType}
+          hasPhoto
+          compact
+          title="Upload the new document"
+          hint="The new expiry is read from it and saved."
+          onDone={(o) => {
+            if (o.applied.length > 0) { setMsg({ tone: "ok", text: `Saved. ${o.applied.map((a) => `${a.label}: ${/^\d{4}-\d{2}-\d{2}/.test(a.value) ? new Date(a.value).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" }) : a.value}`).join(", ")}.` }); setTimeout(() => router.refresh(), 1200); }
+            else setMsg({ tone: "warn", text: o.unread > 0 || o.conflicts.length === 0 ? "The file is saved, but no newer expiry could be read from it. Enter the new date below." : "The file is saved. Its date differs from the record; check it below." });
+          }}
+        />
+      )}
+      <div className="flex flex-wrap items-end gap-2">
+        <label className="block w-44"><span className="mb-1 block text-xs font-medium text-muted">{docType ? "Or type the new expiry date" : "New expiry date"}</span><DatePicker value={date} onChange={setDate} /></label>
+        <Button size="btn-sm" type="button" disabled={pending || !date} onClick={() => run(() => setRenewalExpiryAction({ employeeId, field, expiry: date }))} loading={pending}>Save date</Button>
+      </div>
+      {msg && <p role="status" className={msg.tone === "ok" ? "text-xs text-[var(--success)]" : "text-xs text-[var(--warning)]"}>{msg.text}</p>}
       {error && <p role="alert" className="w-full text-xs text-[var(--error)]">{error}</p>}
     </div>
   );

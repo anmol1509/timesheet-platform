@@ -35,6 +35,9 @@
   --brand-primary-border: #d3ccf6;
   --brand-navy: #0a1530; /* company wordmark navy — logo only, not chrome */
   --brand-gradient: linear-gradient(135deg, #5b4ae0 0%, #7a4fe3 100%);
+  /* Page banners and the quick-view header: always a deep, dark-enough colour for white text, in light and dark mode. */
+  --hero-gradient: linear-gradient(135deg, #43359f 0%, #5b49d8 55%, #7a4fe3 100%);
+  --hero-ink: #43359f;
 
   /* Semantic states. Each has a solid (text/icon) and a soft (fill) value. */
   --success: #067647;
@@ -363,6 +366,8 @@ summary:focus-visible,
   --brand-primary-border: color-mix(in srgb, var(--accent) 28%, white);
   --brand-gradient: linear-gradient(135deg, color-mix(in srgb, var(--accent) 92%, white), var(--accent));
   --shadow-brand: 0 4px 14px -4px color-mix(in srgb, var(--accent) 55%, transparent);
+  --hero-gradient: linear-gradient(135deg, color-mix(in srgb, var(--accent) 72%, black) 0%, color-mix(in srgb, var(--accent) 92%, black) 55%, color-mix(in srgb, var(--accent) 88%, white) 100%);
+  --hero-ink: color-mix(in srgb, var(--accent) 72%, black);
 }
 :root[data-accent][data-theme="dark"] {
   --brand-primary: var(--accent-dark);

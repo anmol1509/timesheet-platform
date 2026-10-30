@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { FileStack, Briefcase, Building2, Landmark, Bus, CalendarClock, HardHat, Home, Truck, ShieldCheck, Zap, Database, ArrowRight, UploadCloud, type LucideIcon } from "lucide-react";
+import { FileStack, Briefcase, Building2, Landmark, Bus, CalendarClock, HardHat, Home, Truck, ShieldCheck, Zap, Database, ArrowRight, UploadCloud, Wallet, type LucideIcon } from "lucide-react";
 import { HeroHeader } from "@/components/HeroHeader";
 import { Badge, type BadgeColor } from "@/components/Badge";
 import { prisma } from "@/lib/db";
@@ -34,6 +34,7 @@ const TILES: { kind: ImportKind | "DOCUMENTS" | "C3"; icon: LucideIcon; tone: To
   { kind: "CAMPS", icon: Home, tone: "success", label: "Camps", short: "Camps with their rooms and beds. Beds are optional.", href: "/import/new/camps" },
   { kind: "VEHICLES", icon: Bus, tone: "info", label: "Vehicles", short: "Vehicles and drivers, with Mulkiya and insurance dates.", href: "/import/new/vehicles" },
   { kind: "MOBILISATION", icon: Briefcase, tone: "warning", label: "Mobilisation", short: "Where each worker is deployed today: client, project, stage.", href: "/import/new/mobilisation" },
+  { kind: "LOANS", icon: Wallet, tone: "warning", label: "Loans & advances", short: "Opening balances: loans and advances already running, with what is repaid so far.", href: "/import/new/loans" },
   { kind: "C3", icon: Zap, tone: "info", label: "C3 IDs", short: "Upload a sheet of worker names and C3 IDs and link them to existing workers.", href: "/import/new/c3" },
   { kind: "DOCUMENTS", icon: FileStack, tone: "brand", label: "Documents", short: "Passports, IDs and visas in bulk. Drop files or a ZIP.", href: "/import/new/documents" },
 ];

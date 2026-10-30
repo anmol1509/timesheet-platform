@@ -81,7 +81,7 @@ export function DrawerFrame({
           }}
           className="rx-drawer fixed top-3 right-3 bottom-3 z-50 flex w-[440px] max-w-[calc(100vw-1.5rem)] flex-col overflow-hidden rounded-[22px] border border-default bg-surface shadow-modal outline-none"
         >
-          <header className="bg-[linear-gradient(135deg,#43359f_0%,#5b49d8_55%,#7a4fe3_100%)] px-5 pt-3.5 text-white">
+          <header className="bg-[image:var(--hero-gradient)] px-5 pt-3.5 text-white">
             <div className="flex items-center justify-between text-xs">
               <span className="flex items-center gap-1.5">
                 <button type="button" onClick={() => onStep(-1)} disabled={total < 2} aria-label="Previous" className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/15 hover:bg-white/25 disabled:opacity-40"><ChevronLeft className="h-4 w-4" aria-hidden /></button>

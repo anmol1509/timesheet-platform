@@ -27,6 +27,10 @@ const EXAMPLES: Record<Exclude<ImportKind, "TIMESHEETS">, Record<string, string>
     { plateNumber: "DXB A 12345", type: "Bus", capacity: "50", status: "Active", driverName: "Imran Khan", driverPhone: "+971 50 111 2233", registrationExpiry: "15/03/2027", insuranceExpiry: "30/04/2027", notes: "" },
     { plateNumber: "SHJ 2 67890", type: "Hiace Van", capacity: "14", status: "Maintenance", driverName: "", driverPhone: "", registrationExpiry: "", insuranceExpiry: "", notes: "In workshop" },
   ],
+  LOANS: [
+    { employeeCode: "AN-101", employee: "Ravi Kumar", type: "Advance", principal: "3000", repaid: "1000", instalment: "500", startMonth: "11/2026", givenDate: "15/09/2026", reason: "Family emergency" },
+    { employeeCode: "AN-102", employee: "Ali Khan", type: "Loan", principal: "6000", repaid: "0", instalment: "1000", startMonth: "12/2026", givenDate: "01/10/2026", reason: "Opening balance" },
+  ],
   MOBILISATION: [
     { employee: "Ravi Kumar", employeeCode: "AN-101", client: "Emaar Properties", project: "Downtown Residences Phase 2", stage: "Active", mobilisedOn: "01/03/2026", arrivedOn: "05/03/2026", trade: "Carpenter", mobile: "" },
     { employee: "Ali Khan", employeeCode: "", client: "Emaar Properties", project: "Creek Harbour Tower", stage: "Under mobilisation", mobilisedOn: "20/09/2026", arrivedOn: "", trade: "Steel Fixer", mobile: "" },
