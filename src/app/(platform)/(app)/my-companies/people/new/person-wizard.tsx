@@ -168,56 +168,64 @@ export function PersonWizard({ docTypes, companies, people, existing, canAddDocs
 
   return (
     <div className="space-y-5">
-      <ol className="flex flex-wrap gap-2 border-b border-default pb-4 text-sm" aria-label="Steps">
+      <ol className="flex flex-wrap gap-2 border-b border-default pb-4 text-base" aria-label="Steps">
         {STEPS.map((label, i) => (
-          <li key={label} className={`rounded-full px-3 py-1 ${i === step ? "bg-[var(--brand-primary)] font-semibold text-white" : i < step ? "text-[var(--success)]" : "text-muted"}`}>{i + 1} {label}{i < step ? " ✓" : ""}</li>
+          <li key={label} className={`rounded-full px-4 py-1.5 ${i === step ? "bg-[var(--brand-primary)] font-semibold text-white" : i < step ? "text-[var(--success)]" : "text-muted"}`}>{i + 1} {label}{i < step ? " ✓" : ""}</li>
         ))}
       </ol>
 
       {step === 0 && (
-        <div className="space-y-5">
+        <div className="space-y-8">
           {canAddDocs ? (
-            <div className="rounded-card border border-default bg-surface-sunken p-4">
-              <h3 className="text-sm font-semibold text-primary">Their documents</h3>
-              <p className="mb-3 text-xs text-muted">A passport or Emirates ID is read for you: name, nationality and expiry fill in. Documents are kept once on the person, whatever companies they belong to.</p>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">{first.map(slot)}</div>
-              {more.length > 0 && (
-                <details className="mt-3 rounded-card border border-default">
-                  <summary className="cursor-pointer px-3 py-2 text-sm font-medium text-secondary">More documents ({more.map((t) => t.label.toLowerCase()).join(", ")})</summary>
-                  <div className="grid grid-cols-1 gap-4 border-t border-default p-3 sm:grid-cols-2">{more.map(slot)}</div>
-                </details>
-              )}
-              <div className="mt-4 space-y-3 border-t border-default pt-4">
-                <div>
-                  <h4 className="text-sm font-semibold text-primary">Other documents</h4>
-                  <p className="text-xs text-muted">Anything not listed above. Give it a name, tick Track expiry if it should be reminded about, and upload the file.</p>
-                </div>
-                {extras.map((e, i) => (
-                  <div key={e.id} className="space-y-2 rounded-card border border-default bg-surface p-3">
-                    <div className="flex items-center gap-2">
-                      <input type="file" aria-label={`File for other document ${i + 1}`} accept="image/*,application/pdf" className="file-input min-w-0 flex-1" onChange={(ev) => void pickExtra(e.id, ev.target.files?.[0] ?? null)} />
-                      <button type="button" aria-label={`Remove other document ${i + 1}`} className="py-2 text-muted hover:text-[var(--error)]" onClick={() => setExtras((x) => x.filter((y) => y.id !== e.id))}><Trash2 className="h-4 w-4" /></button>
-                    </div>
-                    <OtherDocFields name={e.name} onName={(v) => setExtra(e.id, { name: v })} track={e.track} onTrack={(v) => setExtra(e.id, { track: v, expiry: v ? e.expiry : "" })} expiry={e.expiry} onExpiry={(v) => setExtra(e.id, { expiry: v })} note={e.note} />
-                  </div>
-                ))}
-                <button type="button" className="btn btn-secondary gap-1.5" onClick={() => setExtras((x) => [...x, { id: next.current++, file: null, name: "", track: false, expiry: "", note: null }])}><Plus className="h-3.5 w-3.5" aria-hidden />Add a document</button>
-              </div>
-            </div>
+            <section className="rounded-card border border-[var(--brand-primary-border)] bg-brand-soft p-5">
+              <h3 className="text-base font-semibold text-primary">Upload their documents</h3>
+              <p className="mt-0.5 mb-4 text-sm text-secondary">A passport or Emirates ID is read for you: the name, nationality and expiry fill in below. Documents are kept once on the person, whatever companies they belong to.</p>
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 [&_label]:text-sm [&_label]:font-medium [&_label]:text-primary">{first.map(slot)}</div>
+            </section>
           ) : (
-            <p className="rounded-lg border border-default bg-surface-sunken px-3 py-2 text-sm text-muted">You can add the person now, but their documents need the &ldquo;Sensitive documents&rdquo; permission from an administrator.</p>
+            <p className="rounded-lg border border-default bg-surface-sunken px-4 py-3 text-sm text-muted">You can add the person now, but their documents need the &ldquo;Sensitive documents&rdquo; permission from an administrator.</p>
           )}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Full name *</span><input className="input w-full" value={person.name} onChange={(e) => setPerson({ ...person, name: e.target.value })} /></label>
-            <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Nationality</span><input className="input w-full" value={person.nationality} onChange={(e) => setPerson({ ...person, nationality: e.target.value })} /></label>
-            <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Phone</span><input className="input w-full" value={person.phone} onChange={(e) => setPerson({ ...person, phone: e.target.value })} /></label>
-            <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Email</span><input type="email" className="input w-full" value={person.email} onChange={(e) => setPerson({ ...person, email: e.target.value })} /></label>
-          </div>
-          {same.map((m) => (
-            <p key={m.id} role="status" className="rounded-lg border border-[var(--warning-border)] bg-[var(--warning-soft)] px-3 py-2 text-sm text-[var(--warning)]">
-              <span className="font-medium">{m.name}</span> is already on the list. <Link href={`/my-companies/people/new?person=${m.id}`} className="font-medium underline">Assign companies to them instead</Link> so there is no duplicate.
-            </p>
-          ))}
+
+          <section className="space-y-4">
+            <div>
+              <h3 className="text-base font-semibold text-primary">Details</h3>
+              <p className="text-sm text-secondary">Filled in from the documents above. Check them, or type them if you have no documents yet.</p>
+            </div>
+            <div className="grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2 [&_.input]:h-11 [&_.input]:text-base [&_span]:text-sm">
+              <label className="block"><span className="mb-1.5 block font-medium text-primary">Full name *</span><input className="input w-full" value={person.name} onChange={(e) => setPerson({ ...person, name: e.target.value })} /></label>
+              <label className="block"><span className="mb-1.5 block font-medium text-primary">Nationality</span><input className="input w-full" value={person.nationality} onChange={(e) => setPerson({ ...person, nationality: e.target.value })} /></label>
+              <label className="block"><span className="mb-1.5 block font-medium text-primary">Phone</span><input className="input w-full" value={person.phone} onChange={(e) => setPerson({ ...person, phone: e.target.value })} /></label>
+              <label className="block"><span className="mb-1.5 block font-medium text-primary">Email</span><input type="email" className="input w-full" value={person.email} onChange={(e) => setPerson({ ...person, email: e.target.value })} /></label>
+            </div>
+            {same.map((m) => (
+              <p key={m.id} role="status" className="rounded-lg border border-[var(--warning-border)] bg-[var(--warning-soft)] px-4 py-3 text-sm text-[var(--warning)]">
+                <span className="font-medium">{m.name}</span> is already on the list. <Link href={`/my-companies/people/new?person=${m.id}`} className="font-medium underline">Assign companies to them instead</Link> so there is no duplicate.
+              </p>
+            ))}
+          </section>
+
+          {canAddDocs && (
+            <section className="space-y-5 border-t border-default pt-6">
+              <div>
+                <h3 className="text-base font-semibold text-primary">More documents</h3>
+                <p className="text-sm text-secondary">Anything else you want kept with this person.</p>
+              </div>
+              {more.length > 0 && (
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 [&_label]:text-sm [&_label]:font-medium [&_label]:text-primary">{more.map(slot)}</div>
+              )}
+              {extras.map((e, i) => (
+                <div key={e.id} className="grid grid-cols-1 gap-3 border-t border-default pt-5 md:grid-cols-[15rem_minmax(0,1fr)_auto] md:items-start">
+                  <label className="block">
+                    <span className="mb-1.5 block text-sm font-medium text-primary">File</span>
+                    <input type="file" aria-label={`File for other document ${i + 1}`} accept="image/*,application/pdf" className="file-input w-full" onChange={(ev) => void pickExtra(e.id, ev.target.files?.[0] ?? null)} />
+                  </label>
+                  <OtherDocFields name={e.name} onName={(v) => setExtra(e.id, { name: v })} track={e.track} onTrack={(v) => setExtra(e.id, { track: v, expiry: v ? e.expiry : "" })} expiry={e.expiry} onExpiry={(v) => setExtra(e.id, { expiry: v })} note={e.note} className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,1fr)_auto_14rem] [&_.input]:h-11 [&_span]:text-sm" />
+                  <button type="button" aria-label={`Remove other document ${i + 1}`} className="rounded-md p-2 text-muted hover:bg-surface-hover hover:text-[var(--error)] md:mt-7" onClick={() => setExtras((x) => x.filter((y) => y.id !== e.id))}><Trash2 className="h-5 w-5" /></button>
+                </div>
+              ))}
+              <button type="button" className="btn btn-secondary gap-2" onClick={() => setExtras((x) => [...x, { id: next.current++, file: null, name: "", track: false, expiry: "", note: null }])}><Plus className="h-4 w-4" aria-hidden />Add another document</button>
+            </section>
+          )}
         </div>
       )}
 

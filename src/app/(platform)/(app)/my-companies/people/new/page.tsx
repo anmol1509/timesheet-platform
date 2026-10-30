@@ -25,7 +25,7 @@ export default async function AddPersonPage({ searchParams }: { searchParams: Pr
   const slim = (t: { key: string; label: string; hasExpiry: boolean }) => ({ key: t.key, label: t.label, hasExpiry: t.hasExpiry, required: isRequired(t as never, false) });
 
   return (
-    <div className="mx-auto max-w-3xl space-y-5">
+    <div className="mx-auto max-w-4xl space-y-6">
       <PageHeader
         title={existing ? `Assign ${existing.name}` : "Add owner or sponsor"}
         description={existing ? "Choose the companies this person owns or sponsors." : "Upload their documents and the details are read out of them for you to review. Then say which companies they belong to, if you know yet."}
