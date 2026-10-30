@@ -103,7 +103,7 @@ export function ExpiryFix({ employeeId, field, current }: { employeeId: string; 
           title="Upload the new document"
           hint="The new expiry is read from it and saved."
           onDone={(o) => {
-            if (o.applied.length > 0) { setMsg({ tone: "ok", text: `Saved. ${o.applied.map((a) => `${a.label}: ${new Date(a.value).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" })}`).join(", ")}.` }); setTimeout(() => router.refresh(), 1200); }
+            if (o.applied.length > 0) { setMsg({ tone: "ok", text: `Saved. ${o.applied.map((a) => `${a.label}: ${/^\d{4}-\d{2}-\d{2}/.test(a.value) ? new Date(a.value).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" }) : a.value}`).join(", ")}.` }); setTimeout(() => router.refresh(), 1200); }
             else setMsg({ tone: "warn", text: o.unread > 0 || o.conflicts.length === 0 ? "The file is saved, but no newer expiry could be read from it. Enter the new date below." : "The file is saved. Its date differs from the record; check it below." });
           }}
         />
