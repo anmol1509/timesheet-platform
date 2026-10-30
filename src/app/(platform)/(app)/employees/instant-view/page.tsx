@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { FileSearch, FileText, MessageCircle, Phone } from "lucide-react";
+import { Download, FileSearch, FileText, MessageCircle, Phone } from "lucide-react";
+import { refLabel } from "@/lib/employeeLetter";
 import { PageHeader } from "@/components/PageHeader";
 import { prisma } from "@/lib/db";
 import { getCurrentUser, requireUserWithBranch } from "@/lib/auth";
@@ -91,6 +92,13 @@ export default async function InstantViewPage({
           project: true,
           site: { select: { name: true } },
           branch: true,
+          issuedLetters: {
+            orderBy: { createdAt: "desc" },
+            select: { id: true, refNo: true, title: true, createdAt: true, issuedBy: { select: { name: true } } },
+          },
+          nocEmployees: {
+            select: { noc: { select: { id: true, docNo: true, createdAt: true, letterDate: true, mobilizeDate: true, demandRequest: { select: { client: { select: { name: true } } } } } } },
+          },
           // Only ids and names: the scan itself is fetched when someone clicks View.
           documents: {
             where: { noteId: null },
@@ -130,6 +138,20 @@ export default async function InstantViewPage({
       })
     : [];
   const expired = problems.filter((p) => p.days < 0);
+  // Letters issued from a template and NOCs the worker is named on, newest first, in one list.
+  const letters = validEmployee
+    ? [
+        ...validEmployee.issuedLetters.map((l) => ({ key: `l${l.id}`, ref: refLabel(l.refNo), title: l.title, date: l.createdAt, by: l.issuedBy.name, href: `/api/letters/${l.id}/pdf` })),
+        ...validEmployee.nocEmployees.map(({ noc }) => ({
+          key: `n${noc.id}`,
+          ref: `NOC-${String(noc.docNo).padStart(5, "0")}`,
+          title: `NOC${noc.demandRequest.client?.name ? ` for ${noc.demandRequest.client.name}` : ""}`,
+          date: noc.letterDate ?? noc.createdAt,
+          by: "",
+          href: `/api/nocs/${noc.id}`,
+        })),
+      ].sort((a, b) => b.date.getTime() - a.date.getTime())
+    : [];
   const arrivalRecorded = validEmployee?.siteArrivalDate != null;
   const summary = validEmployee
     ? [
@@ -205,6 +227,12 @@ export default async function InstantViewPage({
             </div>
             <div className="flex flex-wrap gap-2 print:hidden">
               <CopyButton text={summary} label="Copy summary" />
+              {validEmployee.documents.some((d) => d.type) && (
+                <a href={`/api/employees/${validEmployee.id}/documents-pack`} className="btn btn-secondary btn-sm">
+                  <Download className="h-3.5 w-3.5" aria-hidden />
+                  Download docs pack
+                </a>
+              )}
               <Link href={`/employees/${validEmployee.id}`} className="btn btn-secondary btn-sm">
                 Open full profile
               </Link>
@@ -377,6 +405,41 @@ export default async function InstantViewPage({
               <span className="block text-xs font-medium text-muted">Current Project</span>
               {validEmployee.project?.name || "—"}
             </div>
+          </div>
+
+          <div>
+            <h3 className="mb-2 text-sm font-semibold text-primary">Issued letters</h3>
+            {letters.length === 0 ? (
+              <p className="text-sm text-subtle">No letters or NOCs issued to this worker yet.</p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="border-b border-default text-left text-xs font-medium tracking-wide text-muted uppercase">
+                  <tr>
+                    <th className="py-2">Ref</th>
+                    <th className="py-2">Letter</th>
+                    <th className="py-2">Date</th>
+                    <th className="py-2">Issued by</th>
+                    <th className="py-2" />
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border)]">
+                  {letters.map((l) => (
+                    <tr key={l.key}>
+                      <td className="tabular py-2">{l.ref}</td>
+                      <td className="py-2">{l.title}</td>
+                      <td className="py-2">{formatDate(l.date)}</td>
+                      <td className="py-2 text-secondary">{l.by || "—"}</td>
+                      <td className="py-2 text-right print:hidden">
+                        <a href={l.href} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-medium text-[var(--brand-primary)] hover:underline">
+                          <Download className="h-3 w-3" aria-hidden />
+                          Download
+                        </a>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
 
           <div>
