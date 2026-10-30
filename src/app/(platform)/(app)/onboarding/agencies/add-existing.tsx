@@ -6,6 +6,7 @@ import { Select } from "@/components/ui/Select";
 import { addExistingAsAgencyAction } from "./actions";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 /** Picks a supplier that is already on file and marks it as a recruitment agency. */
 export function AddExistingAgency({ suppliers }: { suppliers: { id: string; name: string }[] }) {
   const router = useRouter();
@@ -24,7 +25,7 @@ export function AddExistingAgency({ suppliers }: { suppliers: { id: string; name
       <input type="hidden" name="supplierId" value={supplierId} />
       <div className="w-64"><Select value={supplierId} onChange={setSupplierId} searchable placeholder="Add an existing supplier…" options={suppliers.map((s) => ({ value: s.id, label: s.name }))} /></div>
       <Button variant="secondary" size="btn-sm" type="submit" disabled={pending || !supplierId} loading={pending}>Mark as agency</Button>
-      {state.error && <p role="alert" className="w-full text-sm text-[var(--error)]">{state.error}</p>}
+      {state.error && <Alert className="w-full">{state.error}</Alert>}
     </form>
   );
 }

@@ -8,6 +8,7 @@ import type { TimesheetTemplateKey } from "@/lib/timesheetTemplates";
 import { cn } from "@/lib/cn";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 const HEADER_LABELS: [keyof TemplateConfig["header"], string][] = [
   ["logo", "Logo"], ["address", "Address"], ["phone", "Phone and fax"], ["email", "Email"], ["poBox", "P.O. Box"], ["trn", "TRN"],
   ["subContractor", "Sub-contractor"], ["issuedTo", "Issued to"], ["period", "Period dates"],
@@ -145,7 +146,7 @@ export function TemplateEditor({ id, name: initialName, baseKey, baseName, colum
           <input value={cfg.footer} onChange={(e) => set("footer", e.target.value)} maxLength={160} placeholder="Printed at the foot of every page; empty uses the company name" className="input w-full" aria-label="Footer" />
         </fieldset>
 
-        {state.error && <p role="alert" className="text-sm text-[var(--error)]">{state.error}</p>}
+        {state.error && <Alert>{state.error}</Alert>}
         {state.ok && !state.error && <p role="status" className="text-sm text-[var(--success)]">Saved.</p>}
         <div className="flex flex-wrap items-center gap-3 border-t border-default pt-4">
           <Button size="btn" type="submit" disabled={pending || !name.trim()} loading={pending}>Save template</Button>

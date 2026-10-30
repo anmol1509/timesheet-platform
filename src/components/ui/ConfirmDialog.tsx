@@ -1,5 +1,6 @@
 "use client";
 
+import { Alert } from "@/components/Alert";
 import { useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogFooter } from "./Dialog";
 import { Button } from "./Button";
@@ -95,9 +96,7 @@ export function ConfirmDialog({
       <Dialog open={open} onOpenChange={change}>
         <DialogContent title={title} description={description}>
           {error && (
-            <p role="alert" className="mt-4 rounded-control border border-[var(--error-border)] bg-[var(--error-soft)] px-3 py-2 text-sm text-[var(--error)]">
-              {error}
-            </p>
+            <Alert className="mt-4">{error}</Alert>
           )}
           {danger && (
             <p role="status" className={`mt-3 text-xs ${hint ? "text-[var(--error)]" : "text-subtle"}`}>

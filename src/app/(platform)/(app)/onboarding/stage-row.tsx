@@ -11,6 +11,7 @@ import { StageAttachments, type StageAttachmentRow } from "./stage-attachments";
 import type { Stage, StatusKind } from "@/lib/onboarding";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 type State = { error: string | null; ok?: boolean; skipped?: string[] };
 type HrOption = { id: string; name: string };
 type Task = { ownerId: string | null; ownerName: string | null; dueDate: Date | null } | null;
@@ -132,7 +133,7 @@ export function StageRow({
             <Button variant="secondary" size="btn" type="submit" disabled={taskPending} loading={taskPending}>
               Assign
             </Button>
-            {taskState.error && <p role="alert" className="text-sm text-[var(--error)]">{taskState.error}</p>}
+            {taskState.error && <Alert>{taskState.error}</Alert>}
           </form>}
           {canEdit ? <form action={action} className="grid gap-3 px-4 py-4 sm:grid-cols-2">
             <label className="block">
@@ -164,7 +165,7 @@ export function StageRow({
               <Button size="btn" type="submit" disabled={pending} loading={pending}>
                 Save status
               </Button>
-              {state.error && <p role="alert" className="text-sm text-[var(--error)]">{state.error}</p>}
+              {state.error && <Alert>{state.error}</Alert>}
             </div>
             {state.skipped && state.skipped.length > 0 && (
               <div role="status" className="flex flex-wrap items-center gap-3 rounded-lg border border-[var(--warning-border)] bg-[var(--warning-soft)] px-3 py-2 text-sm text-primary sm:col-span-2">

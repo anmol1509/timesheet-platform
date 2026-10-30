@@ -9,6 +9,7 @@ import { PayslipCard } from "@/components/PayslipCard";
 import type { PayslipDoc } from "@/lib/payslipData";
 import type { IssuerOption } from "@/lib/employeeLetterIssuer";
 import { PrintButton } from "./print-button";
+import { Alert } from "@/components/Alert";
 
 /**
  * Payslips of a run, laid out like the Letters screen: pick who gets one (one, several or all), choose
@@ -109,7 +110,7 @@ export function PayslipStudio({ runId, doc: fullDoc, issuer, margins, defaultHid
           <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
             <button type="button" className="font-semibold text-brand hover:underline disabled:opacity-40 disabled:no-underline" disabled={!hiddenChanged || savingDefault} onClick={saveDefault}>{savingDefault ? "Saving…" : "Use this for every payslip"}</button>
             {!hiddenChanged && hidden.length > 0 && <span className="text-muted">This is the company default.</span>}
-            {defaultError && <span role="alert" className="text-[var(--error)]">{defaultError}</span>}
+            {defaultError && <Alert>{defaultError}</Alert>}
           </div>
         </section>
 

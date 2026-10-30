@@ -16,6 +16,7 @@ import { ADVANCE_METHODS } from "@/lib/advances";
 import { ReceiptButton } from "./receipt-button";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 type State = { error: string | null; ok?: boolean };
 export type LoanRow = {
   id: string; ref: string; employeeId: string; employee: string; employeeIdNo: string; type: string; principal: number; repaid: number; instalment: number; startMonth: string;
@@ -103,7 +104,7 @@ function NewAdvanceForm({ employees, onDone }: { employees: { id: string; label:
       <p className="text-xs text-muted">It goes for approval first. Nothing is deducted until it is approved and you record the day the money was handed over.</p>
       <div className="flex items-center gap-3">
         <Button size="btn" type="submit" disabled={pending} loading={pending}>Request approval</Button>
-        {state.error && <p role="alert" className="text-sm text-[var(--error)]">{state.error}</p>}
+        {state.error && <Alert>{state.error}</Alert>}
       </div>
     </form>
   );
@@ -143,7 +144,7 @@ function GivenForm({ row, onDone }: { row: LoanRow; onDone: () => void }) {
       <p className="text-xs text-muted">Deduction from payroll follows the plan&apos;s months once this is recorded, even for an earlier pay month (salary paid late). The day cannot be changed afterwards.</p>
       <div className="flex items-center gap-3">
         <Button size="btn" type="submit" disabled={pending} loading={pending}>Record as given</Button>
-        {state.error && <p role="alert" className="text-sm text-[var(--error)]">{state.error}</p>}
+        {state.error && <Alert>{state.error}</Alert>}
       </div>
     </form>
   );
@@ -168,7 +169,7 @@ function SetPlanForm({ row, onDone }: { row: LoanRow; onDone: () => void }) {
       <PlanFields mode={mode} setMode={setMode} rows={rows} setRows={setRows} principal={row.principal} />
       <div className="flex items-center gap-3">
         <Button size="btn" type="submit" disabled={pending} loading={pending}>Save months</Button>
-        {state.error && <p role="alert" className="text-sm text-[var(--error)]">{state.error}</p>}
+        {state.error && <Alert>{state.error}</Alert>}
       </div>
     </form>
   );
@@ -217,7 +218,7 @@ export function LoansBoard({ rows, employees, canCreate, canEdit, canApprove, ca
           )}
         </div>
       </div>
-      {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
+      {error && <Alert>{error}</Alert>}
 
       {rows.length === 0 ? (
         <div className="empty-state"><p className="text-sm text-muted">No advances or loans yet. Request one: it is approved, handed over on a recorded day, and then deducted from payroll month by month as planned.</p></div>

@@ -9,6 +9,7 @@ import { cn } from "@/lib/cn";
 import { createRunAction } from "./actions";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 export type RunRow = {
   key: string;
   /** Null for a month that has not been started for this company yet. */
@@ -70,7 +71,7 @@ export function PayRuns({ rows, canCreate }: { rows: RunRow[]; canCreate: boolea
           <button key={key} type="button" onClick={() => setChip(key)} className={cn("rounded-control border px-3 py-1.5 text-xs font-medium transition", chip === key ? "border-[var(--brand-primary)] bg-brand-soft text-[var(--brand-primary)]" : "border-default bg-surface text-secondary hover:bg-surface-hover")}>{label} ({count(key)})</button>
         ))}
       </div>
-      {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
+      {error && <Alert>{error}</Alert>}
       <div className="card overflow-x-auto">
         <table className="w-full min-w-[40rem] text-sm">
           <thead className="border-b border-default bg-surface-subtle text-left text-xs font-medium tracking-wide text-muted uppercase">

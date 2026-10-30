@@ -19,6 +19,7 @@ import {
 } from "./actions";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 type State = { error: string | null; ok?: boolean };
 type Branch = { id: string; code: string; name: string };
 type AccessRoleOption = WizardRole;
@@ -42,7 +43,7 @@ export type TeamUser = {
 const ROLE_LABELS = { SUPER_ADMIN: "Super admin", BRANCH_ADMIN: "Admin", STAFF: "Staff" };
 
 function Feedback({ state }: { state: State }) {
-  if (state.error) return <p role="alert" className="text-sm text-[var(--danger-text,#b42318)]">{state.error}</p>;
+  if (state.error) return <Alert>{state.error}</Alert>;
   return null;
 }
 
@@ -213,7 +214,7 @@ export function TeamManager({
           <Plus className="h-4 w-4" aria-hidden /> Add team member
         </button>
       </div>
-      {rowError && <p role="alert" className="text-sm text-[var(--danger-text,#b42318)]">{rowError}</p>}
+      {rowError && <Alert>{rowError}</Alert>}
 
       <div className="card overflow-x-auto">
         <table className="w-full text-sm">

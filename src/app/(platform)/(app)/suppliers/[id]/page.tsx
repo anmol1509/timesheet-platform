@@ -29,6 +29,7 @@ import { StatusRow, type StatusItem } from "@/components/StatusRow";
 import { headerGaps } from "@/lib/issuerHeader";
 import { HeaderFix } from "./company-fixes";
 import { buildChecklist, resolveDocTypes } from "@/lib/documentTypes";
+import { Alert } from "@/components/Alert";
 
 export const metadata = { title: "Supplier" };
 
@@ -212,9 +213,9 @@ export default async function SupplierDetailPage({
           · {supplier._count.entries} timesheet rows
         </p>
         {error && (
-          <p className="mt-3 rounded-lg bg-[var(--error-soft)] px-3 py-2 text-sm text-[var(--error)]">
+          <Alert className="mt-3">
             {error}
-          </p>
+          </Alert>
         )}
         </div>
       </div>

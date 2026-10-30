@@ -6,6 +6,7 @@ import { Ban, RotateCcw } from "lucide-react";
 import { dropCandidateAction, reinstateCandidateAction } from "./actions";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 type State = { error: string | null; ok?: boolean };
 
 /**
@@ -43,7 +44,7 @@ export function DropPanel({ candidateId, joined, droppedAt, droppedReason, canEd
       <input name="reason" required maxLength={200} placeholder="Why? e.g. withdrew, failed trade test, didn't arrive" aria-label="Reason for dropping" className="input min-w-0 flex-1" autoFocus />
       <Button size="btn-sm" type="submit" disabled={pending} loading={pending}>Drop candidate</Button>
       <button type="button" className="btn btn-secondary btn-sm" onClick={() => setOpen(false)}>Cancel</button>
-      {state.error && <p role="alert" className="w-full text-sm text-[var(--error)]">{state.error}</p>}
+      {state.error && <Alert className="w-full">{state.error}</Alert>}
     </form>
   ) : (
     <button type="button" className="inline-flex items-center gap-1 text-xs font-medium text-muted hover:text-primary hover:underline" onClick={() => setOpen(true)}>

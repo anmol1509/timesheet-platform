@@ -18,6 +18,7 @@ import {
 } from "./actions";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 export type EndpointRow = {
   id: string; url: string; description: string | null; events: string[]; secretHint: string; isActive: boolean;
   disabledReason: string | null; lastDeliveryAt: string | null; lastStatusCode: number | null;
@@ -102,7 +103,7 @@ function EndpointForm({ endpoint, onClose }: { endpoint?: EndpointRow; onClose: 
       <EventPicker selected={endpoint?.events} />
       <div className="flex items-center gap-3">
         <Button size="btn" type="submit" disabled={pending} loading={pending}>{endpoint ? "Save changes" : "Add endpoint"}</Button>
-        {state.error && <p role="alert" className="text-sm text-[var(--error)]">{state.error}</p>}
+        {state.error && <Alert>{state.error}</Alert>}
       </div>
     </form>
   );

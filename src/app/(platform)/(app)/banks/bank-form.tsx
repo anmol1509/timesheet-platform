@@ -11,6 +11,7 @@ import { Select } from "@/components/ui/Select";
 import { MaskedInput } from "@/components/ui/MaskedInput";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 type State = { error: string | null; ok?: boolean; id?: string };
 export type BankValues = {
   id?: string; accountName: string; bankName: string; abbreviation: string; accountType: string; currency: string; companyId: string;
@@ -65,7 +66,7 @@ export function BankForm({ initial, companies, onDone }: { initial: BankValues; 
       {editing && <label className="flex items-center gap-2 text-sm text-secondary"><input type="hidden" name="enabled" value="0" /><input type="checkbox" name="enabled" value="1" defaultChecked={v.enabled} className="h-4 w-4" onChange={(e) => { const h = e.currentTarget.previousElementSibling as HTMLInputElement; h.disabled = e.currentTarget.checked; }} />Account is in use (untick to switch it off)</label>}
       <div className="flex flex-wrap items-center gap-3">
         <Button size="btn" type="submit" disabled={pending} loading={pending}>{editing ? "Save changes" : "Add bank"}</Button>
-        {state.error && <p role="alert" className="text-sm text-[var(--error)]">{state.error}</p>}
+        {state.error && <Alert>{state.error}</Alert>}
         {editing && state.ok && !pending && <span className="text-sm text-[var(--success)]">Saved.</span>}
       </div>
     </form>

@@ -6,6 +6,7 @@ import { Trash2 } from "lucide-react";
 import { Badge } from "@/components/Badge";
 import { addContactAction, deleteContactAction, toggleContactAction } from "./actions";
 import { NumberInput } from "@/components/ui/NumberInput";
+import { Alert } from "@/components/Alert";
 
 type State = { error: string | null; ok?: boolean };
 export type ContactRow = { id: string; department: string; personName: string; designation: string | null; phone: string | null; email: string | null; isActive: boolean };
@@ -30,10 +31,10 @@ export function ContactsBoard({ rows, canEdit, canDelete }: { rows: ContactRow[]
             <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Email</span><input type="email" name="email" className="input w-full" /></label>
             <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Order (lower first)</span><NumberInput name="sortOrder" defaultValue={0} className="w-full" /></label>
           </div>
-          <div className="flex flex-wrap items-center gap-3"><button type="submit" className="btn btn-primary" disabled={adding}>{adding ? "Adding…" : "Add contact"}</button>{state.error && <p role="alert" className="text-sm text-[var(--error)]">{state.error}</p>}</div>
+          <div className="flex flex-wrap items-center gap-3"><button type="submit" className="btn btn-primary" disabled={adding}>{adding ? "Adding…" : "Add contact"}</button>{state.error && <Alert>{state.error}</Alert>}</div>
         </form>
       )}
-      {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
+      {error && <Alert>{error}</Alert>}
       {rows.length === 0 ? <div className="empty-state"><p className="text-sm text-muted">No contacts yet. Suppliers see nothing under &ldquo;Who to contact&rdquo; until you add one.</p></div> : (
         <ul className="card divide-y divide-[var(--border)] overflow-hidden">
           {rows.map((c) => (

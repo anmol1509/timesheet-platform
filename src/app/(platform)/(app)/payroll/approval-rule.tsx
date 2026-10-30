@@ -5,6 +5,7 @@ import { setApprovalThresholdAction } from "./actions";
 import { NumberInput } from "@/components/ui/NumberInput";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 /** Payroll approval limit: above it, a run's creator can't approve their own run. */
 export function ApprovalRuleForm({ current }: { current: number | null }) {
   const [state, action, pending] = useActionState(
@@ -19,7 +20,7 @@ export function ApprovalRuleForm({ current }: { current: number | null }) {
       </label>
       <Button variant="secondary" size="btn" type="submit" disabled={pending} loading={pending}>Save rule</Button>
       {state.ok && <span className="text-sm text-[var(--success)]">Saved</span>}
-      {state.error && <p role="alert" className="text-sm text-[var(--error)]">{state.error}</p>}
+      {state.error && <Alert>{state.error}</Alert>}
       <p className="w-full text-xs text-muted">
         When a run&apos;s total is above this, the person who created it can&apos;t approve it; someone else with approval rights has to. Leave blank for no limit.
       </p>

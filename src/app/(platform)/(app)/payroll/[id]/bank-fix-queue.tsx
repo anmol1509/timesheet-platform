@@ -9,6 +9,7 @@ import { Hint } from "@/components/Hint";
 import { fixBankDetailsAction } from "../actions";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 export type BankGapRow = { employeeId: string; name: string; idNo: string; gaps: string[]; defaults: { personCode: string; routingCode: string; iban: string; bankName: string } };
 
 /**
@@ -111,7 +112,7 @@ export function BankFixQueue({ runId, canEdit, rows }: { runId: string; canEdit:
             <Button size="btn" type="submit" disabled={pending || !canEdit} loading={pending}>{left > 1 ? "Save and next ›" : "Save and finish"}</Button>
             <button type="button" disabled={pending || !canEdit} className="btn btn-secondary" onClick={() => save("CASH")}>Paid in cash</button>
             <button type="button" disabled={pending || left <= 1} className="btn btn-secondary" onClick={skip}>Skip</button>
-            {error && <p role="alert" className="w-full text-xs text-[var(--error)]">{error}</p>}
+            {error && <Alert inline className="w-full">{error}</Alert>}
           </div>
         </form>
       </div>

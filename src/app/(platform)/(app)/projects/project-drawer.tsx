@@ -9,6 +9,7 @@ import { PhoneField } from "@/components/ui/PhoneField";
 import { daysUntil } from "@/lib/compliance";
 import { cn } from "@/lib/cn";
 import { loadProjectQuickViewAction, saveProjectFieldAction, saveProjectPersonAction, type ProjectPerson, type ProjectQuickView } from "./quick-view";
+import { Alert } from "@/components/Alert";
 
 /** What the list already knows about a project: the header and the figures that are read, not edited, here. */
 export type ProjectRowInfo = { id: string; code: string; name: string; deployed: number; required: number | null; sites: number; openDemands: number; lpoValue: number; lpoBilled: number };
@@ -210,7 +211,7 @@ function PersonRow({ projectId, person, label, value, onSaved, bare }: { project
       <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" aria-label={`${label} name`} className="input w-full" autoFocus={!bare} />
       <PhoneField value={phone} onChange={setPhone} />
       <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email (optional)" aria-label={`${label} email`} className={cn("input w-full")} />
-      {error && <p role="alert" className="text-xs text-[var(--error)]">{error}</p>}
+      {error && <Alert inline>{error}</Alert>}
       <div className="flex gap-2">
         <button type="submit" className="btn btn-primary btn-sm" disabled={busy}>Save</button>
         {!bare && <button type="button" className="btn btn-secondary btn-sm" onClick={() => { setEditing(false); setError(null); }}>Cancel</button>}

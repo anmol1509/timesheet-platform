@@ -5,6 +5,7 @@ import { topUpPriceLabel } from "@/lib/aiCredits";
 import { grantAiCreditsAction, requestCreditsAction, setAiAllowanceAction } from "./actions";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 type State = { error: string | null; ok?: boolean };
 const initial: State = { error: null };
 
@@ -23,7 +24,7 @@ export function CreditForms({ branchId, allowance }: { branchId: string; allowan
         </label>
         <div className="flex items-center gap-3">
           <Button size="btn-sm" type="submit" disabled={settingPending} loading={settingPending}>Save allowance</Button>
-          {setState.error && <p role="alert" className="text-xs text-[var(--error)]">{setState.error}</p>}
+          {setState.error && <Alert inline>{setState.error}</Alert>}
           {setState.ok && !setState.error && <p className="text-xs text-[var(--success)]">Saved.</p>}
         </div>
       </form>
@@ -41,7 +42,7 @@ export function CreditForms({ branchId, allowance }: { branchId: string; allowan
         </div>
         <div className="flex items-center gap-3">
           <Button size="btn-sm" type="submit" disabled={grantPending} loading={grantPending}>Add credits</Button>
-          {grantState.error && <p role="alert" className="text-xs text-[var(--error)]">{grantState.error}</p>}
+          {grantState.error && <Alert inline>{grantState.error}</Alert>}
           {grantState.ok && !grantState.error && <p className="text-xs text-[var(--success)]">Added.</p>}
         </div>
       </form>
@@ -69,7 +70,7 @@ export function RequestStrip() {
         <input name="reason" maxLength={300} placeholder="e.g. Month-end payroll push, bulk document import" className="input mt-1 h-9 w-full text-sm" />
       </label>
       <Button size="btn-sm" type="submit" disabled={pending} loading={pending}>Send request</Button>
-      {state.error && <p role="alert" className="w-full text-xs text-[var(--error)]">{state.error}</p>}
+      {state.error && <Alert inline className="w-full">{state.error}</Alert>}
       {state.ok && !state.error && <p className="w-full text-xs text-[var(--success)]">Request sent. You will get a message when it is answered.</p>}
     </form>
   );

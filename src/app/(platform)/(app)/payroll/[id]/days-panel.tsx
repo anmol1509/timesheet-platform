@@ -13,6 +13,7 @@ import { ReceiptButton } from "../loans/receipt-button";
 import type { PayDaysView } from "@/lib/payDaysData";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 const aed = (n: number) => n.toLocaleString("en-AE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const dash = (n: number, sign = "") => (n === 0 ? "—" : `${sign}${aed(n)}`);
 const showShort = (v: PayDaysView) => !v.hourly && v.shortRule.mode !== "OFF";
@@ -91,7 +92,7 @@ export function DaysButton({ runId, employeeId, name }: { runId: string; employe
       </DialogTrigger>
       <DialogContent title={`${name}: day by day`} description={view ? `Pay for ${view.month}, with the client timesheet beside it.` : undefined} className="max-w-5xl!">
         {!view && !error && <p className="mt-6 text-sm text-muted">Loading…</p>}
-        {error && <p role="alert" className="mt-3 rounded-md border border-[var(--error-border)] bg-[var(--error-soft)] px-3 py-2 text-sm text-[var(--error)]">{error}</p>}
+        {error && <Alert className="mt-3">{error}</Alert>}
         {view && (
           <div className="mt-4 space-y-4">
             <div className={cn("grid gap-3", showShort(view) ? "sm:grid-cols-5" : "sm:grid-cols-4")}>

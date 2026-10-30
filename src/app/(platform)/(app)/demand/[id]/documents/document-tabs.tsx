@@ -26,6 +26,7 @@ import {
   type LetterWorker,
 } from "@/lib/letterLayout";
 import { issueNocAction } from "@/app/(platform)/(app)/operations/nocs/actions";
+import { Alert } from "@/components/Alert";
 
 type Template = { id: string; name: string; title: string; html: string };
 type Noc = { id: string; docNo: number; status: string; createdAt: string; workers: number };
@@ -310,7 +311,7 @@ function LetterBuilder({
             </div>
           )}
 
-          {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
+          {error && <Alert>{error}</Alert>}
           {isNoc ? (
             <button type="button" className="btn btn-primary w-full" disabled={!ready || issuing} onClick={issueNoc}>
               {issuing ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <FileText className="h-4 w-4" aria-hidden />}

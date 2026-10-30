@@ -11,6 +11,7 @@ import { EmployeeLetterPaper } from "@/components/LetterPreview";
 import { editableLetterAction, issueLetterAction, letterIssuersAction, previewLetterAction } from "./actions";
 import { FixLetterDialog, type OneOff } from "./fix-letter-dialog";
 import type { IssuerKey, IssuerOption } from "@/lib/employeeLetterIssuer";
+import { Alert } from "@/components/Alert";
 
 export type TemplateOption = { id: string; name: string; asks: string[]; usesSalary: boolean };
 export type EmployeeOption = { id: string; name: string; idNo: string; trade: string | null };
@@ -221,7 +222,7 @@ export function IssueLetter({ employees, templates, popular, companyName, today,
                 </button>
               )}
             </div>
-            {editError && <p role="alert" className="mb-2 text-xs text-[var(--error)]">{editError}</p>}
+            {editError && <Alert inline className="mb-2">{editError}</Alert>}
             {edited !== null && leftBlanks.length > 0 && (
               <p className="mb-2 rounded-lg border border-[var(--warning-border)] bg-[var(--warning-soft)] px-3 py-2 text-xs text-secondary"><b className="text-primary">Still to fill in:</b> {leftBlanks.map((l) => `[${l}]`).join(", ")}. They show highlighted in the wording. Type the real details over them, or add them to the employee&apos;s record with Fix missing details and edit again.</p>
             )}
@@ -266,7 +267,7 @@ export function IssueLetter({ employees, templates, popular, companyName, today,
                 <p className="text-xs text-muted">You can preview letters but not issue them.</p>
               )}
             </div>
-            {(error || shown?.error) && <p role="alert" className="text-sm text-[var(--danger-text,#b42318)]">{error ?? shown?.error}</p>}
+            {(error || shown?.error) && <Alert>{error ?? shown?.error}</Alert>}
           </div>
         </div>
       </div>

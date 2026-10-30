@@ -7,6 +7,7 @@ import { Badge } from "@/components/Badge";
 import { applyRunAdvancesAction, loadRunAdvancesAction, type RunAdvance } from "../pay-items-actions";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 const aed = (n: number) => n.toLocaleString("en-AE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 /**
@@ -96,7 +97,7 @@ export function AdvancesButton({ runId, employeeId, name, count, owed, unschedul
             {canApply ? (
               <p className="text-xs text-muted">Whatever you type replaces what the advance&apos;s plan had for this month, even if a month was already chosen; its other months stay as planned. An advance that had no month yet keeps taking this amount in later months until it is cleared, unless you change its months under Loans &amp; advances.</p>
             ) : <p className="text-xs text-muted">This run is no longer a draft, so nothing can be changed here.</p>}
-            {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
+            {error && <Alert>{error}</Alert>}
           </div>
         )}
       </DialogContent>

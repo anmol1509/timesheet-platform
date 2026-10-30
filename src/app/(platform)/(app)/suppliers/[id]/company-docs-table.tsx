@@ -17,6 +17,7 @@ import { MAX_UPLOAD_LABEL } from "@/lib/constants";
 import { cn } from "@/lib/cn";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 export type DocFile = { id: string; docType: string; filename: string; expiryDate: string | null; uploadedAt: string; docNumber?: string | null; issueDate?: string | null };
 export type DocRow = {
   key: string;
@@ -135,7 +136,7 @@ export function CompanyDocsTable({ rows, legacy, supplierId, revalidate, canEdit
               <li key={q.id} className="grid items-start gap-3 py-3 lg:grid-cols-[minmax(0,1.2fr)_14rem_13rem_auto]">
                 <div className="min-w-0">
                   <p className="flex items-center gap-2 truncate text-sm font-medium text-primary"><FileText className="h-4 w-4 shrink-0 text-muted" aria-hidden />{q.file.name}</p>
-                  <p className={cn("mt-0.5 text-xs", q.state === "failed" ? "text-[var(--error)]" : "text-muted")}>{q.state === "reading" ? "Reading the file…" : q.state === "saving" ? "Filing…" : q.note}</p>
+                  {q.state === "failed" && q.note ? <Alert inline className="mt-1">{q.note}</Alert> : <p className="mt-0.5 text-xs text-muted">{q.state === "reading" ? "Reading the file…" : q.state === "saving" ? "Filing…" : q.note}</p>}
                 </div>
                 <Select value={q.type} onChange={(v) => setQueue((cur) => cur.map((x) => (x.id === q.id ? { ...x, type: v } : x)))} options={typeOptions} disabled={q.state === "reading" || q.state === "saving"} />
                 <DatePicker value={q.expiry} onChange={(v) => setQueue((cur) => cur.map((x) => (x.id === q.id ? { ...x, expiry: v } : x)))} ariaLabel="Expiry date" placeholder="Expiry (optional)" disabled={q.state === "reading" || q.state === "saving"} className="w-full" />
@@ -334,7 +335,7 @@ function RowUploader({ row, supplierId, revalidate, onDone }: { row: DocRow; sup
       {isOther && <OtherDocFields name={name} onName={setName} track={track} onTrack={setTrack} expiry={expiry} onExpiry={setExpiry} note={null} />}
       {note && <p className="flex items-center gap-1.5 text-xs text-muted">{reading && <Loader2 className="h-3 w-3 animate-spin" aria-hidden />}{note}</p>}
       {warn && <p role="status" className="text-xs text-[var(--warning)]">{warn}</p>}
-      {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
+      {error && <Alert>{error}</Alert>}
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { mergePeopleAction } from "./people-actions";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 export type DupPerson = { id: string; name: string; where: string; docs: number };
 
 /** Groups of people who look like the same person, each with a one-click merge into the one to keep. */
@@ -44,7 +45,7 @@ export function DuplicatePeople({ groups }: { groups: DupPerson[][] }) {
           <Button variant="secondary" size="btn-sm" type="button" disabled={pending} onClick={() => merge(gi, g)} loading={pending}>Merge into the selected person</Button>
         </div>
       ))}
-      {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
+      {error && <Alert>{error}</Alert>}
     </section>
   );
 }

@@ -7,6 +7,7 @@ import { Select } from "@/components/ui/Select";
 import { ACCOUNT_TYPES, TYPE_LABEL } from "@/lib/books/chart";
 import { guessType, matchAccount, type ChartAccount, type TbParse, type TbRow } from "@/lib/books/importTb";
 import { importOpeningBalancesAction } from "../actions";
+import { Alert } from "@/components/Alert";
 
 const aed = (n: number) => n.toLocaleString("en-AE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const SOURCES = [
@@ -73,7 +74,7 @@ export function ImportWizard({ chart, openingDate }: { chart: ChartAccount[]; op
       <p className="text-sm text-muted">{SOURCES.find((s) => s.k === source)!.how} Export it as of <span className="font-medium text-primary">{openingDate}</span>, the day your books start here.</p>
       <input ref={input} type="file" accept=".xlsx,.csv,text/csv" className="sr-only" aria-label="Choose a trial balance file" onChange={(e) => { const f = e.target.files?.[0]; if (f) void load(f); e.target.value = ""; }} />
       <Button type="button" variant="secondary" size="sm" disabled={busy} onClick={() => input.current?.click()}>{busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <FileSpreadsheet className="h-4 w-4" aria-hidden />}Upload trial balance</Button>
-      {error && <p role="alert" className="text-sm text-error">{error}</p>}
+      {error && <Alert>{error}</Alert>}
       {done && <p role="status" className="text-sm text-success">{done}</p>}
 
       {parsed && rows.length > 0 && (

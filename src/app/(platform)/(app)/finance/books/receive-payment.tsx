@@ -9,6 +9,7 @@ import { Select } from "@/components/ui/Select";
 import { Input } from "@/components/ui/Input";
 import { createPartyEntryAction } from "./parties/actions";
 import { receiveMoneyAction, type MoneyInSource } from "./actions";
+import { Alert } from "@/components/Alert";
 
 type Kind = "CLIENT" | MoneyInSource;
 const KINDS: { value: Kind; label: string; from: string }[] = [
@@ -61,7 +62,7 @@ export function ReceivePayment({ clients, moneyAccounts, otherAccounts, minDate,
           )}
           <label className="block text-sm font-medium text-primary">What it is for<Input className="mt-1" value={narration} onChange={(e) => setNarration(e.target.value)} placeholder={kind === "CLIENT" ? "e.g. Part payment for INV-0042" : "e.g. Bank interest for September"} /></label>
           {kind === "CLIENT" && fx && <p className="text-sm text-warning">Client payments are in dirhams. Pick an AED account, or choose another kind of money for a {fx.currency} receipt.</p>}
-          {error && <p role="alert" className="text-sm text-error">{error}</p>}
+          {error && <Alert>{error}</Alert>}
         </div>
         <DialogFooter>
           <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>

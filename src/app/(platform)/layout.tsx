@@ -3,6 +3,7 @@ import { DM_Sans, Inter, Plus_Jakarta_Sans, Geist_Mono } from "next/font/google"
 import { cookies } from "next/headers";
 import "../globals.css";
 import { FormValidation } from "@/components/FormValidation";
+import { PopoverScrollFix } from "@/components/PopoverScrollFix";
 import { MotionProvider } from "@/components/motion/MotionProvider";
 import { ACCENT_COOKIE, DENSITY_COOKIE, LOOK_COOKIE, TEXT_COOKIE, THEME_COOKIE, htmlAttributes, htmlStyle, parseLook, parsePreferences } from "@/lib/preferences";
 
@@ -69,6 +70,7 @@ export default async function RootLayout({
       <body className="flex min-h-full flex-col bg-canvas text-[var(--text)]">
         <FormValidation />
         <MotionProvider>{children}</MotionProvider>
+      <PopoverScrollFix />
       </body>
     </html>
   );

@@ -11,6 +11,7 @@ import { Combobox } from "@/components/ui/Combobox";
 import { DeleteButton } from "@/components/DeleteButton";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { NumberInput } from "@/components/ui/NumberInput";
+import { Alert } from "@/components/Alert";
 
 type Assignment = {
   id: string;
@@ -155,7 +156,7 @@ export function ProjectInventory({
 
             Add
           </button>
-          {error && <p role="alert" className="w-full text-sm text-[var(--error)]">{error}</p>}
+          {error && <Alert className="w-full">{error}</Alert>}
         </div>
       </div>
 

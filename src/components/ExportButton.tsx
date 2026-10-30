@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ExportMenu } from "@/components/ExportMenu";
 import { fetchDownload } from "@/lib/fetchDownload";
+import { Alert } from "@/components/Alert";
 
 /** An Export button for a file the server builds: Excel as is, CSV by adding `format=csv` to the address. Says why when it fails. */
 export function ExportButton({ url, label }: { url: string; label?: string }) {
@@ -17,7 +18,7 @@ export function ExportButton({ url, label }: { url: string; label?: string }) {
           return fetchDownload(format === "csv" ? `${url}${url.includes("?") ? "&" : "?"}format=csv` : url);
         }}
       />
-      {problem && <span role="alert" className="basis-full text-sm text-[var(--warning)]">{problem}</span>}
+      {problem && <Alert tone="warning" className="basis-full">{problem}</Alert>}
     </>
   );
 }

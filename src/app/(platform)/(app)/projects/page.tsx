@@ -7,6 +7,7 @@ import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { ProjectList } from "./project-list";
+import { Alert } from "@/components/Alert";
 
 export const metadata = { title: "Projects" };
 
@@ -62,9 +63,9 @@ export default async function ProjectsPage({
   return (
     <div className="space-y-5">
       {error && (
-        <p className="rounded-lg border border-[var(--error-border)] bg-[var(--error-soft)] px-4 py-2 text-sm text-[var(--error)]">
+        <Alert>
           {error}
-        </p>
+        </Alert>
       )}
       <PageHeader
         title="Projects"

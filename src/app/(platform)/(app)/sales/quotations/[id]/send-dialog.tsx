@@ -11,6 +11,7 @@ import { cn } from "@/lib/cn";
 import { COVER_FIELDS } from "@/lib/quotationCover";
 import { markQuotationSentAction } from "../actions";
 import { createQuotationTemplateAction, deleteQuotationTemplateAction } from "../template-actions";
+import { Alert } from "@/components/Alert";
 
 type Template = { id: string; name: string; intro: string; closing: string | null };
 
@@ -121,7 +122,7 @@ export function SendDialog({ quotationId, version, hasLetterhead, companyName, t
                 <Checkbox checked={ot} onCheckedChange={setOt} label="OT rate" />
               </div>
 
-              {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
+              {error && <Alert>{error}</Alert>}
               {done && <p className="text-sm font-medium text-[var(--success)]">Recorded as sent. It is in the activity.</p>}
             </div>
 

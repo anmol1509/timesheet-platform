@@ -10,6 +10,7 @@ import { NumberInput } from "@/components/ui/NumberInput";
 import { cn } from "@/lib/cn";
 import { setTradeApprovalAction } from "./actions";
 import { loadDemandQuickViewAction, saveDemandFieldAction, type DemandQuickView } from "./quick-view";
+import { Alert } from "@/components/Alert";
 
 export type DemandPerson = { id: string; requestNo: number; clientName: string; projectName: string };
 
@@ -219,7 +220,7 @@ function TradeRow({ trade, canApprove, onChanged, bare }: { trade: DemandQuickVi
           {!undecided && <button type="button" className="text-xs font-medium text-[var(--error)] hover:underline" disabled={busy} onClick={() => void decide("")}>Undo decision</button>}
         </div>
       )}
-      {error && <p role="alert" className="mt-1 text-xs text-[var(--error)]">{error}</p>}
+      {error && <Alert inline className="mt-1">{error}</Alert>}
     </div>
   );
 }

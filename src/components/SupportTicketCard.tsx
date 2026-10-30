@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/Dialog";
 import { submitSupportTicketAction, type SupportTicketState } from "@/app/(platform)/(app)/support/actions";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 function SupportTicketForm({ onSent }: { onSent: () => void }) {
   const pathname = usePathname();
   const [state, action, pending] = useActionState<SupportTicketState, FormData>(
@@ -30,7 +31,7 @@ function SupportTicketForm({ onSent }: { onSent: () => void }) {
         <textarea name="message" required rows={4} placeholder="What you were doing, what happened, and what you expected instead." className="input w-full" />
       </label>
       <p className="text-xs text-subtle">Sent to info@manpowersync.com with your name and the page you&apos;re on.</p>
-      {state.error && <p role="alert" className="text-sm text-[var(--error)]">{state.error}</p>}
+      {state.error && <Alert>{state.error}</Alert>}
       <div className="flex justify-end gap-2 pt-1">
         <Button size="btn" type="submit" disabled={pending} loading={pending}>
           Send to support

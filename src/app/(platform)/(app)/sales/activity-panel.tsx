@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { cn } from "@/lib/cn";
 import { addSalesNoteAction, setFollowUpAction } from "./activity-actions";
+import { Alert } from "@/components/Alert";
 
 export type ActivityRow = { id: string; kind: string; body: string; userName: string | null; createdAt: string };
 
@@ -75,7 +76,7 @@ export function ActivityPanel({ entity, id, nextFollowUp, activities, canWrite }
             </div>
           </div>
         )}
-        {error && <p role="alert" className="mt-2 text-sm text-[var(--error)]">{error}</p>}
+        {error && <Alert className="mt-2">{error}</Alert>}
         {activities.length === 0 ? (
           <p className="mt-4 text-sm text-muted">Nothing yet.</p>
         ) : (

@@ -20,6 +20,7 @@ import { shrinkImage } from "@/lib/compressImage";
 import { pdfPageToImage } from "@/lib/pdfPageToImage";
 import { UndoImportButton } from "../../undo-button";
 import { nameFromFile, otherDocFilename, trackedExpiry } from "@/lib/otherDoc";
+import { Alert } from "@/components/Alert";
 
 type Opt = { value: string; label: string; icon?: React.ReactNode };
 type Cand = { kind: "EMPLOYEE" | "SUPPLIER"; id: string; name: string; sub: string; score: number };
@@ -366,7 +367,7 @@ export function DocumentsWizard() {
           <input ref={fileRef} type="file" multiple accept=".zip,.pdf,.jpg,.jpeg,.png,.gif,.webp,.heic,.heif,.doc,.docx,.xls,.xlsx" className="hidden" onChange={(e) => void begin([...(e.target.files ?? [])])} />
           <input ref={dirRef} type="file" multiple className="hidden" onChange={(e) => void begin([...(e.target.files ?? [])].filter((f) => MIME_BY_EXT[extOf(f.name)]))} {...({ webkitdirectory: "" } as object)} />
         </div>
-        {error && <p className="rounded-lg border border-[var(--error-border)] bg-[var(--error-soft)] px-4 py-3 text-sm text-[var(--error)]">{error}</p>}
+        {error && <Alert>{error}</Alert>}
       </div>
     );
   }
@@ -523,7 +524,7 @@ export function DocumentsWizard() {
         </details>
       )}
 
-      {error && <p className="flex items-start gap-2 rounded-lg border border-[var(--error-border)] bg-[var(--error-soft)] px-4 py-3 text-sm text-[var(--error)]"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />{error}</p>}
+      {error && <Alert><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />{error}</Alert>}
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-default pt-4">
         <button type="button" className="btn btn-secondary" onClick={() => { setStep("pick"); setPlan(null); setSources([]); }}>Start again</button>
         {unresolved > 0 && <p className="text-xs text-[var(--warning)]">{unresolved} document{unresolved === 1 ? "" : "s"} with no owner chosen will be left out.</p>}

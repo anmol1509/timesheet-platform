@@ -14,6 +14,7 @@ import { uploadLetterImageAction } from "../settings/company/actions";
 import { uploadSupplierLetterImageAction } from "../suppliers/actions";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 export type OneOff = { id: string; url: string } | null;
 
 type Props = {
@@ -146,7 +147,7 @@ export function FixLetterDialog(p: Props) {
             </div>
           )}
         </div>
-        {error && <p role="alert" className="mt-3 text-sm text-[var(--error)]">{error}</p>}
+        {error && <Alert className="mt-3">{error}</Alert>}
         <div className="mt-4 flex justify-end gap-2">
           <button type="button" className="btn btn-secondary" onClick={() => p.onOpenChange(false)}>Close</button>
           {fixable.length > 0 && (

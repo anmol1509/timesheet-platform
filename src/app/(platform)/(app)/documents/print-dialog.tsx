@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/Dialog";
 import { PRINT_LIMIT } from "./print-docs";
+import { Alert } from "@/components/Alert";
 
 export type PrintOption = {
   key: string;
@@ -70,7 +71,7 @@ function Choices({ options, count, onCancel, onPrint }: { options: PrintOption[]
       <p className="mt-3 text-sm text-secondary">
         {printing === 0 ? "Nothing to print with this choice." : <><b className="text-primary">{printing}</b> {printing === 1 ? "document" : "documents"} will print{missing > 0 ? <>, <span className="text-muted">{missing} not on file</span></> : null}.</>}
       </p>
-      {tooMany && <p role="alert" className="mt-1 text-sm text-[var(--error)]">That is more than {PRINT_LIMIT} documents. Select fewer or untick some kinds.</p>}
+      {tooMany && <Alert className="mt-1">That is more than {PRINT_LIMIT} documents. Select fewer or untick some kinds.</Alert>}
       <p className="mt-1 text-xs text-subtle">PDFs and photos print; Word or Excel files can&apos;t be included.</p>
       <DialogFooter>
         <button type="button" className="btn btn-secondary" onClick={onCancel}>Cancel</button>

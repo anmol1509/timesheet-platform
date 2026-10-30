@@ -8,6 +8,7 @@ import { fieldsFor, type Audience } from "@/lib/letterFields";
 import { loadDocEditAction, resetDocEditAction, saveDocEditAction, type DocTarget } from "@/app/(platform)/(app)/doc-edit/actions";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 /**
  * "Edit wording" for one document made from a template: opens the same editor the templates use (text, lists and tables),
  * on this document's wording. A change applies to this document only; the template is never touched, and the figures
@@ -49,12 +50,12 @@ export function EditWording({ target, label = "Edit wording", className, onChang
       <button type="button" className={className ?? "inline-flex items-center gap-1 text-[var(--brand-primary)] hover:underline"} onClick={show}><Pencil className="h-3.5 w-3.5" aria-hidden /> {label}</button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent title={state ? `Edit wording · ${state.label}` : "Edit wording"} className="sm:max-w-4xl" description="Changes apply to this document only. The template is not changed, and the figures still come from the records each time it prints.">
-          {error && !state ? <p role="alert" className="mt-4 text-sm text-[var(--error)]">{error}</p> : !state ? <div className="mt-4 h-72 animate-pulse rounded-lg bg-surface-sunken" /> : (
+          {error && !state ? <Alert className="mt-4">{error}</Alert> : !state ? <div className="mt-4 h-72 animate-pulse rounded-lg bg-surface-sunken" /> : (
             <div className="mt-4 space-y-3">
               {state.edited && <p className="rounded-lg border border-[var(--warning-border)] bg-[var(--warning-soft)] px-3 py-2 text-xs text-secondary">This document already has its own wording. <b>Reset to template</b> goes back to the template&apos;s.</p>}
               <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Heading printed on the document</span><input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={120} className="input w-full" aria-label="Heading" /></label>
               <LetterEditor key={key} html={html} onChange={setHtml} fields={fieldsFor(state.audience)} audience={state.audience} noAsk />
-              {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
+              {error && <Alert>{error}</Alert>}
               <div className="flex flex-wrap items-center gap-2">
                 <Button size="btn" type="button" disabled={busy} onClick={() => run(() => saveDocEditAction(target, html, title))} loading={busy}>Save wording</Button>
                 <button type="button" className="btn btn-secondary" disabled={busy} onClick={() => setOpen(false)}>Cancel</button>

@@ -8,6 +8,7 @@ import { ChoiceField, ClickToEdit, Pill, Row, type SaveResult } from "@/componen
 import { Select } from "@/components/ui/Select";
 import { daysUntil } from "@/lib/compliance";
 import { loadVehicleQuickViewAction, saveVehicleFieldAction, setRiderAction, type VehicleQuickView } from "./quick-view";
+import { Alert } from "@/components/Alert";
 
 export type VehicleRowInfo = { id: string; plateNumber: string; type: string | null; capacity: number | null; riders: number; routes: { id: string; name: string; time: string | null }[] };
 
@@ -125,7 +126,7 @@ export function VehicleDrawer({ id, order, info, onNavigate, onClose }: { id: st
             placeholder="Add a worker to this vehicle…"
             options={data.available.map((e) => ({ value: e.id, label: `${e.name} (${e.employeeIdNo})` }))}
           />
-          {rosterError && <p role="alert" className="text-xs text-[var(--error)]">{rosterError}</p>}
+          {rosterError && <Alert inline>{rosterError}</Alert>}
           {capacity !== null && data.riders.length > capacity && <p className="text-xs text-[var(--warning)]">More riders than seats: {data.riders.length} on {capacity} seats.</p>}
           {data.riders.length === 0 ? (
             <p className="rounded-[14px] border border-default px-3 py-6 text-center text-sm text-muted">Nobody rides this vehicle yet.</p>

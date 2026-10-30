@@ -5,6 +5,7 @@ import { BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { setupBooksAction } from "./actions";
+import { Alert } from "@/components/Alert";
 
 /** First-run card: the date the books start from. Everything before it is brought in as opening balances. */
 export function SetupCard({ isAdmin }: { isAdmin: boolean }) {
@@ -24,7 +25,7 @@ export function SetupCard({ isAdmin }: { isAdmin: boolean }) {
             Accounting starts on
             <div className="mt-1"><DatePicker value={date} onChange={setDate} ariaLabel="Accounting starts on" fromYear={2015} toYear={new Date().getUTCFullYear() + 1} /></div>
           </label>
-          {error && <p role="alert" className="text-left text-sm text-error">{error}</p>}
+          {error && <Alert>{error}</Alert>}
           <Button type="button" disabled={pending} onClick={() => start(async () => { const r = await setupBooksAction(date); if (r.error) setError(r.error); })} loading={pending}>
             Start accounting
           </Button>

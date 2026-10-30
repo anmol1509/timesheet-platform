@@ -6,6 +6,7 @@ import { MonthInput } from "@/components/ui/MonthInput";
 import { Select } from "@/components/ui/Select";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 type Company = { id: string; name: string };
 type State = { error: string | null };
 
@@ -26,7 +27,7 @@ export function CreateRunForm({ defaultMonth, companies, bare, defaultCompanyId 
         <MonthInput name="month" defaultValue={defaultMonth} required />
       </label>
       <Button size="btn" type="submit" disabled={pending} loading={pending}>Start payroll run</Button>
-      {state.error && <p role="alert" className="text-sm text-[var(--error)]">{state.error}</p>}
+      {state.error && <Alert>{state.error}</Alert>}
       <p className="w-full text-xs text-muted">We work out everyone&apos;s pay from attendance or timesheets. You can check and change it before anything is final.</p>
     </form>
   );

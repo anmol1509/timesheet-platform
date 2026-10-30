@@ -8,6 +8,7 @@ import { deleteInventoryItemAction } from "../actions";
 import { EditItemForm } from "./edit-form";
 import { EmployeeIssuanceSection } from "./employee-issuance-section";
 import { VariantsSection } from "./variants-section";
+import { Alert } from "@/components/Alert";
 
 export const metadata = { title: "Inventory item" };
 
@@ -71,7 +72,7 @@ export default async function InventoryItemPage({
           />
         </div>
         {error && (
-          <p className="mt-3 rounded-lg bg-[var(--error-soft)] px-3 py-2 text-sm text-[var(--error)]">{error}</p>
+          <Alert className="mt-3">{error}</Alert>
         )}
       </div>
 

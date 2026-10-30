@@ -19,6 +19,7 @@ import { ScanSummary } from "@/components/quick-view/ScanSummary";
 import { ChoiceField, ClickToEdit, Notice, Pill, ReadOnly, Row, TextEditor, useFieldFlow, type Kind, type SaveResult } from "@/components/quick-view/fields";
 import { ScanUpload, type ScanOutcome } from "./scan-upload";
 import { BLOOD_GROUPS } from "./quick-view-fields";
+import { Alert } from "@/components/Alert";
 
 export type DrawerPerson = { id: string; name: string; complete: boolean };
 
@@ -455,7 +456,7 @@ function TradeEditor({ data, reload }: { data: QuickView; reload: () => void }) 
   return (
     <div className="min-w-0">
       <Select value={data.trade ?? ""} onChange={(v) => void change(v)} options={options} placeholder="Choose a trade" searchable disabled={busy} />
-      {error && <p role="alert" className="mt-1 text-xs text-[var(--error)]">{error}</p>}
+      {error && <Alert inline className="mt-1">{error}</Alert>}
       {current && data.canViewPay && (
         <p className={cn("mt-1 text-xs", hourlyNoRate ? "text-[var(--warning)]" : "text-muted")}>
           {current.level != null ? `${skillLevelLabel(current.level)} · ` : ""}{current.rate != null ? `AED ${current.rate.toFixed(2)} per hour` : hourlyNoRate ? "No rate set for this trade, so hourly pay would be zero" : "No rate set"}

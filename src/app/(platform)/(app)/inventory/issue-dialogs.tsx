@@ -12,6 +12,7 @@ import { EmployeeAvatar } from "@/components/Avatar";
 import { issueInventoryBulkAction, returnInventoryBulkAction } from "./actions";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 export type VariantRow = { id: string; name: string; sku: string | null; stock: number; issued: number; available: number };
 export type Holder = { id: string; employeeId: string; employeeName: string; employeeIdNo: string; variantName: string | null; quantity: number; issuedDate: string };
 export type EmployeeOption = { id: string; name: string; employeeIdNo: string };
@@ -104,7 +105,7 @@ function IssueBody({ item, employees, onClose }: { item: { id: string; name: str
           <p className="pb-2 text-sm text-muted">{lines.length} {lines.length === 1 ? "worker" : "workers"} · {lines.reduce((n, l) => n + l.quantity, 0)} units. <b className={short.length ? "text-[var(--error)]" : "text-primary"}>{short.length ? `Not enough ${short.map((v) => v.name).join(", ")}` : `${left} left after`}</b></p>
         )}
       </div>
-      {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
+      {error && <Alert>{error}</Alert>}
       <DialogFooter>
         <button type="button" onClick={onClose} className="btn btn-secondary">Cancel</button>
         <Button size="btn" type="button" onClick={submit} disabled={pending || lines.length === 0 || short.length > 0} loading={pending}>{`Issue to ${lines.length || ""} ${lines.length === 1 ? "worker" : "workers"}`.replace("  ", " ")}</Button>
@@ -168,7 +169,7 @@ function ReturnBody({ item, onClose }: { item: { id: string; name: string; holde
           </li>
         ))}
       </ul>
-      {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
+      {error && <Alert>{error}</Alert>}
       <DialogFooter>
         <button type="button" onClick={onClose} className="btn btn-secondary">Cancel</button>
         <Button size="btn" type="button" onClick={submit} disabled={pending || picked.size === 0} loading={pending}>{`Return ${picked.size || ""}`.trim()}</Button>

@@ -16,6 +16,7 @@ import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
 import type { ExtractedReceiptFields } from "@/app/api/expenses/extract-receipt/route";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 type State = { error: string | null; ok?: boolean };
 export type ExpenseRow = { id: string; date: string; category: string; description: string; total: number; paidTo: string | null; method: string | null; project: string | null; status: string; by: string; note: string | null; outOfPocket: boolean; reimbursed: boolean; branchId: string; files: AttachmentRow[] };
 const STATUS: Record<string, { label: string; color: BadgeColor }> = { PENDING: { label: "Pending", color: "amber" }, APPROVED: { label: "Approved", color: "green" }, REJECTED: { label: "Rejected", color: "red" } };
@@ -93,7 +94,7 @@ function NewExpenseForm({ projects, onDone }: { projects: { id: string; name: st
           {scanning ? "Reading…" : "Scan receipt"}
         </label>
       </div>
-      {scanError && <p role="alert" className="text-sm text-[var(--error)]">{scanError}</p>}
+      {scanError && <Alert>{scanError}</Alert>}
 
       <div className="grid grid-cols-2 gap-3">
         <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Date *</span><DatePicker key={`date-${formKey}`} name="date" defaultValue={extracted.date || TODAY} required className="w-full" /></label>
@@ -162,7 +163,7 @@ export function ExpensesBoard({ rows, projects, canCreate, canApprove, canDelete
           {canCreate && <button type="button" className="btn btn-primary" onClick={() => setOpen(true)}><Plus className="h-4 w-4" aria-hidden /> New expense</button>}
         </div>
       </div>
-      {error && <p role="alert" className="text-sm text-[var(--danger-text,#b42318)]">{error}</p>}
+      {error && <Alert>{error}</Alert>}
       {shown.length === 0 ? (
         <div className="card p-10 text-center text-sm text-muted">No expenses match.</div>
       ) : (

@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { Loader2, ScanLine } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { Alert } from "@/components/Alert";
 
 /**
  * The drop zone every scan control uses: click or drop a file, see progress while it is read. What happens to the
@@ -44,7 +45,7 @@ export function ScanDrop({ title, hint, compact, multiple, status, error, onFile
       </label>
       {busy && onCancel && <button type="button" onClick={onCancel} className="btn btn-secondary btn-sm shrink-0">Cancel</button>}
       </div>
-      {error && <p role="alert" className="mt-1 text-xs text-[var(--error)]">{error}</p>}
+      {error && <Alert inline className="mt-1">{error}</Alert>}
     </div>
   );
 }

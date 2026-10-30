@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
+import { Alert } from "@/components/Alert";
 
 export type CodeLoginState = { error: string | null; sent?: boolean; phone?: string; masked?: string };
 type CodeAction = (prev: CodeLoginState, formData: FormData) => Promise<CodeLoginState>;
@@ -59,7 +60,7 @@ export function PhoneCodeLogin({
         <button type="submit" disabled={requesting} className="btn btn-primary h-12 w-full text-base">
           {requesting ? "Sending…" : "Send me a code"}
         </button>
-        {reqState.error && <p role="alert" className="text-sm text-[var(--danger-text,#b42318)]">{reqState.error}</p>}
+        {reqState.error && <Alert>{reqState.error}</Alert>}
       </form>
     );
   }
@@ -88,7 +89,7 @@ export function PhoneCodeLogin({
         <button type="submit" disabled={verifying} className="btn btn-primary h-12 w-full text-base">
           {verifying ? "Checking…" : "Sign in"}
         </button>
-        {verState.error && <p role="alert" className="text-sm text-[var(--danger-text,#b42318)]">{verState.error}</p>}
+        {verState.error && <Alert>{verState.error}</Alert>}
       </form>
       <form action={requestAction} className="flex items-center justify-between gap-3 text-sm">
         <input type="hidden" name="phone" value={reqState.phone ?? ""} />
@@ -97,7 +98,7 @@ export function PhoneCodeLogin({
         </button>
         <a href="/me/login" className="text-muted hover:text-secondary">Use a different number</a>
       </form>
-      {reqState.error && <p role="alert" className="text-sm text-[var(--danger-text,#b42318)]">{reqState.error}</p>}
+      {reqState.error && <Alert>{reqState.error}</Alert>}
     </div>
   );
 }

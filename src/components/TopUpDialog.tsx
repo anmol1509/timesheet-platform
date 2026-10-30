@@ -8,6 +8,7 @@ import { topUpPriceLabel } from "@/lib/aiCredits";
 import { requestCreditsAction } from "@/app/(platform)/(app)/settings/ai/actions";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 const PACKS = [
   { credits: 1000, note: "A small top-up" },
   { credits: 2500, note: "Month-end push" },
@@ -65,7 +66,7 @@ export function TopUpDialog({ open, onOpenChange, total }: { open: boolean; onOp
             <p className="rounded-lg bg-surface-sunken px-3 py-2 text-xs text-secondary">
               {credits > 0 ? <>You will have <span className="tabular font-semibold text-primary">{n(total + credits)}</span> credits this month once it is approved. This top-up is <span className="font-semibold text-primary">{topUpPriceLabel(credits)}</span>.</> : "Choose or type a number of credits."}
             </p>
-            {state.error && <p role="alert" className="text-xs text-[var(--error)]">{state.error}</p>}
+            {state.error && <Alert inline>{state.error}</Alert>}
             <div className="flex justify-end gap-2">
               <button type="button" className="btn btn-secondary btn-sm" onClick={() => onOpenChange(false)}>Cancel</button>
               <Button size="btn-sm" type="submit" disabled={pending || credits <= 0} loading={pending}>Send request</Button>

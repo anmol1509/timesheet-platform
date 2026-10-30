@@ -10,6 +10,7 @@ import { deleteTemplateAction, duplicateTemplateAction, findPreviewEmployeesActi
 import { Select } from "@/components/ui/Select";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 type State = { error: string | null; ok?: boolean };
 type Props = { id: string; audience: Audience; name: string; category: string; title: string; html: string; hasPreset: boolean; usedBy: number };
 
@@ -121,7 +122,7 @@ export function TemplateEditor(p: Props) {
         <div className="sticky bottom-0 z-10 -mx-1 flex flex-wrap items-center gap-2 border-t border-default bg-surface/95 px-1 py-3 backdrop-blur">
           <Button size="btn" type="submit" disabled={saving || !dirty || unknown.length > 0} loading={saving}>Save changes</Button>
           {dirty ? <span className="text-xs text-[var(--warning)]">Unsaved changes</span> : state.ok ? <span className="text-xs text-[var(--success)]">Saved</span> : null}
-          {state.error && <span role="alert" className="text-xs text-[var(--danger-text,#b42318)]">{state.error}</span>}
+          {state.error && <Alert inline>{state.error}</Alert>}
           <span className="ml-auto flex flex-wrap gap-2">
             <button type="button" className={tb} onClick={previewPdf} disabled={pdfBusy}><FileDown className="h-3.5 w-3.5" aria-hidden /> {pdfBusy ? "Building…" : "Preview PDF"}</button>
             <button type="button" className={tb} disabled={pending} onClick={() => run(duplicateTemplateAction as unknown as (fd: FormData) => Promise<void>)}><Copy className="h-3.5 w-3.5" aria-hidden /> Duplicate</button>
@@ -129,7 +130,7 @@ export function TemplateEditor(p: Props) {
             <button type="button" className={tb} disabled={pending} onClick={() => { if (window.confirm(`Delete "${p.name}"?`)) run(deleteTemplateAction as unknown as (fd: FormData) => Promise<void>); }}><Trash2 className="h-3.5 w-3.5" aria-hidden /> Delete</button>
           </span>
         </div>
-        {note && <p role="alert" className="text-sm text-[var(--danger-text,#b42318)]">{note}</p>}
+        {note && <Alert>{note}</Alert>}
         {p.usedBy > 0 && <p className="text-xs text-muted">Used by {p.usedBy} NOC{p.usedBy === 1 ? "" : "s"}: changes here will affect their next download.</p>}
       </form>
 
@@ -149,7 +150,7 @@ export function TemplateEditor(p: Props) {
                 )}
               </>
             )}
-            {whoNote && <p role="alert" className="mt-1 text-xs text-[var(--error)]">{whoNote}</p>}
+            {whoNote && <Alert inline className="mt-1">{whoNote}</Alert>}
           </div>
         )}
         <div className="rounded-lg bg-surface-sunken p-4"><LetterPreview title={title || category} html={html} audience={p.audience} values={who?.values} /></div>

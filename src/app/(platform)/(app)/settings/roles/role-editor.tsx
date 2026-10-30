@@ -7,6 +7,7 @@ import { ROLE_PRESETS } from "@/lib/permissions";
 import { saveRoleAction } from "./actions";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 type Branch = { id: string; code: string; name: string };
 type Role = { id: string; name: string; description: string | null; permissions: string[]; branchId: string | null };
 
@@ -92,7 +93,7 @@ export function RoleEditor({
         <Button size="btn" type="submit" disabled={pending} loading={pending}>
           {role ? "Save changes" : "Create role"}
         </Button>
-        {state.error && <p role="alert" className="text-sm text-[var(--danger-text,#b42318)]">{state.error}</p>}
+        {state.error && <Alert>{state.error}</Alert>}
         {state.ok && !onDone && <p role="status" className="text-sm text-[var(--success-text,#067647)]">Saved.</p>}
       </div>
     </form>

@@ -10,6 +10,7 @@ import { SHARE_OPTIONS, equalSplit, ownershipProblem, ownershipSummary } from "@
 import { saveOwnersAction } from "./party-actions";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 export type OwnerRow = { linkId: string; partyId: string; name: string; percent: number | null };
 type Row = { rid: number; linkId?: string; choice: PickerChoice; person: NewPerson; name: string; percent: number | null; touched: boolean };
 
@@ -110,7 +111,7 @@ export function OwnersEditor({ supplierId, owners, people, canEdit }: { supplier
           {dirty && problem && <span className="text-xs text-[var(--warning)]">{problem}</span>}
         </div>
       )}
-      {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
+      {error && <Alert>{error}</Alert>}
     </div>
   );
 }

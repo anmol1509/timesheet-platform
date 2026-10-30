@@ -7,6 +7,7 @@ import { createCustomerAction, registerExistingAction, type OwnerState } from ".
 import { creditsValueAed } from "@/lib/owner";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 const initial: OwnerState = { error: null };
 const L = "block text-xs text-muted";
 const I = "input mt-1 h-9 w-full text-sm";
@@ -87,7 +88,7 @@ export function NewCustomerForm({ templates, defaultTemplate }: { templates: { i
         <label className={L}>Notes<textarea name="notes" rows={2} className="input mt-1 w-full text-sm" /></label>
       </section>
 
-      {state.error && <p role="alert" className="rounded-lg border border-[var(--error-border)] bg-[var(--error-soft)] px-4 py-3 text-sm text-[var(--error)]">{state.error}</p>}
+      {state.error && <Alert>{state.error}</Alert>}
       <Button size="btn" type="submit" disabled={pending} loading={pending}>Add customer</Button>
     </form>
   );
@@ -105,7 +106,7 @@ export function RegisterExistingForm({ branches }: { branches: { id: string; cod
       </div>
       <div className="flex items-center gap-3">
         <Button variant="secondary" size="btn" type="submit" disabled={pending} loading={pending}>Add to the list</Button>
-        {state.error && <p role="alert" className="text-xs text-[var(--error)]">{state.error}</p>}
+        {state.error && <Alert inline>{state.error}</Alert>}
         {state.ok && <p className="text-xs text-[var(--success)]">Added. <Link href={`/owner/${state.customerId}`} className="underline">Open it</Link></p>}
       </div>
     </form>

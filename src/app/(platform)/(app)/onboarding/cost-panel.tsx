@@ -9,6 +9,7 @@ import { COST_KINDS, COST_KIND_LABEL, costTotals } from "@/lib/candidateCosts";
 import { addCostAction, deleteCostAction, toggleCostPaidAction } from "./cost-actions";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 type Cost = { id: string; kind: string; amount: number; incurredOn: string; paid: boolean; note: string | null };
 type State = { error: string | null; ok?: boolean };
 
@@ -71,7 +72,7 @@ export function CostPanel({ candidateId, costs, canEdit = true }: { candidateId:
           <label className="flex items-center gap-1.5 text-xs text-muted"><input type="checkbox" name="paid" /> Paid</label>
           <Button size="btn-sm" type="submit" disabled={pending} loading={pending}>Add cost</Button>
         </div>
-        {state.error && <p role="alert" className="text-sm text-[var(--error)] sm:col-span-full">{state.error}</p>}
+        {state.error && <Alert className="sm:col-span-full">{state.error}</Alert>}
       </form>}
     </div>
   );

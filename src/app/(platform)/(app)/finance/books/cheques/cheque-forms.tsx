@@ -8,6 +8,7 @@ import { DatePicker } from "@/components/ui/DatePicker";
 import { Select } from "@/components/ui/Select";
 import { Input } from "@/components/ui/Input";
 import { deleteChequeAction, saveChequeAction, setChequeStatusAction } from "./actions";
+import { Alert } from "@/components/Alert";
 
 type Opt = { id: string; label: string };
 const today = () => todayInUae();
@@ -40,7 +41,7 @@ export function AddCheque({ clients, suppliers, banks, accounts }: { clients: Op
           {f.partyType === "OTHER" && <label className="block text-sm font-medium text-primary">Belongs to account<div className="mt-1"><Select value={f.counter} onChange={set("counter")} options={accounts.map((a) => ({ value: a.id, label: a.label }))} placeholder="Choose account (e.g. rent, loan, capital)" searchable searchPlaceholder="Search accounts" /></div></label>}
           <label className="block text-sm font-medium text-primary">{f.direction === "RECEIVED" ? "To be deposited in" : "Drawn on"}<div className="mt-1"><Select value={f.bank} onChange={set("bank")} searchable={false} options={[{ value: "", label: "Default bank" }, ...banks.map((b) => ({ value: b.id, label: b.label }))]} /></div></label>
           <label className="block text-sm font-medium text-primary">Note<Input className="mt-1" value={f.narration} onChange={(e) => set("narration")(e.target.value)} placeholder="e.g. September invoices" /></label>
-          {error && <p role="alert" className="text-sm text-error">{error}</p>}
+          {error && <Alert>{error}</Alert>}
         </div>
         <DialogFooter>
           <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
@@ -69,7 +70,7 @@ export function ChequeActions({ id, number, status }: { id: string; number: stri
             <DialogTrigger asChild><Button type="button" size="sm" variant="secondary">Cleared</Button></DialogTrigger>
             <DialogContent title={`Cheque ${number} cleared`} description="The day the bank paid it or took it. The books record the money on this day.">
               <label className="mt-4 block text-sm font-medium text-primary">Cleared on<div className="mt-1"><DatePicker value={date} onChange={setDate} ariaLabel="Cleared on" /></div></label>
-              {error && <p role="alert" className="mt-2 text-sm text-error">{error}</p>}
+              {error && <Alert className="mt-2">{error}</Alert>}
               <DialogFooter><Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Button type="button" disabled={pending} onClick={() => set("CLEARED", date)} loading={pending}>Mark cleared</Button></DialogFooter>
             </DialogContent>
           </Dialog>

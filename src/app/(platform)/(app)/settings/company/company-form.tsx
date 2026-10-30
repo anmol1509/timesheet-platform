@@ -9,6 +9,7 @@ import { PhoneField } from "@/components/ui/PhoneField";
 import { updateCompanyAction } from "./actions";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 type Branch = {
   id: string;
   name: string;
@@ -62,7 +63,7 @@ export function CompanyForm({ branch }: { branch: Branch }) {
         <Button size="btn" type="submit" disabled={pending} loading={pending}>
           Save company details
         </Button>
-        {state.error && <p role="alert" className="text-sm text-[var(--danger-text,#b42318)]">{state.error}</p>}
+        {state.error && <Alert>{state.error}</Alert>}
         {state.ok && <p role="status" className="text-sm text-[var(--success-text,#067647)]">Saved.</p>}
       </div>
     </form>

@@ -6,6 +6,7 @@ import { cn } from "@/lib/cn";
 import { applyC3Action, inspectC3Action, previewC3Action, undoC3Action, type C3Change, type C3Inspect, type C3Row } from "./actions";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 type Step = "upload" | "map" | "review" | "done";
 const STEPS: { key: Step; label: string }[] = [
   { key: "upload", label: "Upload" },
@@ -133,7 +134,7 @@ export function C3Linker() {
         })}
       </ol>
 
-      {error && <p role="alert" className="rounded-lg border border-[var(--error-border)] bg-[var(--error-soft)] px-4 py-2 text-sm text-[var(--error)]">{error}</p>}
+      {error && <Alert>{error}</Alert>}
 
       {step === "upload" && (
         <section className="card space-y-4 p-5">
@@ -200,7 +201,7 @@ export function C3Linker() {
               <div key={label as string} className="card p-3"><p className="text-xs text-muted">{label}</p><p className={cn("tabular text-2xl font-bold", tone === "success" ? "text-[var(--success)]" : tone === "warn" ? "text-[var(--warning)]" : tone === "info" ? "text-[var(--brand-primary)]" : "text-primary")}>{n as number}</p></div>
             ))}
           </div>
-          {duplicates.length > 0 && <p role="alert" className="rounded-lg border border-[var(--warning-border)] bg-[var(--warning-soft)] px-4 py-2 text-sm text-[var(--warning)]">The same C3 ID is going to more than one worker: {duplicates.slice(0, 4).join(", ")}{duplicates.length > 4 ? "…" : ""}. Check those rows before importing.</p>}
+          {duplicates.length > 0 && <Alert tone="warning">The same C3 ID is going to more than one worker: {duplicates.slice(0, 4).join(", ")}{duplicates.length > 4 ? "…" : ""}. Check those rows before importing.</Alert>}
           <div className="flex flex-wrap gap-2 text-xs">
             {([["all", "All"], ["matched", "Matched"], ["attention", "Need your choice"], ["none", "Not found"]] as const).map(([k, label]) => (
               <button key={k} type="button" onClick={() => setFilter(k)} className={cn("rounded-full border px-3 py-1", filter === k ? "border-[var(--brand-primary-border)] bg-brand-soft font-medium text-[var(--brand-primary)]" : "border-default text-secondary")}>{label}</button>

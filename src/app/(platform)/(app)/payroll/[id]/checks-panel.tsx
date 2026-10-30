@@ -8,6 +8,7 @@ import { recomputeRunAction } from "../actions";
 import { DaysButton } from "./days-panel";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 export type CheckIssue = { text: string; href?: string; kind?: string; workers?: { id: string; name: string }[] };
 
 const RECALC_KINDS = new Set(["pending-timesheets", "no-hours", "no-attendance", "zero-pay", "swing"]);
@@ -61,7 +62,7 @@ export function ChecksPanel({ runId, canEdit, issues }: { runId: string; canEdit
         </section>
       ))}
       {done && <p className="rounded-md border border-[var(--success-border)] bg-[var(--success-soft)] px-3 py-2 text-sm text-[var(--success)]">Recalculated. The list above is up to date after you close this panel.</p>}
-      {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
+      {error && <Alert>{error}</Alert>}
     </div>
   );
 }

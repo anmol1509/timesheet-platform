@@ -16,6 +16,7 @@ import { PAYMENT_SCHEDULES } from "@/lib/formLists";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { NumberInput } from "@/components/ui/NumberInput";
 import { MaskedInput } from "@/components/ui/MaskedInput";
+import { Alert } from "@/components/Alert";
 
 type Client = {
   id: string;
@@ -296,9 +297,9 @@ export function EditClientForm({ client }: { client: Client & CodeProps }) {
         />
       )}
       {error && (
-        <p className="rounded-lg border border-[var(--error-border)] bg-[var(--error-soft)] px-4 py-2 text-sm text-[var(--error)]">
+        <Alert>
           {error}
-        </p>
+        </Alert>
       )}
       <FormSaveBar pending={pending} saved={saved} dirty={guard.dirty} />
     </form>

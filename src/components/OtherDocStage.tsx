@@ -7,6 +7,7 @@ import { readOtherDoc } from "@/components/otherDocRead";
 import { nameFromFile, otherDocProblem, trackedExpiry } from "@/lib/otherDoc";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 /**
  * A file picked for "Other" in a module's document form, held here until it has a name and an expiry decision. The AI
  * suggests both from the file; nothing is saved until Upload. `save` gets the name and the expiry ("" when not tracked).
@@ -54,7 +55,7 @@ export function OtherDocStage({ file, save, onDone }: {
       <div className="flex flex-wrap items-center gap-3">
         <Button size="btn" type="button" disabled={pending} onClick={submit} loading={pending}>Upload</Button>
         <button type="button" className="inline-flex items-center gap-1 text-sm text-muted hover:text-primary" disabled={pending} onClick={onDone}><X className="h-4 w-4" aria-hidden />Cancel</button>
-        {error && <p role="alert" className="text-xs text-[var(--error)]">{error}</p>}
+        {error && <Alert inline>{error}</Alert>}
       </div>
     </div>
   );

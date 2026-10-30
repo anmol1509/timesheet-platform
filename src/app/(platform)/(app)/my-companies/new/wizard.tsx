@@ -23,6 +23,7 @@ import { suggestSupplierCodeAction } from "../../suppliers/actions";
 import { attachCompanyFileAction, createOwnCompanyWizardAction } from "./actions";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 type DocType = { key: string; label: string; hasExpiry: boolean };
 const STEPS = ["Documents", "Details", "Owners & sponsors", "Review"] as const;
 
@@ -637,7 +638,7 @@ export function CompanyWizard({ companyTypes, requiredCompanyTypes, partyTypes, 
         </div>
       )}
 
-      {error && <p role="alert" className="rounded-lg border border-[var(--error-border)] bg-[var(--error-soft)] px-4 py-2 text-sm text-[var(--error)]">{error}</p>}
+      {error && <Alert>{error}</Alert>}
       {progress && <p role="status" className="flex items-center gap-2 text-sm text-secondary"><Loader2 className="h-4 w-4 animate-spin" aria-hidden />{progress}</p>}
 
       <div className="flex items-center justify-between border-t border-[var(--border)] pt-4">

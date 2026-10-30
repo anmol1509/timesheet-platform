@@ -8,6 +8,7 @@ import { deleteRunAction, markPaidAction, recomputeRunAction, reopenRunAction, s
 import { NumberInput } from "@/components/ui/NumberInput";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 type State = { error: string | null; ok?: boolean };
 
 export function RunControls({
@@ -111,7 +112,7 @@ export function RunControls({
           </details>
         )}
       </div>
-      {error && <p role="alert" className="text-sm text-[var(--danger-text,#b42318)]">{error}</p>}
+      {error && <Alert>{error}</Alert>}
     </div>
   );
 }
@@ -195,7 +196,7 @@ export function LineAdjustCells({
         <td className={TD}>
           {dirty && <Button size="btn" className="h-8 px-3 text-xs" type="button" disabled={pending} onClick={save} loading={pending}>Save</Button>}
           {saved && !dirty && <span className="text-xs text-[var(--success)]">Saved</span>}
-          {error && <p role="alert" className="mt-1 max-w-40 text-xs text-[var(--error)]">{error}</p>}
+          {error && <Alert inline className="mt-1">{error}</Alert>}
         </td>
       )}
     </>

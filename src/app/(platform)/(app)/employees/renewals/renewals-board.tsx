@@ -37,6 +37,7 @@ import type { RenewalItem, RenewalTier } from "@/lib/renewals";
 import { RENEWAL_STATUSES, type RenewalCaseView, type RenewalRow, type RenewalStatus } from "@/lib/renewalCases";
 import { updateRenewalsAction, type RenewalPatch } from "./actions";
 import { BulkBar, ExportDialog, NoteCell, OwnerCell, ProgressStrip, StatusChip, type Owner } from "./renewal-workflow";
+import { Alert } from "@/components/Alert";
 
 const NO_CHANGES: Record<string, Partial<RenewalCaseView>> = {};
 
@@ -290,7 +291,7 @@ export function RenewalsBoard({ items: base, counts, owners, currentUserId, canE
       )}
 
       <div ref={tableRef} className="card scroll-mt-4 overflow-hidden">
-        {saveError && <p role="alert" className="border-b border-[var(--error-border)] bg-[var(--error-soft)] px-4 py-2 text-sm text-[var(--error)]">{saveError}</p>}
+        {saveError && <Alert>{saveError}</Alert>}
         {view === "list" && canEdit && pickedRows.length > 0 && (
           <BulkBar count={pickedRows.length} owners={owners} currentUserId={currentUserId} canExport={canExport} onStatus={(s) => change(pickedRows, { status: s })} onOwner={(id) => change(pickedRows, { ownerId: id })} onExport={() => { setExportError(null); setExportOpen(true); }} onClear={() => setPicked(new Set())} />
         )}

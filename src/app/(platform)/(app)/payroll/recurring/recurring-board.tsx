@@ -13,6 +13,7 @@ import { MonthInput } from "@/components/ui/MonthInput";
 import { NumberInput } from "@/components/ui/NumberInput";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 type State = { error: string | null; ok?: boolean };
 export type RecurringRow = { category?: string | null; id: string; employee: string; employeeIdNo: string; kind: string; label: string; amount: number; startMonth: string; endMonth: string | null; active: boolean };
 const aed = (n: number) => n.toLocaleString("en-AE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -49,7 +50,7 @@ function NewItemForm({ employees, onDone }: { employees: { id: string; label: st
       </div>
       <div className="flex items-center gap-3">
         <Button size="btn" type="submit" disabled={pending} loading={pending}>Add item</Button>
-        {state.error && <p role="alert" className="text-sm text-[var(--error)]">{state.error}</p>}
+        {state.error && <Alert>{state.error}</Alert>}
       </div>
     </form>
   );

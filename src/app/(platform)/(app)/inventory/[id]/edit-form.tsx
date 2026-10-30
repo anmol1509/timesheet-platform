@@ -8,6 +8,7 @@ import { ComboSelect } from "@/components/ui/ComboSelect";
 import { INVENTORY_CATEGORIES } from "@/lib/formLists";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 export function EditItemForm({
   item,
 }: {
@@ -36,7 +37,7 @@ export function EditItemForm({
           />
         </Field>
       </Section>
-      {error && <p role="alert" className="mt-2 text-sm text-[var(--error)]">{error}</p>}
+      {error && <Alert className="mt-2">{error}</Alert>}
       <Button size="btn" className="mt-3" type="submit" disabled={pending} loading={pending}>
         Save
       </Button>

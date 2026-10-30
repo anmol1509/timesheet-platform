@@ -9,6 +9,7 @@ import { Select } from "@/components/ui/Select";
 import { MaskedInput } from "@/components/ui/MaskedInput";
 import { PhoneField } from "@/components/ui/PhoneField";
 import { cn } from "@/lib/cn";
+import { Alert } from "@/components/Alert";
 
 /**
  * Field pieces shared by the quick-view panels (employees, suppliers, demand): a value that edits in place,
@@ -42,7 +43,7 @@ export function useFieldFlow(onSave: (value: string | null, confirm?: boolean) =
 
 export function Notice({ msg, onConfirm, onDismiss }: { msg: { error?: string; warnings?: string[] } | null; onConfirm: () => void; onDismiss: () => void }) {
   if (!msg) return null;
-  if (msg.error) return <p role="alert" className="mt-1 text-xs text-[var(--error)]">{msg.error}</p>;
+  if (msg.error) return <Alert inline className="mt-1">{msg.error}</Alert>;
   if (!msg.warnings?.length) return null;
   return (
     <div role="alert" className="mt-1.5 rounded-lg border border-[var(--warning-border)] bg-[var(--warning-soft)] p-2 text-xs text-primary">

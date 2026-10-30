@@ -17,6 +17,7 @@ import { ExternalCampFields, type Party } from "../external-camp-fields";
 import { DatePicker } from "@/components/ui/DatePicker";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 type EmployeeRow = {
   id: string;
   name: string;
@@ -542,7 +543,7 @@ function CheckInForm({ employees, camps, suppliers, clients, onChecked, onDone }
         </label>
       </div>
 
-      {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
+      {error && <Alert>{error}</Alert>}
       <DialogFooter>
         <Button size="btn" type="button" onClick={handleSubmit} disabled={!canSubmit || pending} loading={pending}>
           {campType === "OWN" && assignNow ? "Check in & assign beds" : "Check in"}
@@ -650,7 +651,7 @@ function SwitchCampForm({ row, camps, suppliers, clients, onClose }: { row: Empl
           <DatePicker value={checkInDate} onChange={setCheckInDate} className="w-full" />
         </label>
       )}
-      {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
+      {error && <Alert>{error}</Alert>}
       <DialogFooter>
         <button type="button" onClick={onClose} className="btn btn-secondary">
           Cancel

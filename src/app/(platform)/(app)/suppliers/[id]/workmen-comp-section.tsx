@@ -8,6 +8,7 @@ import { cn } from "@/lib/cn";
 import { deleteWorkmenCompAction, setWorkmenCompExpiryAction } from "../actions";
 import { ingestWorkmenComp } from "./workmen-comp-ingest";
 import { WorkmenCompWorkers } from "./workmen-comp-workers";
+import { Alert } from "@/components/Alert";
 
 export type WcPolicy = { id: string; filename: string; expiryDate: string | null; covered: number };
 type Progress = { name: string; state: "waiting" | "working" | "done" | "failed"; note?: string };
@@ -136,16 +137,18 @@ export function WorkmenCompSection({ supplierId, policies, workers, canEdit, onC
       )}
 
       {progress.length > 0 && (
-        <ul className="space-y-1 text-xs" aria-live="polite">
-          {progress.map((r, i) => (
-            <li key={i} className={cn("flex gap-2", r.state === "failed" ? "text-error" : r.state === "done" ? "text-secondary" : "text-muted")}>
-              <span className="w-14 shrink-0">{r.state === "working" ? "Reading…" : r.state === "waiting" ? "Waiting" : r.state === "done" ? "Added" : "Failed"}</span>
+        <ul className="space-y-2 text-xs" aria-live="polite">
+          {progress.map((r, i) => r.state === "failed" ? (
+            <li key={i}><Alert title={`${r.name} wasn’t added`}>{r.note}</Alert></li>
+          ) : (
+            <li key={i} className={cn("flex gap-2", r.state === "done" ? "text-secondary" : "text-muted")}>
+              <span className="w-14 shrink-0">{r.state === "working" ? "Reading…" : r.state === "waiting" ? "Waiting" : "Added"}</span>
               <span className="min-w-0 truncate">{r.name}{r.note ? `: ${r.note}` : ""}</span>
             </li>
           ))}
         </ul>
       )}
-      {error && <p role="alert" className="text-sm text-error">{error}</p>}
+      {error && <Alert>{error}</Alert>}
     </div>
   );
 }

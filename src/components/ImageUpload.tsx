@@ -6,6 +6,7 @@ import { cn } from "@/lib/cn";
 import { pdfPageToImage } from "@/lib/pdfPageToImage";
 
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/Alert";
 type ActionResult = { error?: string | null; id?: string; url?: string } | void;
 
 /** Resizes to fit `max`px on the longest side in the browser, so uploads stay
@@ -143,7 +144,7 @@ export function ImageUpload({
             </button>
           )}
         </div>
-        {error && <p role="alert" className="mt-2 text-xs text-[var(--danger-text,#b42318)]">{error}</p>}
+        {error && <Alert inline className="mt-2">{error}</Alert>}
       </div>
       <input ref={inputRef} type="file" accept={acceptPdf ? "image/png,image/jpeg,image/webp,application/pdf" : "image/png,image/jpeg,image/webp"} className="sr-only" onChange={onPick} />
     </div>

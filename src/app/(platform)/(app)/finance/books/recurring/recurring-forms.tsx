@@ -8,6 +8,7 @@ import { DatePicker } from "@/components/ui/DatePicker";
 import { Select } from "@/components/ui/Select";
 import { Input } from "@/components/ui/Input";
 import { deleteRecurringAction, saveRecurringAction } from "./actions";
+import { Alert } from "@/components/Alert";
 
 type Opt = { id: string; label: string };
 export type RecurringRow = { id: string; name: string; frequency: string; startDate: string; endDate: string; debitAccountId: string; creditAccountId: string; amount: number; active: boolean };
@@ -35,7 +36,7 @@ export function RecurringDialog({ accounts, row }: { accounts: Opt[]; row?: Recu
           </div>
           <label className="block text-sm font-medium text-primary">Debit (what it is spent on)<div className="mt-1"><Select value={f.debit} onChange={set("debit")} options={opts} placeholder="e.g. Office & admin" searchable searchPlaceholder="Search accounts" /></div></label>
           <label className="block text-sm font-medium text-primary">Credit (where the money comes from)<div className="mt-1"><Select value={f.credit} onChange={set("credit")} options={opts} placeholder="e.g. your bank account" searchable searchPlaceholder="Search accounts" /></div></label>
-          {error && <p role="alert" className="text-sm text-error">{error}</p>}
+          {error && <Alert>{error}</Alert>}
         </div>
         <DialogFooter>
           <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
