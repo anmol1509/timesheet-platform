@@ -14,6 +14,9 @@ import { SHARE_OPTIONS } from "@/lib/ownership";
 import { PARTY_ROLES } from "@/lib/documentTypes";
 import { similarPeople } from "@/lib/people";
 import { uploadAttachmentAction } from "@/lib/attachments";
+import { OtherDocFields } from "@/components/OtherDocFields";
+import { readOtherDoc } from "@/components/otherDocRead";
+import { nameFromFile, otherDocProblem, trackedExpiry } from "@/lib/otherDoc";
 import type { ExtractedDocumentFields } from "@/app/api/documents/extract/route";
 import { UploadSlot, type UploadStatus } from "@/app/(platform)/(app)/employees/new/upload-slot";
 import { savePersonAction } from "../../people-actions";
@@ -21,6 +24,8 @@ import { savePersonAction } from "../../people-actions";
 type DocType = { key: string; label: string; hasExpiry: boolean; required: boolean };
 type Slot = { file: File; expiry: string; noExpiry: boolean; status: "idle" | "reading" | "read" | "failed" };
 type Line = { id: number; supplierId: string; role: string; percent: number | null };
+/** A document that isn't one of the listed types: named by the person (or read from the file), tracked for expiry only if asked. */
+type Extra = { id: number; file: File | null; name: string; track: boolean; expiry: string; note: string | null };
 
 const STEPS = ["Who & documents", "Companies & save"] as const;
 
@@ -39,6 +44,7 @@ export function PersonWizard({ docTypes, companies, people, existing, canAddDocs
   const [lines, setLines] = useState<Line[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [extras, setExtras] = useState<Extra[]>([]);
   const next = useRef(1);
 
   const first = docTypes.filter((t) => t.required || t.key === "PASSPORT" || t.key === "EMIRATES_ID");
@@ -92,12 +98,30 @@ export function PersonWizard({ docTypes, companies, people, existing, canAddDocs
     );
   }
 
+  const setExtra = (id: number, p: Partial<Extra>) => setExtras((x) => x.map((e) => (e.id === id ? { ...e, ...p } : e)));
+  async function pickExtra(id: number, picked: File | null) {
+    if (!picked) return setExtra(id, { file: null });
+    if (picked.size > MAX_UPLOAD_BYTES) return setError(`${picked.name} is over the ${MAX_UPLOAD_LABEL} limit for one file.`);
+    setError(null);
+    const file = picked.type.startsWith("image/") ? await shrinkImage(picked) : picked;
+    const guess = nameFromFile(picked.name);
+    setExtra(id, { file, name: extras.find((e) => e.id === id)?.name || guess, note: "Reading the file…" });
+    const read = await readOtherDoc(file);
+    if (!read) return setExtra(id, { note: null });
+    setExtras((x) => x.map((e) => (e.id === id ? { ...e, name: e.name === guess && read.name ? read.name : e.name, track: read.expiry ? true : e.track, expiry: e.expiry || read.expiry || "", note: read.name || read.expiry ? "Filled in from the file. Check it." : null } : e)));
+  }
+
   function goNext() {
     setError(null);
     if (!person.name.trim()) return setError("Enter the person's name, or upload a passport to read it from.");
     const missing = docTypes.find((t) => t.hasExpiry && docs[t.key] && docs[t.key].status !== "reading" && !docs[t.key].expiry && !docs[t.key].noExpiry);
     if (missing) return setError(`Enter the expiry date for ${missing.label.toLowerCase()}, or tick that it has none.`);
     if (Object.values(docs).some((d) => d.status === "reading")) return setError("Wait for the documents to finish reading.");
+    for (const [i, e] of extras.entries()) {
+      if (!e.file) return setError(`Choose the file for other document ${i + 1}, or remove it.`);
+      const bad = otherDocProblem(e.name, e.track, e.expiry);
+      if (bad) return setError(`Other document ${i + 1}: ${bad}`);
+    }
     setStep(1);
   }
 
@@ -123,6 +147,19 @@ export function PersonWizard({ docTypes, companies, people, existing, canAddDocs
       if (d.noExpiry) fd.set("noExpiry", "1");
       const r = await uploadAttachmentAction(fd);
       if (r && "error" in r && r.error) failed.push(`${docTypes.find((t) => t.key === type)?.label ?? type}: ${r.error}`);
+    }
+    for (const e of extras) {
+      const fd = new FormData();
+      fd.set("entityType", "SUPPLIER_PARTY");
+      fd.set("entityId", res.partyId);
+      fd.set("docType", "OTHER");
+      fd.set("revalidate", "/my-companies/people");
+      fd.set("file", e.file!);
+      fd.set("name", e.name.trim());
+      const exp = trackedExpiry(e.track, e.expiry);
+      if (exp) fd.set("expiryDate", exp); else fd.set("noExpiry", "1");
+      const r = await uploadAttachmentAction(fd);
+      if (r && "error" in r && r.error) failed.push(`${e.name}: ${r.error}`);
     }
     if (failed.length) { setSaving(false); return setError(`${person.name} was saved, but some documents weren't: ${failed.join("; ")}. Add them from the person's card.`); }
     router.push("/my-companies/people");
@@ -150,6 +187,22 @@ export function PersonWizard({ docTypes, companies, people, existing, canAddDocs
                   <div className="grid grid-cols-1 gap-4 border-t border-default p-3 sm:grid-cols-2">{more.map(slot)}</div>
                 </details>
               )}
+              <div className="mt-4 space-y-3 border-t border-default pt-4">
+                <div>
+                  <h4 className="text-sm font-semibold text-primary">Other documents</h4>
+                  <p className="text-xs text-muted">Anything not listed above. Give it a name, tick Track expiry if it should be reminded about, and upload the file.</p>
+                </div>
+                {extras.map((e, i) => (
+                  <div key={e.id} className="space-y-2 rounded-card border border-default bg-surface p-3">
+                    <div className="flex items-center gap-2">
+                      <input type="file" aria-label={`File for other document ${i + 1}`} accept="image/*,application/pdf" className="file-input min-w-0 flex-1" onChange={(ev) => void pickExtra(e.id, ev.target.files?.[0] ?? null)} />
+                      <button type="button" aria-label={`Remove other document ${i + 1}`} className="py-2 text-muted hover:text-[var(--error)]" onClick={() => setExtras((x) => x.filter((y) => y.id !== e.id))}><Trash2 className="h-4 w-4" /></button>
+                    </div>
+                    <OtherDocFields name={e.name} onName={(v) => setExtra(e.id, { name: v })} track={e.track} onTrack={(v) => setExtra(e.id, { track: v, expiry: v ? e.expiry : "" })} expiry={e.expiry} onExpiry={(v) => setExtra(e.id, { expiry: v })} note={e.note} />
+                  </div>
+                ))}
+                <button type="button" className="btn btn-secondary gap-1.5" onClick={() => setExtras((x) => [...x, { id: next.current++, file: null, name: "", track: false, expiry: "", note: null }])}><Plus className="h-3.5 w-3.5" aria-hidden />Add a document</button>
+              </div>
             </div>
           ) : (
             <p className="rounded-lg border border-default bg-surface-sunken px-3 py-2 text-sm text-muted">You can add the person now, but their documents need the &ldquo;Sensitive documents&rdquo; permission from an administrator.</p>
@@ -182,7 +235,7 @@ export function PersonWizard({ docTypes, companies, people, existing, canAddDocs
           {companies.length === 0 && <p className="text-sm text-muted">You have no own companies yet. Save the person now and assign them once a company exists.</p>}
           {companies.length > 0 && <button type="button" className="btn btn-secondary gap-1.5" onClick={addLine}><Plus className="h-3.5 w-3.5" aria-hidden />Add a company and role</button>}
           {lines.some((l) => l.role === "OWNER") && <p className="text-xs text-muted">A company&rsquo;s owner shares can&rsquo;t pass 100%. If they are short of 100% afterwards, finish them from the company&rsquo;s page.</p>}
-          {Object.keys(docs).length > 0 && <p className="text-xs text-muted">Documents to file: {Object.keys(docs).map((k) => docTypes.find((t) => t.key === k)?.label ?? k).join(", ")}. <Badge color="green">Expiries tracked</Badge></p>}
+          {Object.keys(docs).length + extras.length > 0 && <p className="text-xs text-muted">Documents to file: {[...Object.keys(docs).map((k) => docTypes.find((t) => t.key === k)?.label ?? k), ...extras.map((e) => e.name.trim() || "Other")].join(", ")}. <Badge color="green">Expiries tracked</Badge></p>}
         </div>
       )}
 
