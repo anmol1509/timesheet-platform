@@ -14,7 +14,7 @@ export function NewEnquiryForm({ clients }: { clients: { id: string; name: strin
   return (
     <form
       action={(formData) => startTransition(() => createEnquiryAction(formData))}
-      className="card space-y-4 p-6"
+      className="card grid grid-cols-1 items-start gap-x-6 gap-y-5 p-8 md:grid-cols-2"
     >
       <label className="block">
         <span className="mb-1 block text-xs font-medium text-muted">Client</span>
@@ -36,7 +36,7 @@ export function NewEnquiryForm({ clients }: { clients: { id: string; name: strin
         <span className="mb-1 block text-xs font-medium text-muted">Source</span>
         <ComboSelect name="source" options={ENQUIRY_SOURCES} />
       </label>
-      <label className="block">
+      <label className="block md:col-span-2">
         <span className="mb-1 block text-xs font-medium text-muted">Remarks</span>
         <textarea
           name="remarks"
@@ -44,9 +44,11 @@ export function NewEnquiryForm({ clients }: { clients: { id: string; name: strin
           className="input w-full"
         />
       </label>
-      <Button size="btn" type="submit" disabled={pending} loading={pending}>
-        Create Enquiry
-      </Button>
+      <div className="md:col-span-2">
+        <Button size="btn" type="submit" disabled={pending} loading={pending}>
+          Create Enquiry
+        </Button>
+      </div>
     </form>
   );
 }
