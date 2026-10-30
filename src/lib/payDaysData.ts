@@ -3,6 +3,7 @@ import { PAY_EMPLOYEE_SELECT, hourlyRateSource, loadPayOf, otherTradeRates } fro
 import { employmentWindow, isShortfallMode, monthBounds, readDeductionItems, round2, type ShortfallMode } from "@/lib/payroll";
 import { buildDays, type DayInput, type DayRow } from "@/lib/payDays";
 import { cellsDiffer, parseDailyHours } from "@/lib/timesheetCells";
+import { payByTrade, rateForTrade } from "@/lib/tradePay";
 
 const num = (v: unknown) => (v == null ? 0 : Number(String(v)));
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -18,7 +19,7 @@ export type PayDaysView = {
   shortRule: { mode: ShortfallMode; halfDayUnder: number };
   other: number; lineNet: number;
   /** The trade and the hourly rate this person is paid at, and where the rate comes from, so the days can be checked against the profile. */
-  rateInfo: { trade: string | null; hourlyRate: number; source: "EMPLOYEE" | "TRADE" | "NONE"; rateTrade: string | null; monthlyBasic: number; /** Other trades with a rate that are not being paid. */ others: { trade: string; rate: number }[] };
+  rateInfo: { /** Hourly workers: hours, rate and pay for each trade worked this month. */ byTrade: { trade: string; hours: number; rate: number; pay: number; fromTrade: boolean }[]; trade: string | null; hourlyRate: number; source: "EMPLOYEE" | "TRADE" | "NONE"; rateTrade: string | null; monthlyBasic: number; /** Other trades with a rate that are not being paid. */ others: { trade: string; rate: number }[] };
   /** What the "other items" figure is made of, signed (+ adds to pay, − takes off). */
   /** Timesheet days changed from payroll after the sheet was made, against the first value they had. */
   edits: { date: string; weekday: string; from: string; to: string; by: string; at: string }[];
@@ -46,17 +47,38 @@ export async function loadPayDays(runId: string, employeeId: string, opts: { can
 
   const [att, sheet] = await Promise.all([
     prisma.attendance.findMany({ where: { employeeId: e.id, date: { gte: bounds.start, lte: bounds.end } }, select: { date: true, status: true, normalHours: true, otHours: true, countShortfall: true } }),
-    prisma.timesheetEntry.findMany({ where: { branchId: line.run.branchId, employeeIdNo: e.employeeIdNo, month: line.run.month }, orderBy: { updatedAt: "desc" }, select: { id: true, dailyHours: true, status: true, supplierId: true } }),
+    prisma.timesheetEntry.findMany({ where: { branchId: line.run.branchId, employeeIdNo: e.employeeIdNo, month: line.run.month }, orderBy: { updatedAt: "desc" }, select: { id: true, dailyHours: true, status: true, supplierId: true, trade: true, totalHours: true } }),
   ]);
   const entry = sheet.find((s) => s.supplierId === e.supplierId) ?? sheet[0] ?? null;
   const cells = new Map((entry ? parseDailyHours(entry.dailyHours) : []).map((c) => [c.date, c.value]));
+  // An hourly worker can have a timesheet for each trade in the month: each day is paid at the rate of the trade that worked it.
+  const payHourly = line.payStructure === "HOURLY";
+  const live = payHourly ? sheet.filter((x) => x.status !== "REJECTED") : [];
+  const multiTrade = live.length > 1;
+  const skillRates = (e.skills ?? []).map((k) => ({ trade: k.skill.name, rate: k.rate }));
+  const usualRate = (await loadPayOf(line.run.branchId, [e]))(e).hourlyRate;
+  const cellsOf = new Map(live.map((x) => [x.id, new Map(parseDailyHours(x.dailyHours).map((c) => [c.date, c.value]))]));
+  const worked = (date: string) => live.flatMap((x) => { const n = Number(cellsOf.get(x.id)?.get(date)); return Number.isFinite(n) && n > 0 ? [{ trade: x.trade, hours: n }] : []; });
   const byDate = new Map(att.map((a) => [iso(a.date), a]));
 
   const days: DayInput[] = [];
   for (let d = 0; d < bounds.days; d++) {
     const date = iso(new Date(Date.UTC(bounds.start.getUTCFullYear(), bounds.start.getUTCMonth(), d + 1)));
     const a = byDate.get(date);
-    days.push({ date, status: a?.status ?? null, normalHours: a?.normalHours ?? null, otHours: a?.otHours ?? null, countShortfall: a?.countShortfall ?? null, ts: entry ? (cells.get(date) ?? "") : null });
+    let ts: string | null = entry ? (cells.get(date) ?? "") : null;
+    let trade: string | null | undefined;
+    let rate: number | null | undefined;
+    if (payHourly && live.length > 0) {
+      const w = worked(date);
+      if (w.length > 0) {
+        const total = w.reduce((t, x) => t + x.hours, 0);
+        const paid = w.reduce((t, x) => t + x.hours * rateForTrade(skillRates, x.trade, usualRate).rate, 0);
+        ts = multiTrade ? String(round2(total)) : ts;
+        trade = [...new Set(w.map((x) => x.trade))].join(" + ");
+        rate = round2(paid / total);
+      }
+    }
+    days.push({ date, status: a?.status ?? null, normalHours: a?.normalHours ?? null, otHours: a?.otHours ?? null, countShortfall: a?.countShortfall ?? null, ts, trade, rate });
   }
 
   // Days changed from payroll (recorded as "day:<date>" changes on the sheet's audit trail), shown against the first value each had.
@@ -98,7 +120,7 @@ export async function loadPayDays(runId: string, employeeId: string, opts: { can
 
   const draft = line.run.status === "DRAFT" && !line.run.submittedAt;
   const sheetLocked = hourly && entry?.status === "LOCKED";
-  const why = hourly && !entry ? "There is no timesheet for this month, so there are no hours to edit. Add the hours in Timesheets." : sheetLocked ? "This timesheet is locked. Unlock it in Timesheets to change the hours." : !draft ? "This run is no longer a draft, so its days are frozen. Add a correction to next month's payroll instead." : !opts.canEditAttendance ? "You don't have permission to edit attendance." : null;
+  const why = hourly && multiTrade ? "This month has a timesheet for each trade, so its hours are changed in Timesheets." : hourly && !entry ? "There is no timesheet for this month, so there are no hours to edit. Add the hours in Timesheets." : sheetLocked ? "This timesheet is locked. Unlock it in Timesheets to change the hours." : !draft ? "This run is no longer a draft, so its days are frozen. Add a correction to next month's payroll instead." : !opts.canEditAttendance ? "You don't have permission to edit attendance." : null;
   const other = round2(num(line.net) - totals.net);
   const items = Array.isArray(line.items) ? (line.items as { kind: string; label: string; amount: number }[]) : [];
   const parts: PayDaysView["parts"] = [];
@@ -119,7 +141,7 @@ export async function loadPayDays(runId: string, employeeId: string, opts: { can
     branchId: line.run.branchId,
     view: {
       lineId: line.id, runId: line.runId, month: line.run.month, employee: { id: e.id, name: e.name, idNo: e.employeeIdNo }, hourly, why, editable: why === null, canAlign: why === null && !!entry && !hourly,
-      rateInfo: { trade: e.trade ?? e.position ?? null, hourlyRate: rate.rate, source: rate.source, rateTrade: rate.trade, monthlyBasic: monthlyFixed, others: otherTradeRates(e, rate.trade) },
+      rateInfo: { byTrade: payHourly ? payByTrade(live.map((x) => ({ trade: x.trade, hours: x.totalHours })), skillRates, usualRate).lines : [], trade: e.trade ?? e.position ?? null, hourlyRate: rate.rate, source: rate.source, rateTrade: rate.trade, monthlyBasic: monthlyFixed, others: otherTradeRates(e, rate.trade) },
       hasTimesheet: !!entry, timesheetStatus: entry?.status ?? null, dailyHours, rows, totals,
       edits, shortRule,
       mismatches: rows.filter((r) => r.kind !== "outside" && r.sync === "differs").map((r) => ({ date: r.date, weekday: r.weekday, attendance: r.hasAttendance ? `${r.label}${r.hours > 0 ? ` ${r.hours} h` : ""}` : "No record", sheet: r.ts?.trim() ? r.ts : "blank" })),

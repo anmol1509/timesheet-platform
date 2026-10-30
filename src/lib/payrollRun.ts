@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { payrollScopeWhere } from "@/lib/payrollCompany";
+import { payByTrade } from "@/lib/tradePay";
 import { advanceRef, loanInstalmentFor, readSchedule } from "@/lib/advances";
 import { isShortfallMode, shortDayWorked, shortfallTotal, type ShortfallMode, paidHourly, appliesToMonth, capToAvailable, computePay, employmentWindow, isPayType, monthBounds, netPayWithExtras, payDataGap, planLoanRecovery, round2, splitDayHours, effectivePay, type PayStructure, reconcileDeductionItems, readDeductionItems } from "@/lib/payroll";
 
@@ -145,12 +146,14 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
   const hourlyPeople = payable.filter((e) => paidHourly(type, payOf(e).payStructure));
   const sheetRows = hourlyPeople.length > 0
     ? await prisma.timesheetEntry.groupBy({
-        by: ["employeeIdNo"],
+        by: ["employeeIdNo", "trade"],
         where: { month: run.month, employeeIdNo: { in: hourlyPeople.map((e) => e.employeeIdNo) }, status: { not: "REJECTED" } },
         _sum: { totalHours: true },
       })
     : [];
-  const sheetHours = new Map(sheetRows.map((r) => [r.employeeIdNo, r._sum.totalHours ?? 0]));
+  // A worker can have a sheet per trade in the same month; each trade's hours are paid at that trade's rate.
+  const sheetParts = new Map<string, { trade: string; hours: number }[]>();
+  for (const r of sheetRows) sheetParts.set(r.employeeIdNo, [...(sheetParts.get(r.employeeIdNo) ?? []), { trade: r.trade, hours: r._sum.totalHours ?? 0 }]);
 
   const patterns = new Map(payable.map((e) => [e.id, { dailyHours: payOf(e).dailyHours, weeklyOffDays: e.project?.weeklyOffDays ?? [0] }]));
   const att = new Map<string, { absent: number; idle: number; sick: number; ot: number; normal: number; rest: number; shorts: { worked: number; override: boolean | null }[] }>();
@@ -195,13 +198,14 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
   const lines = payable.map((e) => {
     const pf = payOf(e);
     const isHourly = paidHourly(type, pf.payStructure);
-    const hours = isHourly ? sheetHours.get(e.employeeIdNo) ?? 0 : 0;
+    const byTrade = isHourly ? payByTrade(sheetParts.get(e.employeeIdNo) ?? [], (e.skills ?? []).map((k) => ({ trade: k.skill.name, rate: k.rate })), pf.hourlyRate) : null;
+    const hours = byTrade ? byTrade.hours : 0;
     const facts = att.get(e.id) ?? { absent: 0, idle: 0, sick: 0, ot: 0, normal: 0, rest: 0, shorts: [] };
     const r = computePay(
       {
         payStructure: (isHourly ? "HOURLY" : pf.payStructure) as PayStructure,
         basic: pf.basicSalary, housing: pf.housingAllowance, food: pf.foodAllowance, transport: pf.transportAllowance, other: pf.otherAllowance,
-        flat: pf.flatMonthlyRate, hourly: pf.hourlyRate, paysOvertime: isHourly ? false : pf.paysOvertime, otMultiplier: pf.otMultiplier,
+        flat: pf.flatMonthlyRate, hourly: byTrade && byTrade.hours > 0 ? byTrade.blended : pf.hourlyRate, paysOvertime: isHourly ? false : pf.paysOvertime, otMultiplier: pf.otMultiplier,
         dailyHours: pf.dailyHours, restOtMultiplier: pf.otMultiplier, // rest-day and holiday hours use the same multiplier
         absenceFreeDays: e.supplier?.absentFreeDays ?? 2, absencePerDay: e.supplier ? num(e.supplier.absentDeductionPerDay) : 30,
       },

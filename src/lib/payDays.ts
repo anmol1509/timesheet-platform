@@ -1,12 +1,16 @@
 import { round2, shortDayWorked, shortfallDay, splitDayHours, type ShortfallRates, type ShortfallRule } from "@/lib/payroll";
 import { attendanceCellValue, canonicalMarker, cellsDiffer } from "@/lib/timesheetCells";
 
-export type DayInput = { date: string; status: string | null; normalHours: number | null; otHours: number | null; ts: string | null; countShortfall?: boolean | null };
+export type DayInput = { date: string; status: string | null; normalHours: number | null; otHours: number | null; ts: string | null; countShortfall?: boolean | null;
+  /** Hourly workers: the trade worked that day and its hourly rate, when the month is split across trades. */
+  trade?: string | null; rate?: number | null };
 export type DayKind = "work" | "absent" | "leave" | "sick" | "idle" | "off" | "holiday" | "unrecorded" | "outside";
 export type DaySync = "match" | "differs" | "no-timesheet";
 export type DayRow = {
   date: string; weekday: string; kind: DayKind; label: string; hours: number; ot: number; rest: number;
   salary: number; otPay: number; deduction: number; net: number; ts: string | null; sync: DaySync; hasAttendance: boolean;
+  /** Hourly workers: the trade and hourly rate the day is paid at. */
+  trade?: string | null; rate?: number | null;
   /** A present working day that was shorter than the standard day: what the company's rule gives, and whether it is taken. */
   short: { hours: number; suggested: number; counted: boolean; override: boolean | null; worked: number } | null;
 };
@@ -57,10 +61,11 @@ export function buildDays(plan: DayPlan): { rows: DayRow[]; totals: { salary: nu
     if (plan.hourly) {
       const n = Number(d.ts);
       const hours = d.ts && Number.isFinite(n) && n > 0 ? n : 0;
-      const salary = round2(hours * plan.hourlyRate);
+      const rate = d.rate ?? plan.hourlyRate;
+      const salary = round2(hours * rate);
       const marker = canonicalMarker(d.ts);
       const kind: DayKind = hours > 0 ? "work" : marker === "A" ? "absent" : marker === "OFF" ? "off" : marker === "H" ? "holiday" : marker === "L" ? "leave" : marker === "SL" ? "sick" : marker === "I" ? "idle" : "unrecorded";
-      rows.push({ ...base, kind, label: hours > 0 ? "Worked" : kind === "absent" ? "Absent" : kind === "off" ? "Off" : kind === "holiday" ? "Holiday" : kind === "leave" ? "Leave" : kind === "sick" ? "Sick" : kind === "idle" ? "Idle" : "No hours", hours, ot: 0, rest: 0, salary, otPay: 0, deduction: 0, net: salary, sync: d.status ? sync : "no-timesheet" });
+      rows.push({ ...base, kind, label: hours > 0 ? "Worked" : kind === "absent" ? "Absent" : kind === "off" ? "Off" : kind === "holiday" ? "Holiday" : kind === "leave" ? "Leave" : kind === "sick" ? "Sick" : kind === "idle" ? "Idle" : "No hours", hours, ot: 0, rest: 0, salary, otPay: 0, deduction: 0, net: salary, sync: d.status ? sync : "no-timesheet", trade: hours > 0 ? d.trade ?? null : null, rate: hours > 0 ? rate : null });
       continue;
     }
 

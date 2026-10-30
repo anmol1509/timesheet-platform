@@ -11,7 +11,8 @@ import { OtherDocFields } from "@/components/OtherDocFields";
 import { readOtherDoc } from "@/components/otherDocRead";
 import { readCompanyDoc } from "@/components/companyDocRead";
 import { nameFromFile, otherDocProblem, trackedExpiry } from "@/lib/otherDoc";
-import { deleteAttachmentAction, uploadAttachmentAction } from "@/lib/attachments";
+import { deleteAttachmentAction } from "@/lib/attachments";
+import { uploadAttachment } from "@/lib/uploadAttachment";
 import { MAX_UPLOAD_LABEL } from "@/lib/constants";
 import { cn } from "@/lib/cn";
 
@@ -98,7 +99,7 @@ export function CompanyDocsTable({ rows, legacy, supplierId, revalidate, canEdit
       fd.set("expiryDate", q.expiry);
       fd.set("docNumber", q.number); fd.set("issueDate", q.issue);
       if (isOther) fd.set("name", q.name.trim());
-      const res = await uploadAttachmentAction(fd);
+      const res = await uploadAttachment(fd);
       if (res?.error) setQueue((cur) => cur.map((x) => (x.id === q.id ? { ...x, state: "failed", note: res.error } : x)));
       else setQueue((cur) => cur.filter((x) => x.id !== q.id));
     }
@@ -297,7 +298,7 @@ function RowUploader({ row, supplierId, revalidate, onDone }: { row: DocRow; sup
       fd.set("expiryDate", isOther ? trackedExpiry(track, expiry) : expiry);
       if (!isOther) { fd.set("docNumber", number); fd.set("issueDate", issue); }
       if (isOther) fd.set("name", name.trim());
-      const res = await uploadAttachmentAction(fd);
+      const res = await uploadAttachment(fd);
       if (res?.error) setError(res.error);
       else onDone();
     });

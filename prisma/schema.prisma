@@ -357,6 +357,7 @@ model Supplier {
   tradeLicenseNumber  String?
   tradeLicenseExpiry  DateTime?
   contactPerson       String?
+  contactDesignation  String? // the contact person's job title
   contactPhone        String?
   contactEmail        String?
   bankName            String?

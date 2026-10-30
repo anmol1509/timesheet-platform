@@ -13,7 +13,7 @@ import { shrinkImage } from "@/lib/compressImage";
 import { SHARE_OPTIONS } from "@/lib/ownership";
 import { PARTY_ROLES } from "@/lib/documentTypes";
 import { similarPeople } from "@/lib/people";
-import { uploadAttachmentAction } from "@/lib/attachments";
+import { uploadAttachment } from "@/lib/uploadAttachment";
 import { OtherDocFields } from "@/components/OtherDocFields";
 import { readOtherDoc } from "@/components/otherDocRead";
 import { nameFromFile, otherDocProblem, trackedExpiry } from "@/lib/otherDoc";
@@ -145,7 +145,7 @@ export function PersonWizard({ docTypes, companies, people, existing, canAddDocs
       fd.set("file", d.file);
       if (d.expiry) fd.set("expiryDate", d.expiry);
       if (d.noExpiry) fd.set("noExpiry", "1");
-      const r = await uploadAttachmentAction(fd);
+      const r = await uploadAttachment(fd);
       if (r && "error" in r && r.error) failed.push(`${docTypes.find((t) => t.key === type)?.label ?? type}: ${r.error}`);
     }
     for (const e of extras) {
@@ -158,7 +158,7 @@ export function PersonWizard({ docTypes, companies, people, existing, canAddDocs
       fd.set("name", e.name.trim());
       const exp = trackedExpiry(e.track, e.expiry);
       if (exp) fd.set("expiryDate", exp); else fd.set("noExpiry", "1");
-      const r = await uploadAttachmentAction(fd);
+      const r = await uploadAttachment(fd);
       if (r && "error" in r && r.error) failed.push(`${e.name}: ${r.error}`);
     }
     if (failed.length) { setSaving(false); return setError(`${person.name} was saved, but some documents weren't: ${failed.join("; ")}. Add them from the person's card.`); }

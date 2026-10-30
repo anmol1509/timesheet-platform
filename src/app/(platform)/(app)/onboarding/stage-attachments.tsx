@@ -2,7 +2,8 @@
 
 import { useRef, useState } from "react";
 import { Paperclip } from "lucide-react";
-import { uploadAttachmentAction, deleteAttachmentAction } from "@/lib/attachments";
+import { deleteAttachmentAction } from "@/lib/attachments";
+import { uploadAttachment } from "@/lib/uploadAttachment";
 import { DeleteButton } from "@/components/DeleteButton";
 import { MAX_UPLOAD_LABEL } from "@/lib/constants";
 import { readOtherDoc } from "@/components/otherDocRead";
@@ -42,7 +43,7 @@ export function StageAttachments({
         action={async (fd) => {
           setError(null);
           setUploading(true);
-          const result = await uploadAttachmentAction(fd);
+          const result = await uploadAttachment(fd);
           setUploading(false);
           if (result?.error) setError(result.error);
           else formRef.current?.reset();
