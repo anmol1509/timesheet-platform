@@ -1,5 +1,6 @@
 "use client";
 
+import { keepInput } from "@/lib/vendor/keepInput";
 import { useActionState } from "react";
 import Link from "next/link";
 import { createProjectAction } from "../actions";
@@ -29,7 +30,7 @@ export function NewProjectForm({
       </div>
 
       <form
-        action={formAction}
+        onSubmit={keepInput(formAction)}
         className="card space-y-6 p-8"
       >
         {state.error && (
