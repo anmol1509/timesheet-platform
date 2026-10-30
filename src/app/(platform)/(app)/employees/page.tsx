@@ -31,9 +31,9 @@ const STATUS_RANK = { expired: 0, expiring: 1, not_set: 2, valid: 3 } as const;
 export default async function EmployeesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ filter?: string; supplier?: string; sponsor?: string; registered?: string; trade?: string; nationality?: string; open?: string; tab?: string; renew?: string }>;
+  searchParams: Promise<{ filter?: string; supplier?: string; sponsor?: string; sponsorName?: string; registered?: string; trade?: string; nationality?: string; open?: string; tab?: string; renew?: string }>;
 }) {
-  const { filter, supplier: supplierId, sponsor: sponsorId, registered, trade, nationality, open: openId, tab: openTab, renew: openRenew } = await searchParams;
+  const { filter, supplier: supplierId, sponsor: sponsorId, sponsorName, registered, trade, nationality, open: openId, tab: openTab, renew: openRenew } = await searchParams;
   const { user, branchId } = await requireUserWithBranch();
   // Pay is only shown, exported and imported for people who may see (or edit) payroll.
   const canViewPay = can(subjectOf(user), "payroll", "view");
@@ -45,6 +45,7 @@ export default async function EmployeesPage({
         ...branchWhere(branchId),
         ...(supplierId ? { supplierId } : {}),
         ...(sponsorId ? { sponsorSupplierId: sponsorId } : {}),
+        ...(sponsorName ? { sponsorName: { equals: sponsorName, mode: "insensitive" as const } } : {}),
         ...(trade ? { trade: { equals: trade, mode: "insensitive" as const } } : {}),
         ...(nationality ? { nationality: { equals: nationality, mode: "insensitive" as const } } : {}),
       },
@@ -53,6 +54,7 @@ export default async function EmployeesPage({
       omit: { photoData: true },
       include: {
         supplier: { include: { parent: { select: { name: true, code: true } } } },
+        sponsorSupplier: { select: { name: true } },
         project: { select: { name: true } },
         documents: { select: { type: true } },
         campCheckIns: {
@@ -72,12 +74,38 @@ export default async function EmployeesPage({
       ? prisma.supplier.findUnique({ where: { id: supplierId }, select: { name: true } }).then(
           (s) => (s ? { label: "Supplier", name: s.name } : null)
         )
+      : sponsorName
+        ? Promise.resolve({ label: "Sponsor", name: sponsorName })
       : sponsorId
         ? prisma.supplier
             .findUnique({ where: { id: sponsorId }, select: { name: true } })
             .then((s) => (s ? { label: "Sponsor", name: s.name } : null))
         : Promise.resolve(null),
   ]);
+
+  // The choices for the filter boxes: every supplier, sponsor, trade and nationality in this company, with how many workers each has,
+  // whatever is filtered right now, so another one can be picked straight away.
+  const base = branchWhere(branchId);
+  const [bySupplier, bySponsor, bySponsorName, optTrade, optNationality] = await Promise.all([
+    prisma.employee.groupBy({ by: ["supplierId"], where: { ...base, supplierId: { not: null } }, _count: { _all: true } }),
+    prisma.employee.groupBy({ by: ["sponsorSupplierId"], where: { ...base, sponsorSupplierId: { not: null } }, _count: { _all: true } }),
+    prisma.employee.groupBy({ by: ["sponsorName"], where: { ...base, sponsorSupplierId: null, sponsorName: { not: null } }, _count: { _all: true } }),
+    prisma.employee.groupBy({ by: ["trade"], where: { ...base, trade: { not: null } }, _count: { _all: true } }),
+    prisma.employee.groupBy({ by: ["nationality"], where: { ...base, nationality: { not: null } }, _count: { _all: true } }),
+  ]);
+  const supplierIds = [...new Set([...bySupplier.map((g) => g.supplierId!), ...bySponsor.map((g) => g.sponsorSupplierId!)])];
+  const supplierNames = new Map((supplierIds.length ? await prisma.supplier.findMany({ where: { id: { in: supplierIds } }, select: { id: true, name: true } }) : []).map((x) => [x.id, x.name]));
+  const byName = (a: { label: string }, b: { label: string }) => a.label.localeCompare(b.label);
+  const filterOptions = {
+    suppliers: bySupplier.map((g) => ({ value: g.supplierId!, label: supplierNames.get(g.supplierId!) ?? "Unknown", count: g._count._all })).sort(byName),
+    sponsors: [
+      ...bySponsor.map((g) => ({ value: `s:${g.sponsorSupplierId}`, label: supplierNames.get(g.sponsorSupplierId!) ?? "Unknown", count: g._count._all })),
+      ...bySponsorName.filter((g) => g.sponsorName?.trim()).map((g) => ({ value: `n:${g.sponsorName}`, label: g.sponsorName!.trim(), count: g._count._all })),
+    ].sort(byName),
+    trades: optTrade.filter((g) => g.trade?.trim()).map((g) => ({ value: g.trade!, label: g.trade!, count: g._count._all })).sort(byName),
+    nationalities: optNationality.filter((g) => g.nationality?.trim()).map((g) => ({ value: g.nationality!, label: g.nationality!, count: g._count._all })).sort(byName),
+  };
+  const currentFilters = { supplier: supplierId ?? "", sponsor: sponsorId ? `s:${sponsorId}` : sponsorName ? `n:${sponsorName}` : "", trade: trade ?? "", nationality: nationality ?? "" };
 
   const rows = employees.map((e) => {
     const docs: [string, Date | null][] = [
@@ -115,6 +143,8 @@ export default async function EmployeesPage({
       nationality: e.nationality,
       companyDisplayName: e.supplier?.parent?.name ?? e.supplier?.name ?? null,
       companyCode: e.supplier?.parent ? (e.supplier.parent.code ?? null) : (e.supplier?.code ?? null),
+      // Linked sponsor company when there is one, else the sponsor name that was typed or imported.
+      sponsorName: e.sponsorSupplier?.name ?? e.sponsorName ?? null,
       isOwnCompanySupplier: !!e.supplier?.isOwnCompany,
       onWork: e.active && e.project != null,
       status: e.status,
@@ -136,7 +166,7 @@ export default async function EmployeesPage({
 
   // The charts count the whole group being looked at (the company or sponsor chosen), not just the trade or nationality that
   // is filtered, so another bar can be clicked straight away and the active one stays in view.
-  const scope = { ...branchWhere(branchId), ...(supplierId ? { supplierId } : {}), ...(sponsorId ? { sponsorSupplierId: sponsorId } : {}) };
+  const scope = { ...branchWhere(branchId), ...(supplierId ? { supplierId } : {}), ...(sponsorId ? { sponsorSupplierId: sponsorId } : {}), ...(sponsorName ? { sponsorName: { equals: sponsorName, mode: "insensitive" as const } } : {}) };
   const [tradeGroups, nationalityGroups] = await Promise.all([
     prisma.employee.groupBy({ by: ["trade"], where: scope, _count: { _all: true } }),
     prisma.employee.groupBy({ by: ["nationality"], where: scope, _count: { _all: true } }),
@@ -248,7 +278,7 @@ export default async function EmployeesPage({
         </div>
       )}
 
-      <EmployeeList key={openId ?? "list"} employees={rows} initialFilter={filter} registeredId={registered} canViewPay={canViewPay} canEditPay={canEditPay} initialOpen={openId ? { id: openId, tab: openTab, renew: openRenew } : undefined} />
+      <EmployeeList key={openId ?? "list"} employees={rows} filterOptions={filterOptions} currentFilters={currentFilters} initialFilter={filter} registeredId={registered} canViewPay={canViewPay} canEditPay={canEditPay} initialOpen={openId ? { id: openId, tab: openTab, renew: openRenew } : undefined} />
     </div>
   );
 }
