@@ -1,3 +1,4 @@
+import { canSeeRenewal } from "@/lib/renewalAccess";
 import { CalendarClock } from "lucide-react";
 import { PageHeader, CountPill } from "@/components/PageHeader";
 import { prisma } from "@/lib/db";
@@ -15,7 +16,7 @@ export const metadata = { title: "Renewals" };
 export default async function RenewalsPage() {
   const { user, branchId } = await requireUserWithBranch();
   const subject = subjectOf(user);
-  const items = await getRenewals(branchId);
+  const items = (await getRenewals(branchId)).filter((i) => canSeeRenewal(subject, i));
   const counts = summarise(items);
 
   // The workflow state of each renewal (who has it, how far it has got), if anyone has touched it.

@@ -13,7 +13,6 @@ import { Button } from "@/components/ui/Button";
 import { SegmentedControl } from "@/components/ui/RadioGroup";
 import { DataTable, type DataTableColumn } from "@/components/data-table/DataTable";
 import { complianceRowClass, type ComplianceStatus } from "@/lib/compliance";
-import { bulkImportEmployeesAction } from "./[id]/actions";
 import { DeleteEmployeesButton } from "./delete-employees-button";
 import { DeactivateEmployeesButton } from "./deactivate-employees-button";
 import { cn } from "@/lib/cn";
@@ -113,32 +112,7 @@ const STATUS_BADGE: Record<
   valid: { label: "Compliant", color: "green", rank: 3 },
 };
 
-const PAY_IMPORT_COLUMNS = [
-  { key: "payStructure", label: "Pay structure", aliases: ["Salary type", "Pay type", "Structure"] },
-  { key: "payRate", label: "Pay rate", aliases: ["Rate", "Salary", "Basic salary", "Basic", "Monthly rate", "Hourly rate"] },
-  { key: "housing", label: "Housing allowance", aliases: ["Housing"] },
-  { key: "food", label: "Food allowance", aliases: ["Food"] },
-  { key: "transport", label: "Transport allowance", aliases: ["Transport"] },
-  { key: "otherAllowance", label: "Other allowance", aliases: ["Other"] },
-  { key: "dailyHours", label: "Daily hours", aliases: ["Standard hours", "Hours per day", "Working hours"] },
-  { key: "overtime", label: "Overtime", aliases: ["Pays overtime", "OT"] },
-  { key: "otMultiplier", label: "Overtime multiplier", aliases: ["OT multiplier", "OT rate"] },
-  { key: "restOtMultiplier", label: "Rest-day overtime multiplier", aliases: ["Rest day OT"] },
-  { key: "gasWaived", label: "Gas charge waived", aliases: ["Gas waived"] },
-];
 
-const IMPORT_COLUMNS = [
-  { key: "employeeIdNo", label: "Employee code", required: true, aliases: ["Employee ID No", "ID No", "ID", "Employee ID", "Emp ID", "Emp code", "Code"] },
-  { key: "name", label: "Full name", required: true, aliases: ["Employee", "Employee name", "Name"] },
-  { key: "category", label: "Category" },
-  { key: "trade", label: "Trade", aliases: ["Trade / Designation", "Designation"] },
-  { key: "nationality", label: "Nationality" },
-  { key: "position", label: "Position" },
-  { key: "department", label: "Department" },
-  { key: "passportNumber", label: "Passport number", aliases: ["Passport No", "Passport"] },
-  { key: "emiratesId", label: "Emirates ID" },
-  { key: "mobileNumber", label: "Mobile number" },
-];
 
 export function EmployeeList({
   employees,
@@ -146,7 +120,7 @@ export function EmployeeList({
   initialOpen,
   registeredId,
   canViewPay = false,
-  canEditPay = false,
+  canImport = false,
   filterOptions,
   currentFilters,
 }: {
@@ -158,7 +132,8 @@ export function EmployeeList({
   /** Opens the quick view on load (from a link such as a notification): which person, and optionally the tab and the document to renew. */
   initialOpen?: { id: string; tab?: string; renew?: string };
   canViewPay?: boolean;
-  canEditPay?: boolean;
+  /** The guided import is for administrators. */
+  canImport?: boolean;
   /** Set right after a registration, to confirm it and point at the new row. */
   registeredId?: string;
 }) {
@@ -553,12 +528,7 @@ export function EmployeeList({
       searchPlaceholder="Filter by name, ID, trade…"
       pageSize={PAGE_SIZE}
       csvFilename={`employees-${new Date().toISOString().slice(0, 10)}.csv`}
-      importConfig={{
-        entityLabel: "employees",
-        columns: canEditPay ? [...IMPORT_COLUMNS, ...PAY_IMPORT_COLUMNS] : IMPORT_COLUMNS,
-        importAction: bulkImportEmployeesAction,
-        wizardHref: "/import/new/workers",
-      }}
+      importLink={canImport ? { href: "/import/new/workers", label: "Import" } : undefined}
       getRowClassName={(e) =>
         cn(
           complianceRowClass(e.worstStatus),

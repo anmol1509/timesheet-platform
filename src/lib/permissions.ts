@@ -49,7 +49,9 @@ export const SENSITIVE_MODULE = "sensitive";
 /** The permission module for the My Companies area. */
 export const MY_COMPANIES_MODULE = "mycompanies";
 /** Modules nobody gets by default: not through a "view everything" role, a starter role, or having no role at all. */
-export const OPT_IN_MODULES: readonly string[] = [SENSITIVE_MODULE, MY_COMPANIES_MODULE];
+/** The permission module for restoring deleted records and putting back changes from the audit log. */
+export const RECOVERY_MODULE = "recovery";
+export const OPT_IN_MODULES: readonly string[] = [SENSITIVE_MODULE, MY_COMPANIES_MODULE, RECOVERY_MODULE];
 
 const CORE: readonly PermissionAction[] = ["view", "create", "edit", "delete", "export"];
 const WITH_APPROVE: readonly PermissionAction[] = ["view", "create", "edit", "delete", "approve", "export"];
@@ -194,6 +196,14 @@ const DEFS: ModuleDef[] = [
     pages: [],
   },
   {
+    // Opt-in only: see canRecover. Admins always have it; staff only when their role names it.
+    key: "recovery",
+    label: "Recently deleted & put-back",
+    description: "See recently deleted records and restore them, and put back changes from the audit log",
+    actions: ["view", "edit"],
+    pages: [],
+  },
+  {
     key: "onboarding",
     label: "Candidate onboarding",
     description: "Candidates from agencies, offer through joining",
@@ -311,6 +321,13 @@ export function canViewSensitive(subject: PermissionSubject): boolean {
 export function canMyCompanies(subject: PermissionSubject, action: PermissionAction = "view"): boolean {
   if (subject.role === "SUPER_ADMIN" || subject.role === "BRANCH_ADMIN") return true;
   return !!subject.permissions?.includes(permissionKey(MY_COMPANIES_MODULE, action));
+}
+
+/** Recently deleted (view) and restoring or putting back (edit). Admins always may; staff only when their role names it. */
+export function canRecover(subject: PermissionSubject, action: "view" | "edit" = "view"): boolean {
+  if (subject.role === "SUPER_ADMIN" || subject.role === "BRANCH_ADMIN") return true;
+  const perms = subject.permissions;
+  return !!perms && (perms.includes(permissionKey(RECOVERY_MODULE, action)) || (action === "view" && perms.includes(permissionKey(RECOVERY_MODULE, "edit"))));
 }
 
 export const WRITE_ACTIONS: readonly PermissionAction[] = ["create", "edit", "delete", "approve"];

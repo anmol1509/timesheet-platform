@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { MODULES, ROLE_PRESETS, canMyCompanies, canViewSensitive, sanitizePermissions } from "./permissions";
+import { MODULES, ROLE_PRESETS, canMyCompanies, canRecover, canViewSensitive, sanitizePermissions } from "./permissions";
 
 const staff = (permissions: string[] | null) => ({ role: "STAFF", permissions });
 
@@ -35,4 +35,15 @@ test("My Companies is for admins and for roles that name it, per action", () => 
   assert.equal(canMyCompanies(staff(["partners:view", "partners:edit", "partners.suppliers:edit"])), false);
   assert.equal(canMyCompanies(staff(null)), false);
   assert.deepEqual(sanitizePermissions(["mycompanies:view", "mycompanies:approve", "mycompanies:export"]), ["mycompanies:view"]);
+});
+
+test("recovering deleted records is for admins and for roles that name it", () => {
+  assert.equal(canRecover({ role: "BRANCH_ADMIN" }), true);
+  assert.equal(canRecover(staff(null), "view"), false);
+  assert.equal(canRecover(staff(["workforce:view", "workforce:edit"]), "edit"), false);
+  assert.equal(canRecover(staff(["recovery:view"]), "view"), true);
+  assert.equal(canRecover(staff(["recovery:view"]), "edit"), false);
+  assert.equal(canRecover(staff(["recovery:edit"]), "view"), true);
+  assert.equal(canRecover(staff(["recovery:edit"]), "edit"), true);
+  for (const p of ROLE_PRESETS) assert.equal(p.permissions.some((k) => k.startsWith("recovery:")), false, p.name);
 });

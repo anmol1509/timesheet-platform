@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Badge } from "@/components/Badge";
 import { ProgressBar } from "@/components/ProgressBar";
 import { DataTable, type DataTableColumn } from "@/components/data-table/DataTable";
+import { optionsOf } from "@/components/data-table/filterOptions";
 import { DemandDrawer, type DemandPerson } from "./demand-drawer";
 
 type Row = {
@@ -167,6 +168,12 @@ export function DemandRequestList({ requests }: { requests: Row[] }) {
         columns={columns}
         onRowClick={(row, ordered) => setDrawer({ id: row.id, order: ordered.map((r) => r.id) })}
         csvFilename={`demand-requests-${new Date().toISOString().slice(0, 10)}.csv`}
+        filters={[
+          { key: "status", label: "All statuses", options: optionsOf(requests, (r) => r.status), get: (r) => r.status },
+          { key: "client", label: "All clients", options: optionsOf(requests, (r) => r.clientName), get: (r) => r.clientName },
+          { key: "type", label: "All types", options: optionsOf(requests, (r) => r.requestType), get: (r) => r.requestType },
+          { key: "priority", label: "Any priority", options: optionsOf(requests, (r) => r.priority), get: (r) => r.priority },
+        ]}
       />
       {drawer && (
         <DemandDrawer id={drawer.id} order={drawer.order} people={people} onNavigate={(id) => setDrawer({ id, order: drawer.order })} onClose={() => setDrawer(null)} />

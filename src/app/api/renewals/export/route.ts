@@ -1,3 +1,4 @@
+import { canSeeRenewal } from "@/lib/renewalAccess";
 import { NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { prisma } from "@/lib/db";
@@ -22,7 +23,8 @@ export async function POST(request: Request) {
   const wanted = new Set((body?.refs ?? []).filter((r) => r && typeof r.subjectId === "string" && typeof r.expiry === "string").map((r) => renewalKey(r)));
   if (wanted.size === 0) return NextResponse.json({ error: "Choose at least one renewal." }, { status: 400 });
 
-  const items = (await getRenewals(branchId)).filter((i) => wanted.has(renewalKey(i)));
+  const subject = subjectOf(user);
+  const items = (await getRenewals(branchId)).filter((i) => wanted.has(renewalKey(i)) && canSeeRenewal(subject, i));
   if (items.length === 0) return NextResponse.json({ error: "None of those renewals are due any more." }, { status: 404 });
 
   const employeeIds = [...new Set(items.filter((i) => i.kind === "employee").map((i) => i.subjectId))];

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Badge } from "@/components/Badge";
 import { DataTable, type DataTableColumn } from "@/components/data-table/DataTable";
+import { optionsOf } from "@/components/data-table/filterOptions";
 import { DeleteButton } from "@/components/DeleteButton";
 import { deleteBankAction } from "./actions";
 
@@ -38,6 +39,12 @@ export function BankList({ banks }: { banks: BankRow[] }) {
       columns={columns}
       rowHref={(b) => `/banks/${b.id}`}
       csvFilename={`banks-${new Date().toISOString().slice(0, 10)}.csv`}
+      filters={[
+        { key: "status", label: "All statuses", options: (Object.keys(LABEL) as (keyof typeof LABEL)[]).map((v) => ({ value: v, label: LABEL[v] })), get: (b) => b.state },
+        { key: "company", label: "All companies", options: optionsOf(banks, (b) => b.company), get: (b) => b.company },
+        { key: "bank", label: "All banks", options: optionsOf(banks, (b) => b.bankName), get: (b) => b.bankName },
+        { key: "currency", label: "All currencies", options: optionsOf(banks, (b) => b.currency), get: (b) => b.currency },
+      ]}
       renderRowActions={(b) => <DeleteButton action={deleteBankAction} hiddenFields={{ bankId: b.id }} confirmMessage={`Delete bank "${b.accountName}"?`} />}
     />
   );

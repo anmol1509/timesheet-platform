@@ -1,8 +1,9 @@
 "use server";
 
+import { canSeeRenewal } from "@/lib/renewalAccess";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch, requireWrite } from "@/lib/auth";
+import { requireUserWithBranch, requireWrite, subjectOf } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { RENEWAL_STATUS_KEYS, type RenewalRef } from "@/lib/renewalCases";
@@ -40,7 +41,7 @@ export async function updateRenewalsAction(refs: RenewalRef[], patch: RenewalPat
     prisma.vehicle.findMany({ where: { id: { in: vehicleIds }, branchId: { not: null } }, select: { id: true, branchId: true } }),
     prisma.clientDocument.findMany({ where: { id: { in: part("clientdoc") } }, select: { id: true, client: { select: { branchId: true } } } }),
     prisma.projectDocument.findMany({ where: { id: { in: part("projdoc") } }, select: { id: true, project: { select: { branchId: true } } } }),
-    prisma.attachment.findMany({ where: { id: { in: part("attach") }, branchId: { not: null } }, select: { id: true, branchId: true } }),
+    prisma.attachment.findMany({ where: { id: { in: part("attach") }, branchId: { not: null } }, select: { id: true, branchId: true, entityType: true } }),
   ]);
   const branchOf = new Map<string, string>([
     ...employees.map((e) => [`employee|${e.id}`, e.branchId] as const),
@@ -51,9 +52,12 @@ export async function updateRenewalsAction(refs: RenewalRef[], patch: RenewalPat
     ...projectDocs.map((d) => [`record|projdoc:${d.id}`, d.project.branchId] as const),
     ...attached.map((a) => [`record|attach:${a.id}`, a.branchId!] as const),
   ]);
+  // A document filed on a client, project, quotation, bill or vehicle, or an owner's papers, is only for people who may open that area.
+  const entityOf = new Map<string, string>(attached.map((x) => [`record|attach:${x.id}`, x.entityType]));
+  const subject = subjectOf(user);
   const targets = clean.filter((r) => {
     const b = branchOf.get(`${r.kind}|${r.subjectId}`);
-    return b && !isOutsideBranch(b, branchId, isSuperAdmin);
+    return b && !isOutsideBranch(b, branchId, isSuperAdmin) && canSeeRenewal(subject, { kind: r.kind, subjectId: r.subjectId, entityType: entityOf.get(`${r.kind}|${r.subjectId}`) });
   });
   if (targets.length === 0) return { error: "Those renewals aren't in this company." };
 

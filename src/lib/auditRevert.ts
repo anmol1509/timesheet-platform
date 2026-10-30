@@ -1,3 +1,4 @@
+import { canRecover } from "@/lib/permissions";
 import { prisma } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
 import { entityMeta } from "@/lib/auditPresentation";
@@ -11,7 +12,7 @@ import { entityMeta } from "@/lib/auditPresentation";
 import { REVERTIBLE, planRevert, type FieldInfo, type RevertPlan } from "@/lib/auditRevertPlan";
 export type { FieldInfo, FieldPlan, RevertPlan } from "@/lib/auditRevertPlan";
 
-type Who = { id: string; name: string; role: string; branchId: string | null; canSeePay: boolean };
+type Who = { id: string; name: string; role: string; permissions?: string[] | null; branchId: string | null; canSeePay: boolean };
 
 function modelFields(modelName: string): Record<string, FieldInfo> | null {
   const dm = (prisma as unknown as { _runtimeDataModel?: { models: Record<string, { fields: FieldInfo[] }> } })._runtimeDataModel;
@@ -24,7 +25,7 @@ type Loaded =
   | { entry: NonNullable<Awaited<ReturnType<typeof prisma.auditLog.findUnique>>>; target: { delegate: string; model: string }; fields: Record<string, FieldInfo>; current: Record<string, unknown> };
 
 async function load(entryId: string, who: Who): Promise<Loaded> {
-  if (who.role === "STAFF") return { error: "Only admins can put changes back." };
+  if (!canRecover(who, "edit")) return { error: "You don't have permission to put changes back." };
   const entry = await prisma.auditLog.findUnique({ where: { id: entryId } });
   if (!entry) return { error: "That entry no longer exists." };
   if (who.branchId && entry.branchId !== who.branchId) return { error: "That entry belongs to another company." };

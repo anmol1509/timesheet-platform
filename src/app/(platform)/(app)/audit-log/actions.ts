@@ -11,7 +11,7 @@ export type RevertPreview =
 
 async function who() {
   const { user, branchId } = await requireUserWithBranch();
-  return { id: user.id, name: user.name, role: user.role, branchId, canSeePay: can(subjectOf(user), "payroll", "view") };
+  return { id: user.id, name: user.name, role: user.role, permissions: subjectOf(user).permissions, branchId, canSeePay: can(subjectOf(user), "payroll", "view") };
 }
 
 /** What would go back, for the confirmation window. Changes nothing. */

@@ -1,6 +1,7 @@
 "use client";
 
 import { DataTable, type DataTableColumn } from "@/components/data-table/DataTable";
+import { optionsOf } from "@/components/data-table/filterOptions";
 
 type RouteRow = {
   id: string;
@@ -28,5 +29,15 @@ export function RouteList({ routes }: { routes: RouteRow[] }) {
     },
   ];
 
-  return <DataTable rows={routes} columns={columns} rowHref={(r) => `/transport/routes/${r.id}`} />;
+  return (
+    <DataTable
+      rows={routes}
+      columns={columns}
+      rowHref={(r) => `/transport/routes/${r.id}`}
+      filters={[
+        { key: "vehicle", label: "All vehicles", options: optionsOf(routes, (r) => r.vehiclePlate), get: (r) => r.vehiclePlate },
+        { key: "project", label: "All projects", options: optionsOf(routes, (r) => r.projectName), get: (r) => r.projectName },
+      ]}
+    />
+  );
 }
