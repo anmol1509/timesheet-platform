@@ -349,6 +349,7 @@ export async function addProjectTradeRateAction(formData: FormData) {
 }
 
 export async function removeProjectTradeRateAction(formData: FormData) {
+  await requirePermission("projects.projects", "delete");
   await requireWrite("projects.projects");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
@@ -387,6 +388,7 @@ export async function addProjectHolidayAction(formData: FormData) {
 }
 
 export async function removeProjectHolidayAction(formData: FormData) {
+  await requirePermission("projects.projects", "delete");
   await requireWrite("projects.projects");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
@@ -451,6 +453,7 @@ export async function updateProjectContactAction(formData: FormData) {
 }
 
 export async function removeProjectContactAction(formData: FormData) {
+  await requirePermission("projects.projects", "delete");
   await requireWrite("projects.projects");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
@@ -521,6 +524,7 @@ export async function returnProjectInventoryAction(formData: FormData) {
 }
 
 export async function removeProjectInventoryAction(formData: FormData) {
+  await requirePermission("projects.projects", "delete");
   await requireWrite("projects.projects");
   assertContactsValid(formData);
   const { branchId, isSuperAdmin } = await requireUserWithBranch();

@@ -695,6 +695,7 @@ export async function addVisaApplicationAction(formData: FormData): Promise<{ er
 }
 
 export async function removeVisaApplicationAction(formData: FormData) {
+  await requirePermission("workforce.employees", "delete");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const employeeId = String(formData.get("employeeId") || "");
@@ -755,6 +756,7 @@ export async function addLabourCardApplicationAction(formData: FormData): Promis
 }
 
 export async function removeLabourCardApplicationAction(formData: FormData) {
+  await requirePermission("workforce.employees", "delete");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const employeeId = String(formData.get("employeeId") || "");
@@ -782,6 +784,7 @@ export async function removeLabourCardApplicationAction(formData: FormData) {
 }
 
 export async function removeSkillAction(formData: FormData) {
+  await requirePermission("workforce.employees", "delete");
   assertContactsValid(formData);
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const employeeId = String(formData.get("employeeId") || "");

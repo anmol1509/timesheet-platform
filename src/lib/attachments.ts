@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch, requireWrite, subjectOf } from "@/lib/auth";
-import { canMyCompanies, canViewSensitive } from "@/lib/permissions";
+import { can, canMyCompanies, canViewSensitive } from "@/lib/permissions";
 import { ownDocIsConfidential } from "@/lib/ownCompany";
 import { isOutsideBranch } from "@/lib/branch";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
@@ -136,7 +136,15 @@ export async function deleteAttachmentAction(formData: FormData) {
   const attachment = await prisma.attachment.findUnique({ where: { id }, select: { branchId: true, entityType: true, entityId: true, docType: true, filename: true, expiryDate: true } });
   if (!attachment || isOutsideBranch(attachment.branchId, branchId, isSuperAdmin)) return;
 
+  // Deleting a document needs the Delete right on the kind of record it is filed against, not just the right to edit it.
+  const subject = subjectOf(user);
+  const owningArea: Record<string, string> = { VEHICLE: "facilities.transport", CLIENT: "partners.clients", PROJECT: "projects.projects", QUOTATION: "sales.quotations", ENQUIRY: "sales.enquiries", SUPPLIER_BILL: "finance.bills", EXPENSE: "finance.expenses", EMPLOYEE: "workforce.employees", CANDIDATE_ONBOARDING: "onboarding.tracker" };
   if (attachment.entityType === "VEHICLE") await requireWrite("facilities.transport");
+  if (attachment.entityType === "SUPPLIER_PARTY") { if (!canMyCompanies(subject, "delete")) return; }
+  else if (attachment.entityType === "SUPPLIER") {
+    const owner = await prisma.supplier.findUnique({ where: { id: attachment.entityId }, select: { isOwnCompany: true } });
+    if (owner?.isOwnCompany ? !canMyCompanies(subject, "delete") : !can(subject, "partners.suppliers", "delete")) return;
+  } else if (owningArea[attachment.entityType] && !can(subject, owningArea[attachment.entityType], "delete")) return;
   if (attachment.entityType === "SUPPLIER_PARTY" && !canViewSensitive(subjectOf(user))) return;
   if (attachment.entityType === "SUPPLIER" && ownDocIsConfidential(attachment.docType) && !canMyCompanies(subjectOf(user), "edit")) {
     const owner = await prisma.supplier.findUnique({ where: { id: attachment.entityId }, select: { isOwnCompany: true } });

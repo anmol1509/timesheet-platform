@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { requireAdmin, requireUserWithBranch } from "@/lib/auth";
+import { requireAdmin, requireUserWithBranch, requirePermission } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { isTemplateKey, templateByKey } from "@/lib/timesheetTemplates";
@@ -77,6 +77,7 @@ export async function duplicateTimesheetTemplateAction(formData: FormData) {
 }
 
 export async function deleteTimesheetTemplateAction(formData: FormData) {
+  await requirePermission("timesheets.generate", "delete");
   assertContactsValid(formData);
   const { user, row } = await ownTemplate(str(formData.get("id")));
   if (!row) redirect("/timesheet-templates");

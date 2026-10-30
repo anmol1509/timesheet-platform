@@ -861,6 +861,7 @@ export async function setWorkmenCompExpiryAction(supplierId: string, attachmentI
 /** Removes one certificate, with the copies on its workers' profiles; the workers it covered are no longer recorded as covered by anything. */
 export async function deleteWorkmenCompAction(supplierId: string, attachmentId: string): Promise<{ error?: string }> {
   await requireWrite("partners.suppliers");
+  await requirePermission("partners.suppliers", "delete");
   const cert = await ownCertificate(supplierId, attachmentId);
   if (!cert) return { error: "Certificate not found." };
   await prisma.$transaction([
@@ -1110,6 +1111,7 @@ export async function uploadSupplierLetterImageAction(formData: FormData) {
 }
 
 export async function removeSupplierLetterImageAction(formData: FormData) {
+  await requirePermission("partners.suppliers", "delete");
   const ctx = await loadLetterSupplier(formData);
   const kind = imageKind(formData.get("kind"));
   if (!ctx || !kind) return { error: "Supplier not found." };

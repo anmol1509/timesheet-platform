@@ -1,5 +1,6 @@
 "use client";
 
+import { useCanHere } from "@/components/PermissionsProvider";
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown, FileText, Loader2, Plus, Trash2, Upload } from "lucide-react";
@@ -28,6 +29,7 @@ function status(iso: string | null) {
  * workers on this supplier named on it are linked to that certificate.
  */
 export function WorkmenCompSection({ supplierId, policies, workers, canEdit, onChanged }: { supplierId: string; policies: WcPolicy[]; workers: number; canEdit: boolean; /** Called after a change instead of refreshing the page (the side panel reloads its own data). */ onChanged?: () => void }) {
+  const canDelete = useCanHere("delete");
   const router = useRouter();
   const changed = () => (onChanged ? onChanged() : router.refresh());
   // Policies whose workers are showing; a policy just added opens by itself so who is on it can be checked and linked at once.
@@ -101,7 +103,8 @@ export function WorkmenCompSection({ supplierId, policies, workers, canEdit, onC
                       onBlur={(e) => { if (e.target.value !== dayOf(p.expiryDate)) run(() => setWorkmenCompExpiryAction(supplierId, p.id, e.target.value || null)); }}
                       className="h-8 rounded-[var(--radius-control)] border border-default bg-surface px-2 text-xs"
                     />
-                    <button
+                    {canDelete && (
+<button
                       type="button"
                       aria-label={`Delete ${p.filename}`}
                       onClick={() => { if (confirm(`Delete this policy? The ${p.covered} workers linked to it will no longer be recorded as covered.`)) run(() => deleteWorkmenCompAction(supplierId, p.id)); }}
@@ -109,6 +112,7 @@ export function WorkmenCompSection({ supplierId, policies, workers, canEdit, onC
                     >
                       <Trash2 className="h-4 w-4" aria-hidden />
                     </button>
+)}
                   </>
                 )}
               </div>

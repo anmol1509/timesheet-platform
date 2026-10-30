@@ -264,6 +264,7 @@ export async function updateClientContactAction(formData: FormData) {
 }
 
 export async function removeClientContactAction(formData: FormData) {
+  await requirePermission("partners.clients", "delete");
   await requireWrite("partners.clients");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
@@ -301,6 +302,7 @@ export async function addClientTradeRateAction(formData: FormData) {
 }
 
 export async function removeClientTradeRateAction(formData: FormData) {
+  await requirePermission("partners.clients", "delete");
   await requireWrite("partners.clients");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();

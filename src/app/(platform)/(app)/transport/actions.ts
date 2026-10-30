@@ -232,6 +232,7 @@ export async function addVehicleProjectAction(formData: FormData) {
 }
 
 export async function removeVehicleProjectAction(formData: FormData) {
+  await requirePermission("facilities.transport", "delete");
   await requireWrite("facilities.transport");
   assertContactsValid(formData);
   const { branchId, isSuperAdmin } = await requireUserWithBranch();

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch, requireWrite } from "@/lib/auth";
+import { requireUserWithBranch, requireWrite, requirePermission } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 
@@ -27,6 +27,7 @@ export async function addExistingAsAgencyAction(_prev: Result, formData: FormDat
 
 /** Stops treating a supplier as an agency. Refused while candidates came through it, so their history keeps its source. */
 export async function removeAgencyFlagAction(formData: FormData): Promise<void> {
+  await requirePermission("onboarding.tracker", "delete");
   await requireWrite("onboarding.tracker");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("supplierId") || "");

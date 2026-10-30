@@ -3,7 +3,7 @@
 import { amountError } from "@/lib/books/validate";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireAdmin, requireUserWithBranch, requireWrite } from "@/lib/auth";
+import { requireAdmin, requireUserWithBranch, requireWrite, requirePermission } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { ACCOUNT_TYPES, VOUCHER_PREFIX } from "@/lib/books/chart";
 import { readPolicy, type Policy } from "@/lib/books/accruals";
@@ -484,6 +484,7 @@ export async function saveExchangeRateAction(input: { currency: string; date: st
 }
 
 export async function deleteExchangeRateAction(id: string): Promise<Result> {
+  await requirePermission("finance.books", "delete");
   await requireWrite("finance.books");
   const { branchId } = await requireUserWithBranch();
   if (!branchId) return { error: "Pick a company first." };

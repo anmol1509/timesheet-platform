@@ -1,5 +1,6 @@
 "use client";
 
+import { useCanHere } from "@/components/PermissionsProvider";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -35,6 +36,7 @@ function badges(r: PersonRow): { color: BadgeColor; label: string }[] {
 }
 
 export function PeopleList({ rows, canEdit }: { rows: PersonRow[]; canEdit: boolean }) {
+  const canDelete = useCanHere("delete");
   const router = useRouter();
   const [filter, setFilter] = useState<"all" | PersonFlag>("all");
   const [role, setRole] = useState("ALL");
@@ -126,7 +128,7 @@ export function PeopleList({ rows, canEdit }: { rows: PersonRow[]; canEdit: bool
                           {r.companies.length === 0 ? "Assign" : "Add company"}
                         </Link>
                       )}
-                      {canEdit && r.companies.length === 0 && (
+                      {canEdit && canDelete && r.companies.length === 0 && (
                         <ConfirmDialog
                           title={`Delete ${r.name}?`}
                           description={`${r.name} is on the list but has no company. Deleting them also deletes their ${r.docs} document${r.docs === 1 ? "" : "s"}, and this can't be undone here.`}

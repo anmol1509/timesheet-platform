@@ -3,7 +3,7 @@
 import { amountError } from "@/lib/books/validate";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch, requireWrite } from "@/lib/auth";
+import { requireUserWithBranch, requireWrite, requirePermission } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { syncPostings } from "@/lib/books/sync";
 import { r2 } from "@/lib/books/postings";
@@ -46,6 +46,7 @@ export async function saveRecurringAction(input: RecurringInput): Promise<Result
 }
 
 export async function deleteRecurringAction(id: string): Promise<Result> {
+  await requirePermission("finance.books", "delete");
   await requireWrite("finance.books");
   const { user, branchId } = await requireUserWithBranch();
   if (!branchId) return { error: "Pick a company first." };

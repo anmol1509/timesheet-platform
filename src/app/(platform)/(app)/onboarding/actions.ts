@@ -4,7 +4,7 @@ import { findSupplierByName, uniqueSupplierCode } from "@/lib/entityCode";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch, requireWrite } from "@/lib/auth";
+import { requireUserWithBranch, requireWrite, requirePermission } from "@/lib/auth";
 import { employeeFieldsFromStage, passportProblem } from "@/lib/onboardingEmployee";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
@@ -463,6 +463,7 @@ export async function reinstateCandidateAction(formData: FormData) {
 }
 
 export async function deleteCandidateAction(formData: FormData) {
+  await requirePermission("onboarding.tracker", "delete");
   await requireWrite("onboarding.tracker");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("id") || "");

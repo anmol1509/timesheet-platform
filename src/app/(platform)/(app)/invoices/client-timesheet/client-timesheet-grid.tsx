@@ -1,5 +1,6 @@
 "use client";
 
+import { useCanHere } from "@/components/PermissionsProvider";
 import { Plus } from "lucide-react";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { Checkbox } from "@/components/ui/Checkbox";
@@ -48,6 +49,7 @@ function badgeClass(value: string) {
 }
 
 export function ClientTimesheetGrid({ month, entries, showClient = false }: { month: string; entries: Entry[]; showClient?: boolean }) {
+  const canDelete = useCanHere("delete");
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -313,7 +315,7 @@ export function ClientTimesheetGrid({ month, entries, showClient = false }: { mo
                     </td>
                   ))}
                   <td className="px-2 py-1.5 whitespace-nowrap">
-                    {!locked && (
+                    {!locked && canDelete && (
                       <ConfirmDialog
                         title="Delete this row?"
                         description={`Remove ${e.employeeName} (${e.trade}) from this timesheet? The row and its hours go for good.`}

@@ -1,3 +1,4 @@
+import { PermissionsProvider } from "@/components/PermissionsProvider";
 import { countPendingApprovals } from "@/lib/approvals";
 import { Suspense } from "react";
 import { cookies } from "next/headers";
@@ -125,6 +126,7 @@ export default async function AppLayout({
   );
 
   return (
+    <PermissionsProvider subject={subjectOf(user)}>
     <ToastProvider>
       <AppAnalytics userId={user.id} role={user.role} />
       <Suspense fallback={null}>
@@ -148,5 +150,6 @@ export default async function AppLayout({
         {children}
       </AppShell>
     </ToastProvider>
+    </PermissionsProvider>
   );
 }

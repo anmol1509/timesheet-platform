@@ -1,5 +1,6 @@
 "use client";
 
+import { useCanHere } from "@/components/PermissionsProvider";
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
@@ -21,6 +22,7 @@ export function DeleteClientsButton({
   ids: string[];
   onDone?: () => void;
 }) {
+  const allowedToDelete = useCanHere("delete");
   const router = useRouter();
   const toast = useToastActions();
   const [pending, startTransition] = useTransition();
@@ -43,6 +45,7 @@ export function DeleteClientsButton({
     });
   }
 
+  if (!allowedToDelete) return null;
   return (
     <ConfirmDialog
       title={`Delete ${label}?`}

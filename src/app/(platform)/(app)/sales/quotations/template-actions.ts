@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch, requireWrite } from "@/lib/auth";
+import { requirePermission, requireUserWithBranch, requireWrite } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { COVER_FIELDS } from "@/lib/quotationCover";
 
@@ -25,6 +25,7 @@ export async function createQuotationTemplateAction(name: string, intro: string,
 
 export async function deleteQuotationTemplateAction(id: string): Promise<{ error?: string }> {
   await requireWrite("sales.quotations");
+  await requirePermission("sales.quotations", "delete");
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const t = await prisma.quotationTemplate.findUnique({ where: { id }, select: { branchId: true } });
   if (!t || isOutsideBranch(t.branchId, branchId, isSuperAdmin)) return { error: "Template not found." };

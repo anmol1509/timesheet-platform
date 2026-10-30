@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch, requireWrite, subjectOf } from "@/lib/auth";
+import { requireUserWithBranch, requireWrite, subjectOf, requirePermission } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { can } from "@/lib/permissions";
 import { logAudit } from "@/lib/audit";
@@ -51,6 +51,7 @@ export async function toggleCostPaidAction(formData: FormData): Promise<void> {
 }
 
 export async function deleteCostAction(formData: FormData): Promise<void> {
+  await requirePermission("onboarding.tracker", "delete");
   const cost = await prisma.candidateCost.findUnique({ where: { id: String(formData.get("costId") || "") }, select: { id: true, onboardingId: true, kind: true, amount: true } });
   if (!cost) return;
   const g = await guard(cost.onboardingId);

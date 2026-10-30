@@ -1,5 +1,6 @@
 "use client";
 
+import { useCanHere } from "@/components/PermissionsProvider";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -210,6 +211,7 @@ export function VehicleBrowser({ vehicles, canEdit, initialStatus }: { vehicles:
 
 /** Open or delete, behind one "⋯" so the card stays quiet. */
 function RowMenu({ v, canEdit }: { v: VehicleCard; canEdit: boolean }) {
+  const canDelete = useCanHere("delete");
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const entry = "flex w-full items-center gap-2 rounded-sm px-2.5 py-1.5 text-left text-sm text-secondary hover:bg-surface-hover hover:text-primary";
@@ -221,7 +223,7 @@ function RowMenu({ v, canEdit }: { v: VehicleCard; canEdit: boolean }) {
       <Popover.Portal>
         <Popover.Content align="end" sideOffset={4} className="rx-popover z-50 w-44 rounded-control border border-default bg-surface p-1 shadow-popover">
           <Link href={`/transport/${v.id}`} className={entry} onClick={() => setOpen(false)}>Open full page</Link>
-          {canEdit && (
+          {canEdit && canDelete && (
             <ConfirmDialog
               title="Delete this vehicle?"
               description={`Delete vehicle "${v.plateNumber}"?${v.riders > 0 ? ` ${v.riders} employee(s) will be unassigned.` : ""}`}

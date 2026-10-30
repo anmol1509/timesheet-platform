@@ -1,5 +1,6 @@
 "use client";
 
+import { useCanHere } from "@/components/PermissionsProvider";
 import { useMemo, useState, useTransition } from "react";
 import { RowMenu } from "@/components/ui/RowMenu";
 import { TrendingUp } from "lucide-react";
@@ -34,6 +35,7 @@ export function TradeTable({ trades }: { trades: TradeRow[] }) {
   const [draftName, setDraftName] = useState("");
   const [draftCategory, setDraftCategory] = useState("");
   const [pending, startTransition] = useTransition();
+  const canDelete = useCanHere("delete");
 
   function startEdit(s: TradeRow) {
     setEditingId(s.id);
@@ -205,7 +207,7 @@ export function TradeTable({ trades }: { trades: TradeRow[] }) {
             items={[
               { label: "Edit", onSelect: () => startEdit(s) },
               { label: s.trending ? "Remove trending" : "Mark trending", onSelect: () => toggleTrending(s) },
-              {
+              ...(!canDelete ? [] : [{
                 label: "Delete",
                 danger: true,
                 onSelect: () => {
@@ -214,7 +216,7 @@ export function TradeTable({ trades }: { trades: TradeRow[] }) {
                   fd.set("skillId", s.id);
                   startTransition(async () => { await deleteSkillAction(fd); });
                 },
-              },
+              }]),
             ]}
           />
         ) : null
