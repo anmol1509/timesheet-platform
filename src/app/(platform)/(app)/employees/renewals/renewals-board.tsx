@@ -82,20 +82,22 @@ function subjectHref(item: RenewalItem) {
 }
 
 type Kind = RenewalItem["kind"];
-const KINDS: Kind[] = ["employee", "supplier", "party", "vehicle"];
+const KINDS: Kind[] = ["employee", "supplier", "party", "vehicle", "record"];
 const KIND_FILTER = [
   { value: "", label: "Everyone" },
   { value: "employee", label: "Employees" },
   { value: "supplier", label: "Suppliers" },
   { value: "party", label: "Owners & sponsors" },
   { value: "vehicle", label: "Vehicles" },
+  { value: "record", label: "Clients, projects & other" },
 ];
-const VIEW_LABEL: Record<Kind, string> = { employee: "View employee", supplier: "View supplier", party: "View supplier", vehicle: "View vehicle" };
-const UPDATE_LABEL: Record<Kind, string> = { employee: "", supplier: "Update supplier documents", party: "Update owner & sponsor documents", vehicle: "Update vehicle documents" };
+const VIEW_LABEL: Record<Kind, string> = { employee: "View employee", supplier: "View supplier", party: "View supplier", vehicle: "View vehicle", record: "Open record" };
+const UPDATE_LABEL: Record<Kind, string> = { employee: "", supplier: "Update supplier documents", party: "Update owner & sponsor documents", vehicle: "Update vehicle documents", record: "Update the document" };
 /** The line under a name: suppliers are marked as such; owners and vehicles already say what they are. */
 const subjectLine = (item: RenewalItem) => (item.kind === "supplier" ? `Supplier · ${item.subjectRef}` : item.subjectRef);
 function KindIcon({ kind, className }: { kind: Kind; className: string }) {
   if (kind === "vehicle") return <Truck className={className} aria-hidden />;
+  if (kind === "record") return <FileText className={className} aria-hidden />;
   if (kind === "party" || kind === "employee") return <UserRound className={className} aria-hidden />;
   return <Building2 className={className} aria-hidden />;
 }

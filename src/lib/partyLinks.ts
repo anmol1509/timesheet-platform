@@ -1,8 +1,8 @@
 import type { Prisma } from "@/generated/prisma/client";
 
 /**
- * People are shared between companies, so deleting a company only removes its links. A person left with no company at
- * all would be unreachable on screen yet still hold their passport scans, so they and their documents are removed too.
+ * Removes every person with no company, with their documents. Only a full data reset uses this: day to day, owners and
+ * sponsors are a list of their own and stay on file with no company, until someone deletes them on purpose.
  * Returns how many people went.
  */
 export async function deleteOrphanParties(db: Prisma.TransactionClient, branchId?: string | null): Promise<number> {
