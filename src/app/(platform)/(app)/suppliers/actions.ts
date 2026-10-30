@@ -1,5 +1,6 @@
 "use server";
 
+import { isUniqueClash, uniqueClashMessage } from "@/lib/uniqueGuard";
 import { findSupplierByName, uniqueSupplierCode } from "@/lib/entityCode";
 import { normalizeCode } from "@/lib/partyCode";
 import { applySuppliers } from "@/lib/importer/apply/suppliers";
@@ -70,7 +71,13 @@ export async function createSupplierAction(formData: FormData) {
     redirect(`/suppliers?error=${encodeURIComponent(`The code ${typed} is already used by another supplier.`)}`);
   }
   const code = typed || (await uniqueSupplierCode(name, branchId));
-  const created = await prisma.supplier.create({ data: { name, code, fullName, branchId } });
+  let created;
+  try {
+    created = await prisma.supplier.create({ data: { name, code, fullName, branchId } });
+  } catch (e) {
+    if (isUniqueClash(e)) redirect(`/suppliers?error=${encodeURIComponent(uniqueClashMessage(e))}`);
+    throw e;
+  }
 
   await logAudit({
     entityType: "SUPPLIER",

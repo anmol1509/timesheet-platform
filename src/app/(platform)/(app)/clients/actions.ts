@@ -1,5 +1,6 @@
 "use server";
 
+import { isUniqueClash, uniqueClashMessage } from "@/lib/uniqueGuard";
 import { otherDocFilename } from "@/lib/otherDoc";
 import { findClientByName, uniqueClientCode } from "@/lib/entityCode";
 import { normalizeCode } from "@/lib/partyCode";
@@ -88,7 +89,13 @@ export async function createClientAction(
     status: String(formData.get("status") || "ACTIVE"),
   };
 
-  const client = await prisma.client.create({ data });
+  let client;
+  try {
+    client = await prisma.client.create({ data });
+  } catch (e) {
+    if (isUniqueClash(e)) return { error: uniqueClashMessage(e) };
+    throw e;
+  }
 
   await logAudit({
     entityType: "CLIENT",
@@ -185,7 +192,12 @@ export async function updateClientAction(formData: FormData): Promise<{ error: s
     telephone: stringOrNull(formData.get("telephone")),
   };
 
-  await prisma.client.update({ where: { id }, data });
+  try {
+    await prisma.client.update({ where: { id }, data });
+  } catch (e) {
+    if (isUniqueClash(e)) return { error: uniqueClashMessage(e) };
+    throw e;
+  }
 
   await logAudit({
     entityType: "CLIENT",

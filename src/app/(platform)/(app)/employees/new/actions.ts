@@ -1,5 +1,6 @@
 "use server";
 
+import { isUniqueClash, uniqueClashMessage } from "@/lib/uniqueGuard";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
@@ -319,7 +320,13 @@ export async function createEmployeeAction(
     if (warnings.length > 0) return { error: null, warnings };
   }
 
-  const employee = await prisma.employee.create({ data });
+  let employee;
+  try {
+    employee = await prisma.employee.create({ data });
+  } catch (e) {
+    if (isUniqueClash(e)) return { error: uniqueClashMessage(e) };
+    throw e;
+  }
 
   await logAudit({
     entityType: "EMPLOYEE",
