@@ -106,7 +106,6 @@ export function CompanyTable({ rows, canSuppliers, wizardData }: { rows: Company
         searchable
         searchPlaceholder="Search company, code or parent…"
         pageSize={50}
-        csvFilename={`my-companies-${new Date().toISOString().slice(0, 10)}.csv`}
         filters={[
           { key: "status", label: "All statuses", options: [{ value: "ACTIVE", label: "Active" }, { value: "BLACKLISTED", label: "Blacklisted" }], get: (r) => r.status },
           { key: "type", label: "All companies", options: [{ value: "primary", label: "Primary companies" }, { value: "sub", label: "Subsidiaries" }], get: (r) => (r.sub ? "sub" : "primary") },

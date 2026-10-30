@@ -5,10 +5,8 @@ import { useRouter } from "next/navigation";
 import {
   ArrowDown,
   ArrowUp,
-  ChevronDown,
   ChevronsUpDown,
   Columns3,
-  Download,
   Search,
   X,
 } from "lucide-react";
@@ -22,6 +20,8 @@ import { useRowSelection } from "@/lib/useRowSelection";
 import { toCsv, downloadCsv } from "@/lib/csv";
 import { downloadXlsx } from "@/lib/spreadsheet";
 import { Select } from "@/components/ui/Select";
+import { FilterPanel } from "./FilterPanel";
+import { ExportMenu } from "@/components/ExportMenu";
 import { ScrollRestore } from "@/components/ScrollRestore";
 import { cn } from "@/lib/cn";
 
@@ -64,6 +64,9 @@ export type DataTableRowContext = {
 };
 
 /** A dropdown that narrows the rows: "All …" plus one option per value. */
+/** The heading each filter gets in the Filters panel, where the key alone would read badly. */
+const FILTER_TITLE: Record<string, string> = { owed: "Balance", licence: "Trade licence", approval: "Approvals", type: "Type", demand: "Demand", contract: "Contract" };
+
 export type DataTableFilter<T> = {
   key: string;
   /** Shown as the "All …" option, e.g. "All statuses". */
@@ -272,10 +275,10 @@ export function DataTable<T extends { id: string }>({
     );
   }
 
-  function exportExcel() {
+  async function exportExcel() {
     if (!csvFilename) return;
     const { exportRows, cols } = exportCells();
-    void downloadXlsx(
+    await downloadXlsx(
       csvFilename.replace(/\.csv$/i, ".xlsx"),
       "Export",
       cols.map((c) => c.csvHeader ?? c.header),
@@ -370,21 +373,32 @@ export function DataTable<T extends { id: string }>({
             </div>
           )}
 
-          {filters?.map((f) => (
-            <div key={f.key} className="w-44 shrink-0">
-            <Select
-              value={filterValues[f.key] ?? ""}
-              onChange={(v) => {
-                setFilterValues((prev) => ({ ...prev, [f.key]: v }));
+          {filters && filters.length === 1 && (
+            <div className="w-44 shrink-0">
+              <Select
+                value={filterValues[filters[0].key] ?? ""}
+                onChange={(v) => {
+                  setFilterValues((prev) => ({ ...prev, [filters[0].key]: v }));
+                  setPage(1);
+                }}
+                triggerClassName="h-9"
+                searchable={filters[0].options.length > 8}
+                placeholder={filters[0].label}
+                options={[{ value: "", label: filters[0].label }, ...filters[0].options]}
+              />
+            </div>
+          )}
+          {/* Two or more filters share one button and panel, so the toolbar stays on a single row. */}
+          {filters && filters.length > 1 && (
+            <FilterPanel
+              fields={filters.map((f) => ({ key: f.key, label: FILTER_TITLE[f.key] ?? f.key.replace(/^./, (c) => c.toUpperCase()), all: f.label, options: f.options }))}
+              values={filterValues}
+              onChange={(key, value) => {
+                setFilterValues((prev) => ({ ...prev, [key]: value }));
                 setPage(1);
               }}
-              triggerClassName="h-9"
-              searchable={f.options.length > 8}
-              placeholder={f.label}
-              options={[{ value: "", label: f.label }, ...f.options]}
             />
-            </div>
-          ))}
+          )}
 
           <div className="ml-auto flex flex-wrap items-center gap-2">
             {hideable.length > 0 && (
@@ -439,33 +453,11 @@ export function DataTable<T extends { id: string }>({
               />
             )}
             {csvFilename && (
-              <Popover.Root>
-                <Popover.Trigger asChild>
-                  <button type="button" className={toolbarButton}>
-                    <Download className="h-3.5 w-3.5" aria-hidden />
-                    {selected.size > 0 ? `Export ${selected.size}` : "Export"}
-                    <ChevronDown className="h-3 w-3 text-muted" aria-hidden />
-                  </button>
-                </Popover.Trigger>
-                <Popover.Portal>
-                  <Popover.Content
-                    align="end"
-                    sideOffset={6}
-                    className="rx-popover z-50 w-44 rounded-card border border-default bg-surface p-1 shadow-popover"
-                  >
-                    <Popover.Close asChild>
-                      <button type="button" onClick={exportExcel} className="flex w-full items-center rounded-sm px-2.5 py-1.5 text-left text-[13px] text-secondary transition hover:bg-surface-hover hover:text-primary">
-                        Excel (.xlsx)
-                      </button>
-                    </Popover.Close>
-                    <Popover.Close asChild>
-                      <button type="button" onClick={exportCsv} className="flex w-full items-center rounded-sm px-2.5 py-1.5 text-left text-[13px] text-secondary transition hover:bg-surface-hover hover:text-primary">
-                        CSV (.csv)
-                      </button>
-                    </Popover.Close>
-                  </Popover.Content>
-                </Popover.Portal>
-              </Popover.Root>
+              <ExportMenu
+                tableToolbar
+                label={selected.size > 0 ? `Export ${selected.size}` : "Export"}
+                onExport={async (format) => (format === "xlsx" ? exportExcel() : exportCsv())}
+              />
             )}
           </div>
         </div>

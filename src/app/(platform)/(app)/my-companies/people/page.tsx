@@ -9,8 +9,7 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import { loadPeopleRegister } from "@/lib/peopleRegister";
 import { hasFlag, type PersonFlag } from "@/lib/peopleFlags";
-import { Download } from "lucide-react";
-import { ExportLink } from "@/components/ExportLink";
+import { ExportButton } from "@/components/ExportButton";
 import { PeopleList } from "./people-list";
 
 export const metadata = { title: "Owners & sponsors" };
@@ -34,9 +33,7 @@ export default async function PeopleRegisterPage() {
         actions={
           <div className="flex flex-wrap items-center gap-2">
             {rows.length > 0 && (
-              <ExportLink className="btn btn-secondary btn-sm" href="/api/my-companies/people/export" title="An Excel file with one row per person, and a second sheet with one row per company link.">
-                <Download className="h-3.5 w-3.5" aria-hidden /> Export
-              </ExportLink>
+              <ExportButton url="/api/my-companies/people/export" />
             )}
             {canEdit && <Link href="/my-companies/people/new" className="btn btn-primary btn-sm"><Plus className="h-3.5 w-3.5" aria-hidden /> Add owner or sponsor</Link>}
           </div>

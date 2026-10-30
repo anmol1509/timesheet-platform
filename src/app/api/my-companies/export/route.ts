@@ -9,7 +9,7 @@ import { TARGETS } from "@/lib/importer/targets";
 const day = (d: Date | null | undefined) => (d ? `${String(d.getUTCDate()).padStart(2, "0")}/${String(d.getUTCMonth() + 1).padStart(2, "0")}/${d.getUTCFullYear()}` : "");
 
 /** The company's own companies as a workbook with the same headings as the import template, so it can be edited and imported back. */
-export async function GET() {
+export async function GET(request: Request) {
   const { user, branchId } = await requireUserWithBranch();
   if (!canMyCompanies(subjectOf(user))) return NextResponse.json({ error: "You don't have access to My Companies." }, { status: 403 });
   const companies = await prisma.supplier.findMany({
@@ -39,11 +39,16 @@ export async function GET() {
     sponsors.slice(0, 2).forEach((s, i) => { v[`sponsor${i + 1}`] = s.party.name; });
     ws.addRow(fields.map((f) => v[f.key] ?? ""));
   }
+  const stamp = new Date().toISOString().slice(0, 10);
+  if (new URL(request.url).searchParams.get("format") === "csv") {
+    const csv = Buffer.from(await wb.csv.writeBuffer());
+    return new NextResponse(new Uint8Array(csv), { headers: { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="my-companies-${stamp}.csv"` } });
+  }
   const buf = Buffer.from(await wb.xlsx.writeBuffer());
   return new NextResponse(new Uint8Array(buf), {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename="my-companies-${new Date().toISOString().slice(0, 10)}.xlsx"`,
+      "Content-Disposition": `attachment; filename="my-companies-${stamp}.xlsx"`,
     },
   });
 }

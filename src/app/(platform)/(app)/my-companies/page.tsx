@@ -12,8 +12,8 @@ import { duplicateGroups } from "@/lib/people";
 import { PARTY_ROLE_LABEL } from "@/lib/documentTypes";
 import { DuplicatePeople, type DupPerson } from "./duplicate-people";
 import { buildChecklist, resolveDocTypes, type ChecklistItem } from "@/lib/documentTypes";
-import { Download, Plus, Upload } from "lucide-react";
-import { ExportLink } from "@/components/ExportLink";
+import { Plus, Upload } from "lucide-react";
+import { ExportButton } from "@/components/ExportButton";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { CompanyTable, type CompanyRow, type DocSummary } from "./company-table";
@@ -120,9 +120,7 @@ export default async function MyCompaniesPage() {
         actions={
           <div className="flex flex-wrap items-center gap-2">
             {rows.length > 0 && (
-              <ExportLink className="btn btn-secondary btn-sm" href="/api/my-companies/export" title="An Excel file of your companies, owners and sponsors. The same layout can be imported back.">
-                <Download className="h-3.5 w-3.5" aria-hidden /> Export
-              </ExportLink>
+              <ExportButton url="/api/my-companies/export" />
             )}
             {canMyCompanies(subject, "create") && (
               <Link href="/import/new/companies" className="btn btn-secondary btn-sm"><Upload className="h-3.5 w-3.5" aria-hidden /> Import</Link>
