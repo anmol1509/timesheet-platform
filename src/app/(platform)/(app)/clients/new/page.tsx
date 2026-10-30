@@ -1,5 +1,6 @@
 "use client";
 
+import { keepInput } from "@/lib/vendor/keepInput";
 import { PhoneField } from "@/components/ui/PhoneField";
 import { useActionState, useState } from "react";
 import Link from "next/link";
@@ -31,7 +32,7 @@ export default function NewClientPage() {
       </div>
 
       <form
-        action={formAction}
+        onSubmit={keepInput(formAction)}
         className="card space-y-6 p-8"
       >
         {state.error && (
