@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { requireUserWithBranch, subjectOf } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { can } from "@/lib/permissions";
+import { isAdminRole } from "@/lib/roles";
 import { PageHeader } from "@/components/PageHeader";
 import { advanceRef, advanceState, planRows, readSchedule } from "@/lib/advances";
 import { LoansBoard, type LoanRow } from "./loans-board";
@@ -60,6 +61,7 @@ export default async function LoansPage() {
         canCreate={!!branchId && can(subject, "payroll.payroll", "create")}
         canEdit={can(subject, "payroll.payroll", "edit")}
         canApprove={can(subject, "payroll.payroll", "approve")}
+        canImport={!!branchId && isAdminRole(user.role) && can(subject, "payroll", "edit")}
       />
     </div>
   );

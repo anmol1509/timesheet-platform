@@ -38,6 +38,7 @@ const LISTS: Record<ImportKind, { href: string; label: string }> = {
   CAMPS: { href: "/accommodation/camps", label: "Go to camps" },
   VEHICLES: { href: "/transport", label: "Go to vehicles" },
   MOBILISATION: { href: "/demand/demobilisation", label: "Go to deployments" },
+  LOANS: { href: "/payroll/loans", label: "Go to loans & advances" },
 };
 
 function tilesFor(kind: ImportKind, c: Record<string, number>): TileSpec[] {
@@ -76,6 +77,14 @@ function tilesFor(kind: ImportKind, c: Record<string, number>): TileSpec[] {
       { label: "Not placed", value: c.notPlaced ?? 0, tone: (c.notPlaced ?? 0) > 0 ? "error" : "neutral", hint: "see the notes for why" },
       { label: "Need your choice", value: c.needDecision ?? 0, tone: (c.needDecision ?? 0) > 0 ? "info" : "neutral" },
       { label: "Camps updated", value: c.updated ?? 0, tone: "info" },
+      { label: "Failed", value: c.failed ?? 0, tone: (c.failed ?? 0) > 0 ? "error" : "neutral" },
+    ];
+  }
+  if (kind === "LOANS") {
+    return [
+      { label: "Loans recorded", value: c.created ?? 0, tone: "success", hint: "still being recovered" },
+      ...((c.cleared ?? 0) > 0 ? [{ label: "Already repaid", value: c.cleared, tone: "info" as const, hint: "recorded as cleared" }] : []),
+      { label: "Already on record", value: c.skipped ?? 0, tone: "neutral", hint: "skipped, not doubled" },
       { label: "Failed", value: c.failed ?? 0, tone: (c.failed ?? 0) > 0 ? "error" : "neutral" },
     ];
   }
@@ -557,7 +566,7 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
           {(status?.summary ?? summary) && (
             <ReportView tiles={tilesFor(kind, (status?.summary ?? summary)!.counts)} rows={(status?.summary ?? summary)!.rows} notes={(status?.summary ?? summary)!.notes} truncated={(status?.summary ?? summary)!.truncated} />
           )}
-          {status?.status === "DONE" && <ImportHeldNotice />}
+          {status?.status === "DONE" && kind !== "LOANS" && <ImportHeldNotice />}
           {status?.summary?.undo && (
             <p className="text-sm text-secondary">Undone: {status.summary.undo.removed} records removed, {status.summary.undo.restored} restored{status.summary.undo.kept ? `, ${status.summary.undo.kept} kept because other records use them` : ""}.</p>
           )}

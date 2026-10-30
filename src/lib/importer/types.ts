@@ -4,7 +4,7 @@ import type { Prisma, PrismaClient } from "@/generated/prisma/client";
  * real import run inside a transaction that is rolled back). */
 export type Db = PrismaClient | Prisma.TransactionClient;
 
-export type ImportKind = "SUPPLIERS" | "COMPANIES" | "CLIENTS" | "WORKERS" | "TIMESHEETS" | "CAMPS" | "VEHICLES" | "MOBILISATION";
+export type ImportKind = "SUPPLIERS" | "COMPANIES" | "CLIENTS" | "WORKERS" | "TIMESHEETS" | "CAMPS" | "VEHICLES" | "MOBILISATION" | "LOANS";
 
 export type FieldDef = {
   key: string;

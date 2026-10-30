@@ -134,6 +134,18 @@ const MOBILISATION: FieldDef[] = [
   { key: "mobile", label: "Mobile", aliases: ["mobile", "mobile number", "phone", "contact number"], hint: "Used when a new worker is created" },
 ];
 
+const LOANS: FieldDef[] = [
+  { key: "employeeCode", label: "Employee code", required: true, aliases: ["employee code", "emp code", "emp id", "employee id", "id no", "worker id", "staff id", "code", "company code"], hint: "Workers are matched by code, never by name" },
+  { key: "employee", label: "Worker name", aliases: ["worker", "worker name", "employee", "employee name", "name", "emp name"], hint: "Only used to double-check the code" },
+  { key: "type", label: "Type", aliases: ["type", "loan type", "advance or loan", "kind"], hint: "Loan or Advance (blank = Advance)" },
+  { key: "principal", label: "Amount borrowed", required: true, aliases: ["amount", "amount borrowed", "loan amount", "advance amount", "principal", "original amount", "total amount", "amount given"] },
+  { key: "repaid", label: "Already repaid", aliases: ["repaid", "already repaid", "paid back", "recovered", "recovered so far", "amount repaid", "paid"], hint: "Blank = nothing repaid yet" },
+  { key: "instalment", label: "Monthly deduction", aliases: ["monthly deduction", "instalment", "installment", "monthly instalment", "monthly installment", "deduction", "per month", "emi"], hint: "Needed while something is still owed" },
+  { key: "startMonth", label: "Deduct from", lenientDate: true, aliases: ["deduct from", "start month", "starting month", "deduction start", "first deduction", "start"], hint: "Like 03/2026 or Mar 2026" },
+  { key: "givenDate", label: "Handed over on", lenientDate: true, aliases: ["handed over", "handed over on", "given on", "date given", "given date", "date", "advance date", "loan date", "paid on"] },
+  { key: "reason", label: "Reason", aliases: ["reason", "purpose", "remarks", "notes", "comments"] },
+];
+
 const TIMESHEETS: FieldDef[] = [
   { key: "idNo", label: "Worker ID", required: true, aliases: ["id no", "i d no", "emp id", "employee id", "id"] },
   { key: "name", label: "Worker name", required: true, aliases: ["employee name", "worker name", "name"] },
@@ -155,6 +167,7 @@ export const TARGETS: Record<ImportKind, { label: string; noun: string; fields: 
   CAMPS: { label: "Camps", noun: "camp", fields: CAMPS },
   VEHICLES: { label: "Vehicles", noun: "vehicle", fields: VEHICLES },
   MOBILISATION: { label: "Mobilisation", noun: "worker", fields: MOBILISATION },
+  LOANS: { label: "Loans & advances", noun: "loan", fields: LOANS },
 };
 
 export function isImportKind(v: string): v is ImportKind {

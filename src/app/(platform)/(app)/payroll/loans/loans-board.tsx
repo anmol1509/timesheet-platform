@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useActionState, useState, useTransition } from "react";
-import { Check, FileText, Plus, X } from "lucide-react";
+import { Check, FileText, Plus, Upload, X } from "lucide-react";
+import { ExportButton } from "@/components/ExportButton";
 import { Dialog, DialogContent } from "@/components/ui/Dialog";
 import { Select } from "@/components/ui/Select";
 import { Badge, type BadgeColor } from "@/components/Badge";
@@ -173,7 +174,7 @@ function SetPlanForm({ row, onDone }: { row: LoanRow; onDone: () => void }) {
   );
 }
 
-export function LoansBoard({ rows, employees, canCreate, canEdit, canApprove }: { rows: LoanRow[]; employees: { id: string; label: string }[]; canCreate: boolean; canEdit: boolean; canApprove: boolean }) {
+export function LoansBoard({ rows, employees, canCreate, canEdit, canApprove, canImport }: { rows: LoanRow[]; employees: { id: string; label: string }[]; canCreate: boolean; canEdit: boolean; canApprove: boolean; canImport: boolean }) {
   const [open, setOpen] = useState(false);
   const [giving, setGiving] = useState<LoanRow | null>(null);
   const [planning, setPlanning] = useState<LoanRow | null>(null);
@@ -206,11 +207,15 @@ export function LoansBoard({ rows, employees, canCreate, canEdit, canApprove }: 
           {waiting > 0 && <> · <span className="font-medium text-[var(--warning)]">{waiting} awaiting approval</span></>}
           {toGive > 0 && <> · <span className="font-medium text-[var(--info)]">{toGive} approved, not yet given</span></>}.
         </p>
-        {canCreate && (
-          <button type="button" className="btn btn-primary gap-1.5" onClick={() => setOpen(true)}>
-            <Plus className="h-4 w-4" aria-hidden /> New advance / loan
-          </button>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {canImport && <Link href="/import/new/loans" className="btn btn-secondary btn-sm gap-1.5"><Upload className="h-3.5 w-3.5" aria-hidden /> Import opening balances</Link>}
+          <ExportButton url="/api/payroll/loans/export" />
+          {canCreate && (
+            <button type="button" className="btn btn-primary gap-1.5" onClick={() => setOpen(true)}>
+              <Plus className="h-4 w-4" aria-hidden /> New advance / loan
+            </button>
+          )}
+        </div>
       </div>
       {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
 
