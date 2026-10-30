@@ -988,3 +988,20 @@ html[data-app] input[type="radio"]:checked {
   font-size: 0.8125rem;
   line-height: 1.2rem;
 }
+
+/* ---------------------------------------------------------------------------
+   Error and not-found screens (components/ErrorScreen.tsx): a slow float on the badge and a pulse on the rings.
+--------------------------------------------------------------------------- */
+@keyframes err-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+@keyframes err-ring {
+  0% { transform: scale(0.82); opacity: 0.55; }
+  100% { transform: scale(1.35); opacity: 0; }
+}
+.err-float { animation: err-float 5s ease-in-out infinite; }
+.err-ring { animation: err-ring 3.2s ease-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .err-float, .err-ring { animation: none; }
+}
