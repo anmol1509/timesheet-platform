@@ -79,7 +79,7 @@ export default async function VehicleDetailPage({
   const canEdit = can(subjectOf(user), "facilities.transport", "edit");
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="form-comfy max-w-5xl space-y-6">
       <div>
         <Link href="/transport" className="text-sm text-muted hover:underline">
           ← Transport

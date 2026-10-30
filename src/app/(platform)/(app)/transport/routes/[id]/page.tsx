@@ -29,7 +29,7 @@ export default async function RouteDetailPage({ params }: { params: Promise<{ id
   if (!route || isOutsideBranch(route.vehicle?.branchId, branchId, isSuperAdmin)) notFound();
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="form-comfy max-w-5xl space-y-6">
       <div>
         <Link href="/transport/routes" className="text-sm text-muted hover:underline">
           ← Routes

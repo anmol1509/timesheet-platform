@@ -41,7 +41,7 @@ export function ClientCodeField({
 
   return (
     <div>
-      <div className="flex gap-2">
+      <div className="flex items-stretch gap-2">
         <input
           ref={ref}
           name="code"
@@ -50,7 +50,7 @@ export function ClientCodeField({
           placeholder="e.g. CEMA"
           className="input w-full uppercase"
         />
-        <Button variant="secondary" size="btn-sm" className="shrink-0" type="button" onClick={auto} disabled={pending} loading={pending}>
+        <Button variant="secondary" size="btn-sm" className="h-auto! shrink-0" type="button" onClick={auto} disabled={pending} loading={pending}>
           <Wand2 className="h-4 w-4" aria-hidden />
           Auto
         </Button>

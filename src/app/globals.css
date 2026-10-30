@@ -966,3 +966,25 @@ html[data-app] input[type="radio"]:checked {
 .rx-sheet-right[data-state="open"] { animation: sheet-right-in 380ms var(--ease-out); }
 .rx-sheet-right[data-state="closed"] { animation: sheet-right-out 240ms cubic-bezier(0.4, 0, 1, 1) forwards; }
 @media (prefers-reduced-motion: reduce) { .rx-sheet-right[data-state] { animation: none; } }
+
+/* Comfortable form pages: add the class to a page wrapper and every field, label and hint inside grows a little, so long
+   forms read at a glance instead of looking cramped. The fields use .input (inputs, selects and date pickers alike). */
+.form-comfy .input {
+  padding: 0.65rem 0.9rem;
+  font-size: 0.9375rem;
+  line-height: 1.4rem;
+}
+.form-comfy label .text-xs.font-medium {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+.form-comfy .field-label {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+.form-comfy .text-xs {
+  font-size: 0.8125rem;
+  line-height: 1.2rem;
+}

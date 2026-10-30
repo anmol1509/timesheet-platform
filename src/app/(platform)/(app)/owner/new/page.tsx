@@ -14,7 +14,7 @@ export default async function NewCustomerPage() {
   ]);
   const linkedIds = new Set(linked.map((l) => l.branchId));
   return (
-    <div className="space-y-6">
+    <div className="form-comfy space-y-6">
       <Link href="/owner" className="inline-flex items-center gap-1 text-sm text-muted hover:text-primary"><ArrowLeft className="h-4 w-4" aria-hidden />Customers</Link>
       <NewCustomerForm templates={branches} defaultTemplate={branches.find((b) => b.code === "MAIN")?.id ?? ""} />
       {branches.some((b) => !linkedIds.has(b.id)) && <RegisterExistingForm branches={branches.filter((b) => !linkedIds.has(b.id))} />}

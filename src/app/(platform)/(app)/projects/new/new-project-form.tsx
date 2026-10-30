@@ -18,19 +18,19 @@ export function NewProjectForm({
   });
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="form-comfy max-w-5xl space-y-6">
       <div>
         <Link href="/projects" className="text-sm text-muted hover:underline">
           ← Projects
         </Link>
-        <h1 className="text-xl tracking-tight text-primary mt-2 font-semibold">
+        <h1 className="mt-2 text-2xl font-semibold tracking-tight text-primary">
           Add Project
         </h1>
       </div>
 
       <form
         action={formAction}
-        className="card space-y-4 p-6"
+        className="card space-y-6 p-8"
       >
         {state.error && (
           <p className="rounded-lg bg-[var(--error-soft)] px-3 py-2 text-sm text-[var(--error)]">
@@ -58,11 +58,11 @@ export function NewProjectForm({
             <Field label="Description">
               <textarea
                 name="description"
-                rows={2}
+                rows={3}
                 className="input w-full"
               />
             </Field>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
               <Field required label="Client">
                 <Select
                   name="clientId"

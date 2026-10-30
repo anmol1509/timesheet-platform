@@ -69,7 +69,7 @@ export default async function CandidateDetailPage({ params }: { params: Promise<
   const attachmentsByStage = new Map([...STAGES, ...AFTER_ARRIVAL_STAGES].map((s) => [s.key, attachments.filter((a) => a.docType === s.key).map((a) => ({ id: a.id, filename: a.filename }))]));
 
   return (
-    <div className="w-full max-w-4xl min-w-0 space-y-6">
+    <div className="form-comfy w-full max-w-5xl min-w-0 space-y-6">
       <div>
         <Link href="/onboarding" className="inline-flex items-center gap-1 text-sm text-muted hover:underline">
           <ArrowLeft className="h-3.5 w-3.5" aria-hidden /> Candidate onboarding

@@ -23,7 +23,7 @@ export default async function BankDetailPage({ params }: { params: Promise<{ id:
   const color = { ACTIVE: "green", INCOMPLETE: "amber", DISABLED: "slate" }[st.state] as "green" | "amber" | "slate";
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="form-comfy max-w-5xl space-y-6">
       <div>
         <Link href="/banks" className="text-sm text-muted hover:underline">← Banks</Link>
         <div className="mt-2 flex flex-wrap items-center justify-between gap-3">

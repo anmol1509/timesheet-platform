@@ -43,7 +43,7 @@ export default async function AddEmployeePage({ params }: { params: Promise<{ id
   }
 
   return (
-    <div className="max-w-4xl space-y-5">
+    <div className="form-comfy max-w-5xl space-y-6">
       <div>
         <Link href={`/onboarding/${id}`} className="inline-flex items-center gap-1 text-sm text-muted hover:underline">
           <ArrowLeft className="h-3.5 w-3.5" aria-hidden /> {candidate.candidateName}

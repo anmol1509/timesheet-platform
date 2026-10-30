@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { EmployeeFilters } from "./employee-filters";
 import { AlertTriangle, BadgeCheck, Check, CircleX, Pencil, UserPlus, Users, X } from "lucide-react";
 import { Badge } from "@/components/Badge";
 import { EmployeeAvatar } from "@/components/Avatar";
@@ -34,6 +35,7 @@ type EmployeeRow = {
   nationality: string | null;
   companyDisplayName: string | null;
   companyCode: string | null;
+  sponsorName: string | null;
   /** When the worker was added (ISO), for sorting by recency. */
   addedOn: string;
   isOwnCompanySupplier: boolean;
@@ -145,8 +147,13 @@ export function EmployeeList({
   registeredId,
   canViewPay = false,
   canEditPay = false,
+  filterOptions,
+  currentFilters,
 }: {
   employees: EmployeeRow[];
+  /** The suppliers, sponsors, trades and nationalities to choose from, with how many workers each has. */
+  filterOptions?: Record<"suppliers" | "sponsors" | "trades" | "nationalities", { value: string; label: string; count: number }[]>;
+  currentFilters?: { supplier: string; sponsor: string; trade: string; nationality: string };
   initialFilter?: string;
   /** Opens the quick view on load (from a link such as a notification): which person, and optionally the tab and the document to renew. */
   initialOpen?: { id: string; tab?: string; renew?: string };
@@ -156,6 +163,20 @@ export function EmployeeList({
   registeredId?: string;
 }) {
   const router = useRouter();
+  const search = useSearchParams();
+  /** Sets one filter in the address (keeping the others) and reloads the list for it. */
+  function setFilterParam(key: "supplier" | "sponsor" | "trade" | "nationality", value: string) {
+    const params = new URLSearchParams(search.toString());
+    for (const k of ["open", "tab", "renew", "registered"]) params.delete(k);
+    if (key === "sponsor") { params.delete("sponsor"); params.delete("sponsorName"); }
+    else params.delete(key);
+    if (value) {
+      if (key === "sponsor") params.set(value.startsWith("s:") ? "sponsor" : "sponsorName", value.slice(2));
+      else params.set(key, value);
+    }
+    const q = params.toString();
+    router.replace(q ? `/employees?${q}` : "/employees", { scroll: false });
+  }
   // The quick view steps through the rows as they were filtered and sorted when it opened.
   const [drawer, setDrawer] = useState<{ id: string; order: string[] } | null>(() =>
     initialOpen && employees.some((e) => e.id === initialOpen.id) ? { id: initialOpen.id, order: employees.map((e) => e.id) } : null
@@ -322,6 +343,13 @@ export function EmployeeList({
       sortValue: (e) => e.companyDisplayName,
       csvValue: (e) => e.companyDisplayName,
       render: (e) => e.companyDisplayName || <span className="text-subtle">—</span>,
+    },
+    {
+      key: "sponsor",
+      header: "Sponsor",
+      sortValue: (e) => e.sponsorName,
+      csvValue: (e) => e.sponsorName,
+      render: (e) => e.sponsorName || <span className="text-subtle">—</span>,
     },
     {
       key: "companyCode",
@@ -587,6 +615,7 @@ export function EmployeeList({
               { value: "our-workers", label: "Our Employees" },
             ]}
           />
+          {filterOptions && currentFilters && <EmployeeFilters options={filterOptions} values={currentFilters} onChange={setFilterParam} />}
           {activeChip && (
             <span className="inline-flex items-center gap-1 rounded-control bg-brand-soft py-1 pr-1 pl-2.5 text-xs font-medium text-[var(--brand-primary)]">
               {activeChip}

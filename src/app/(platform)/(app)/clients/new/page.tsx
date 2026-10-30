@@ -17,12 +17,12 @@ export default function NewClientPage() {
   const [billingType, setBillingType] = useState("");
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="form-comfy max-w-5xl space-y-6">
       <div>
         <Link href="/clients" className="text-sm text-muted hover:underline">
           ← Clients
         </Link>
-        <h1 className="text-xl tracking-tight text-primary mt-2 font-semibold">
+        <h1 className="mt-2 text-2xl font-semibold tracking-tight text-primary">
           Add Client
         </h1>
         <p className="mt-1 text-sm text-muted">
@@ -32,7 +32,7 @@ export default function NewClientPage() {
 
       <form
         action={formAction}
-        className="card space-y-4 p-6"
+        className="card space-y-6 p-8"
       >
         {state.error && (
           <p className="rounded-lg bg-[var(--error-soft)] px-3 py-2 text-sm text-[var(--error)]">
@@ -40,20 +40,21 @@ export default function NewClientPage() {
           </p>
         )}
 
-        <Field required label="Company name">
-          <input
-            name="name"
-            required
-            className="input w-full"
-          />
-        </Field>
-
-        <div>
-          <span className="mb-1 block text-xs font-medium text-muted">Client code</span>
-          <ClientCodeField />
+        <div className="grid grid-cols-1 items-start gap-x-6 gap-y-5 md:grid-cols-[minmax(0,1fr)_22rem]">
+          <Field required label="Company name">
+            <input
+              name="name"
+              required
+              className="input w-full"
+            />
+          </Field>
+          <div>
+            <span className="mb-1 block text-xs font-medium text-muted">Client code</span>
+            <ClientCodeField />
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
           <Field label="Contact person">
             <input
               name="contactPerson"

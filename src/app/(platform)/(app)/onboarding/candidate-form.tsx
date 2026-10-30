@@ -103,11 +103,11 @@ export function CandidateForm({
   );
 
   return (
-    <form action={action} className="card w-full max-w-3xl min-w-0 space-y-6 p-5">
+    <form action={action} className="card w-full max-w-6xl min-w-0 space-y-8 p-8">
       <fieldset disabled={readOnly} className="min-w-0 space-y-6 border-0 p-0">
       <section>
         <SectionHead icon={UserRound} title="Profile" />
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 xl:grid-cols-3">
           <label className="block sm:col-span-2">
             <span className={label}>Type of hire</span>
             <Select name="candidateType" defaultValue={candidate?.candidateType ?? "OVERSEAS"} searchable={false} options={CANDIDATE_TYPES.map((t) => ({ value: t.value, label: `${t.label}: ${t.hint}` }))} />
@@ -149,7 +149,7 @@ export function CandidateForm({
 
       <section>
         <SectionHead icon={IdCard} title="Identity documents" hint="the passport number is needed before this candidate can be added as an employee; the Emirates ID can come later" />
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 xl:grid-cols-3">
           <label className="block">
             <span className={label}>Passport number</span>
             <input name="passportNumber" defaultValue={candidate?.passportNumber ?? ""} className="input w-full" />
@@ -163,7 +163,7 @@ export function CandidateForm({
 
       <section>
         <SectionHead icon={Building2} title="Assignment" />
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 xl:grid-cols-3">
           <label className="block">
             <span className={label}>Agency</span>
             <AgencyPicker

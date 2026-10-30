@@ -51,7 +51,7 @@ export default async function NewNocPage({
   });
 
   return (
-    <div className="max-w-6xl space-y-6">
+    <div className="form-comfy max-w-6xl space-y-6">
       <PageHeader
         title="New NOC"
         icon={FilePlus2}

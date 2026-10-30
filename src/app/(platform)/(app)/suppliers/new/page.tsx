@@ -8,7 +8,7 @@ export const metadata = { title: "Add supplier" };
 export default async function AddSupplierPage() {
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   return (
-    <div className="mx-auto max-w-3xl space-y-5">
+    <div className="form-comfy mx-auto max-w-5xl space-y-6">
       <PageHeader
         title="Add supplier"
         description="Upload the supplier's trade licence and other documents and the details are read out of them for you to review."

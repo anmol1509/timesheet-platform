@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { nextCode } from "@/lib/nextCode";
 import { requireUserWithBranch, requirePermission, requireWrite } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { QUOTATION_TRANSITIONS } from "@/lib/salesPipeline";
@@ -29,8 +30,7 @@ async function assertQuotationInBranch(id: string, branchId: string | null, isSu
 }
 
 async function nextQuotationNumber() {
-  const count = await prisma.quotation.count();
-  return `QTN-${String(count + 1).padStart(6, "0")}`;
+  return nextCode("QTN-", 6, (await prisma.quotation.findMany({ where: { quotationNumber: { startsWith: "QTN-" } }, select: { quotationNumber: true } })).map((q) => q.quotationNumber));
 }
 
 type LineInput = {
@@ -361,8 +361,7 @@ export async function convertQuotationToProjectAction(formData: FormData) {
   });
   if (!quotation || quotation.status !== "ACCEPTED") return;
 
-  const projectCount = await prisma.project.count();
-  const projectCode = `PRJ${String(projectCount + 1).padStart(3, "0")}`;
+  const projectCode = nextCode("PRJ", 3, (await prisma.project.findMany({ select: { code: true } })).map((p) => p.code));
 
   const result = await prisma.$transaction(async (tx) => {
     const project = await tx.project.create({
@@ -377,10 +376,10 @@ export async function convertQuotationToProjectAction(formData: FormData) {
 
     if (createLpos) {
       for (const line of quotation.lines) {
-        const lpoCount = await tx.lpo.count();
+        const lpoNumber = nextCode("LPO-", 6, (await tx.lpo.findMany({ where: { lpoNumber: { startsWith: "LPO-" } }, select: { lpoNumber: true } })).map((l) => l.lpoNumber));
         await tx.lpo.create({
           data: {
-            lpoNumber: `LPO-${String(lpoCount + 1).padStart(6, "0")}`,
+            lpoNumber,
             projectId: project.id,
             clientId: quotation.clientId,
             branchId: branchId!,

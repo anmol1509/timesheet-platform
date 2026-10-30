@@ -14,7 +14,7 @@ export default async function NewImportPage({ params }: { params: Promise<{ kind
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   if (!isAdminRole(user.role)) redirect("/no-access");
   return (
-    <div className="max-w-4xl space-y-6">
+    <div className="form-comfy max-w-5xl space-y-6">
       <PageHeader
         title={`Import ${TARGETS[kind].label.toLowerCase()}`}
         breadcrumbs={[{ label: "Import data", href: "/import" }, { label: TARGETS[kind].label }]}
