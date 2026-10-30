@@ -2,13 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { can, canMyCompanies, canViewSensitive } from "@/lib/permissions";
+import { can, canMyCompanies } from "@/lib/permissions";
 import { requireUserWithBranch, subjectOf } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { PARTY_ROLES } from "@/lib/documentTypes";
 import { OWNER_ROLE, isValidShare, ownershipProblem, ownershipSummary } from "@/lib/ownership";
-import { deleteOrphanParties } from "@/lib/partyLinks";
 import { contactsError } from "@/lib/validators";
 
 const NON_OWNER_ROLES = new Set<string>(PARTY_ROLES.filter((r) => r.value !== OWNER_ROLE).map((r) => r.value));
@@ -41,8 +40,7 @@ const personData = (p: NewPersonInput, branchId: string) => ({ name: clean(p.nam
 /**
  * Saves a company's owners and their shares in one go, so the shares can be checked together: every owner needs a share,
  * and they must add up to exactly 100. Existing rows (linkId) keep their person, new rows pick an existing person
- * (partyId) or describe a new one. Owners left out are removed from this company; a person left with no company goes
- * entirely, with their documents.
+ * (partyId) or describe a new one. Owners left out are removed from this company only; the person stays on the Owners & sponsors list.
  */
 export async function saveOwnersAction(input: { supplierId: string; owners: OwnerRowInput[] }): Promise<{ error?: string }> {
   const g = await guard(String(input?.supplierId || ""));
@@ -68,13 +66,6 @@ export async function saveOwnersAction(input: { supplierId: string; owners: Owne
   const finalParty = [...rows.filter((r) => r.linkId).map((r) => currentById.get(r.linkId!)!.partyId), ...existingIds];
   if (new Set(finalParty).size !== finalParty.length) return { error: "The same person is listed as an owner twice." };
 
-  // Taking someone off their only company deletes them and their documents, which only people who may open those can do.
-  if (removed.length && !canViewSensitive(g.subject)) {
-    const stillLinked = await prisma.supplierPartyLink.findMany({ where: { partyId: { in: removed.map((l) => l.partyId) }, id: { notIn: removed.map((l) => l.id) } }, select: { partyId: true } });
-    const keepers = new Set([...stillLinked.map((l) => l.partyId), ...existingIds]);
-    if (removed.some((l) => !keepers.has(l.partyId))) return { error: "Removing this owner would delete their documents, which needs the Sensitive documents permission." };
-  }
-
   await prisma.$transaction(async (tx) => {
     for (const r of rows) {
       if (r.linkId) { await tx.supplierPartyLink.update({ where: { id: r.linkId }, data: { ownershipPercent: r.percent } }); continue; }
@@ -82,7 +73,6 @@ export async function saveOwnersAction(input: { supplierId: string; owners: Owne
       await tx.supplierPartyLink.create({ data: { supplierId: g.supplier.id, partyId, role: OWNER_ROLE, ownershipPercent: r.percent, branchId: g.branchId } });
     }
     if (removed.length) await tx.supplierPartyLink.deleteMany({ where: { id: { in: removed.map((l) => l.id) } } });
-    await deleteOrphanParties(tx, g.branchId);
   });
   await logAudit({ entityType: "SUPPLIER", entityId: g.supplier.id, action: "UPDATE", before: { owners: current.length }, after: { owners: rows.length, ownership: `${summary.total}%` }, userId: g.ctx.user.id, userName: g.ctx.user.name, branchId: g.branchId });
   revalidatePath(`/suppliers/${g.supplier.id}`);
@@ -113,19 +103,14 @@ export async function addPartyLinkAction(input: { supplierId: string; role: stri
   return {};
 }
 
-/** Takes a sponsor, partner or manager off this company. If it was the person's only company they are deleted with their documents. */
+/** Takes a sponsor, partner or manager off this company. The person stays on the Owners & sponsors list, even with no company left. */
 export async function removePartyLinkAction(formData: FormData): Promise<void> {
   const linkId = String(formData.get("linkId") || "");
   const link = await prisma.supplierPartyLink.findUnique({ where: { id: linkId }, select: { id: true, role: true, partyId: true, supplierId: true, party: { select: { name: true } } } });
   if (!link || link.role === OWNER_ROLE) return; // owners are changed together, so their shares keep adding up to 100
   const g = await guard(link.supplierId);
   if ("error" in g) return;
-  const others = await prisma.supplierPartyLink.count({ where: { partyId: link.partyId, id: { not: link.id } } });
-  if (others === 0 && !canViewSensitive(g.subject)) return; // would delete their documents
-  await prisma.$transaction(async (tx) => {
-    await tx.supplierPartyLink.delete({ where: { id: link.id } });
-    await deleteOrphanParties(tx, g.branchId);
-  });
+  await prisma.supplierPartyLink.delete({ where: { id: link.id } });
   await logAudit({ entityType: "SUPPLIER_PARTY", entityId: link.partyId, action: "DELETE", before: { company: g.supplier.name, role: link.role, person: link.party.name }, userId: g.ctx.user.id, userName: g.ctx.user.name, branchId: g.branchId });
   revalidatePath(`/suppliers/${link.supplierId}`);
   revalidatePath("/my-companies");

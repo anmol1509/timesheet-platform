@@ -15,7 +15,7 @@ import { removePartyLinkAction } from "./party-actions";
 /** "Khalid Al Mansoori — Owner of Al Noor, Sponsor of Gulf Skills": enough to tell two people with the same name apart. */
 export function personLabel(name: string, links: { role: string; supplier: { name: string } }[]) {
   const where = links.slice(0, 2).map((l) => `${PARTY_ROLE_LABEL[l.role] ?? l.role} of ${l.supplier.name}`).join(", ");
-  return where ? `${name}: ${where}${links.length > 2 ? ` +${links.length - 2}` : ""}` : name;
+  return where ? `${name}: ${where}${links.length > 2 ? ` +${links.length - 2}` : ""}` : `${name} (no company yet)`;
 }
 
 /**
@@ -85,7 +85,7 @@ export async function SupplierPartiesSection({ supplierId, branchId, types, canE
                         <DeleteButton
                           action={removePartyLinkAction}
                           hiddenFields={{ linkId: l.id }}
-                          confirmMessage={otherCompanies === 0 && here.length === 1 ? `Remove ${p.name}? This is their only company, so their details and documents are deleted too.` : `Remove ${p.name} as ${PARTY_ROLE_LABEL[l.role]?.toLowerCase() ?? l.role} of this company? They stay linked to ${otherCompanies > 0 ? "their other companies" : "this company"}.`}
+                          confirmMessage={`Remove ${p.name} as ${PARTY_ROLE_LABEL[l.role]?.toLowerCase() ?? l.role} of this company? ${p.name} stays on the Owners & sponsors list${otherCompanies === 0 && here.length === 1 ? ", with no company" : ""}, and their documents are kept.`}
                           className="rounded-md border border-[var(--error-border)] px-1.5 py-0.5 text-[11px] font-medium text-[var(--error)] hover:bg-[var(--error-soft)]"
                         />
                       )}

@@ -5,6 +5,8 @@ import { EmptyState } from "@/components/EmptyState";
 import { StatTile } from "@/components/StatTile";
 import { requireUserWithBranch, subjectOf } from "@/lib/auth";
 import { canMyCompanies } from "@/lib/permissions";
+import Link from "next/link";
+import { Plus } from "lucide-react";
 import { loadPeopleRegister } from "@/lib/peopleRegister";
 import { hasFlag, type PersonFlag } from "@/lib/peopleFlags";
 import { Download } from "lucide-react";
@@ -16,6 +18,7 @@ export const metadata = { title: "Owners & sponsors" };
 export default async function PeopleRegisterPage() {
   const { user, branchId } = await requireUserWithBranch();
   if (!canMyCompanies(subjectOf(user))) redirect("/no-access");
+  const canEdit = canMyCompanies(subjectOf(user), "edit");
 
   const rows = await loadPeopleRegister(branchId);
 
@@ -29,11 +32,14 @@ export default async function PeopleRegisterPage() {
         icon={UsersRound}
         meta={<CountPill>{rows.length}</CountPill>}
         actions={
-          rows.length > 0 ? (
-            <ExportLink className="btn btn-secondary btn-sm" href="/api/my-companies/people/export" title="An Excel file with one row per person, and a second sheet with one row per company link.">
-              <Download className="h-3.5 w-3.5" aria-hidden /> Export
-            </ExportLink>
-          ) : undefined
+          <div className="flex flex-wrap items-center gap-2">
+            {rows.length > 0 && (
+              <ExportLink className="btn btn-secondary btn-sm" href="/api/my-companies/people/export" title="An Excel file with one row per person, and a second sheet with one row per company link.">
+                <Download className="h-3.5 w-3.5" aria-hidden /> Export
+              </ExportLink>
+            )}
+            {canEdit && <Link href="/my-companies/people/new" className="btn btn-primary btn-sm"><Plus className="h-3.5 w-3.5" aria-hidden /> Add owner or sponsor</Link>}
+          </div>
         }
         description="Everyone who owns, sponsors, partners or manages one of your companies, once each, with how many companies they are linked to and whether their documents are on file and in date."
       />
@@ -46,9 +52,9 @@ export default async function PeopleRegisterPage() {
         </div>
       )}
       {rows.length === 0 ? (
-        <EmptyState icon={UsersRound} title="No owners or sponsors yet" description="Add an owner or sponsor from a company's page under My Companies, and they will appear here." />
+        <EmptyState icon={UsersRound} title="No owners or sponsors yet" description="Add the people who own or sponsor your companies here once, then pick them when you add a company." />
       ) : (
-        <PeopleList rows={rows} />
+        <PeopleList rows={rows} canEdit={canEdit} />
       )}
     </div>
   );

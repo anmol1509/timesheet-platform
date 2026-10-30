@@ -8,7 +8,6 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch, requirePermission, requireView, requireWrite, subjectOf } from "@/lib/auth";
 import { canMyCompanies } from "@/lib/permissions";
-import { deleteOrphanParties } from "@/lib/partyLinks";
 import { branchWhere, isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
@@ -464,11 +463,8 @@ export async function deleteSupplierAction(formData: FormData) {
     where: { supplierId: id },
     data: { supplierId: null },
   });
-  // The company's owners and sponsors leave with it, unless another company still uses the person.
-  await prisma.$transaction(async (tx) => {
-    await tx.supplier.delete({ where: { id } });
-    await deleteOrphanParties(tx, target.branchId);
-  });
+  // The company's owner and sponsor links go with it; the people stay on the Owners & sponsors list, ready to assign elsewhere.
+  await prisma.supplier.delete({ where: { id } });
 
   await logAudit({
     entityType: "SUPPLIER",

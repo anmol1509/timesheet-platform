@@ -2,7 +2,10 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Badge, type BadgeColor } from "@/components/Badge";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { deletePersonAction } from "../people-actions";
 import { PARTY_ROLE_LABEL } from "@/lib/documentTypes";
 import { hasFlag, type PersonFlag, type PersonRow } from "@/lib/peopleFlags";
 
@@ -31,7 +34,8 @@ function badges(r: PersonRow): { color: BadgeColor; label: string }[] {
   return out;
 }
 
-export function PeopleList({ rows }: { rows: PersonRow[] }) {
+export function PeopleList({ rows, canEdit }: { rows: PersonRow[]; canEdit: boolean }) {
+  const router = useRouter();
   const [filter, setFilter] = useState<"all" | PersonFlag>("all");
   const [role, setRole] = useState("ALL");
   const [q, setQ] = useState("");
@@ -115,11 +119,21 @@ export function PeopleList({ rows }: { rows: PersonRow[] }) {
                         {badges(r).map((b) => <Badge key={b.label} color={b.color}>{b.label}</Badge>)}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-right">
-                      {home ? (
-                        <Link href={home} className="text-xs font-medium whitespace-nowrap text-[var(--brand-primary)] hover:underline">Open documents</Link>
-                      ) : (
-                        <span className="text-xs text-muted">Add to a company first</span>
+                    <td className="px-4 py-3 text-right whitespace-nowrap">
+                      {home && <Link href={home} className="text-xs font-medium text-[var(--brand-primary)] hover:underline">Open documents</Link>}
+                      {canEdit && (
+                        <Link href={`/my-companies/people/new?person=${r.id}`} className={`text-xs font-medium text-[var(--brand-primary)] hover:underline ${home ? "ml-3" : ""}`}>
+                          {r.companies.length === 0 ? "Assign" : "Add company"}
+                        </Link>
+                      )}
+                      {canEdit && r.companies.length === 0 && (
+                        <ConfirmDialog
+                          title={`Delete ${r.name}?`}
+                          description={`${r.name} is on the list but has no company. Deleting them also deletes their ${r.docs} document${r.docs === 1 ? "" : "s"}, and this can't be undone here.`}
+                          confirmLabel="Delete person"
+                          onConfirm={async () => { const res = await deletePersonAction(r.id); if (!res.error) router.refresh(); return res; }}
+                          trigger={(open) => <button type="button" onClick={open} className="ml-3 text-xs font-medium text-[var(--error)] hover:underline">Delete</button>}
+                        />
                       )}
                     </td>
                   </tr>
