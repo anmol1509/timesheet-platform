@@ -1,4 +1,5 @@
-import { FileSearch } from "lucide-react";
+import Link from "next/link";
+import { FileSearch, FileText, MessageCircle, Phone } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { prisma } from "@/lib/db";
 import { getCurrentUser, requireUserWithBranch } from "@/lib/auth";
@@ -6,6 +7,7 @@ import { InstantPrintSheet } from "./print-sheet";
 import { branchWhere, isOutsideBranch } from "@/lib/branch";
 import { InstantViewPicker } from "./picker";
 import { Badge } from "@/components/Badge";
+import { CopyButton } from "@/components/ui/CopyButton";
 import {
   COMPLIANCE_FIELDS,
   complianceStatus,
@@ -14,6 +16,23 @@ import {
 } from "@/lib/compliance";
 
 export const metadata = { title: "Instant view" };
+
+/** Compliance field to the document type that proves it, so each expiry can link to its scan. */
+const DOC_TYPE_FOR_FIELD: Record<string, string> = {
+  visaExpiry: "VISA",
+  laborCardExpiry: "LABOR_CARD",
+  medicalExpiry: "MEDICAL",
+  passportExpiry: "PASSPORT",
+  emiratesIdExpiry: "EMIRATES_ID",
+  cicpaExpiry: "CICPA",
+  insuranceExpiry: "INSURANCE",
+  drivingLicenceExpiry: "DRIVING_LICENCE",
+};
+
+/** Digits only, for tel: and WhatsApp links. */
+function dialable(phone: string): string {
+  return phone.replace(/[^\d+]/g, "");
+}
 
 const STATUS_COLOR: Record<ComplianceStatus, "green" | "amber" | "red" | "slate"> = {
   valid: "green",
@@ -70,7 +89,14 @@ export default async function InstantViewPage({
         include: {
           supplier: true,
           project: true,
+          site: { select: { name: true } },
           branch: true,
+          // Only ids and names: the scan itself is fetched when someone clicks View.
+          documents: {
+            where: { noteId: null },
+            orderBy: { uploadedAt: "desc" },
+            select: { id: true, type: true, filename: true },
+          },
           assignmentHistory: { orderBy: { mobilizedDate: "desc" } },
           accommodationHistory: { orderBy: { checkInDate: "desc" } },
           inventoryAssignments: {
@@ -94,6 +120,37 @@ export default async function InstantViewPage({
   const printedBy = (await getCurrentUser())?.name ?? "";
   const printedAt = new Date().toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 
+  const docFor = (fieldKey: string) =>
+    validEmployee?.documents.find((d) => d.type === DOC_TYPE_FOR_FIELD[fieldKey]) ?? null;
+  const problems = validEmployee
+    ? COMPLIANCE_FIELDS.flatMap((f) => {
+        const value = validEmployee[f.key as keyof typeof validEmployee] as Date | null;
+        const days = value ? daysUntil(value) : null;
+        return days !== null && days <= 90 ? [{ label: f.label, days }] : [];
+      })
+    : [];
+  const expired = problems.filter((p) => p.days < 0);
+  const arrivalRecorded = validEmployee?.siteArrivalDate != null;
+  const summary = validEmployee
+    ? [
+        `${validEmployee.name} (${validEmployee.employeeIdNo})`,
+        [validEmployee.trade, validEmployee.supplier?.name].filter(Boolean).join(" · "),
+        `Status: ${validEmployee.active ? "Active" : "Inactive"}, ${validEmployee.project?.name ? `on ${validEmployee.project.name}` : "on bench"}`,
+        ...COMPLIANCE_FIELDS.flatMap((f) => {
+          const value = validEmployee[f.key as keyof typeof validEmployee] as Date | null;
+          if (!value) return [];
+          const days = daysUntil(value);
+          return [`${f.label}: ${formatDate(value)}${days !== null && days < 0 ? " (expired)" : ""}`];
+        }),
+        validEmployee.accommodationHistory[0] && !validEmployee.accommodationHistory[0].checkOutDate
+          ? `Camp: ${validEmployee.accommodationHistory[0].campName ?? ""}${validEmployee.accommodationHistory[0].roomName ? `, ${validEmployee.accommodationHistory[0].roomName}` : ""}${validEmployee.accommodationHistory[0].bedLabel ? `, ${validEmployee.accommodationHistory[0].bedLabel}` : ""}`
+          : "",
+        validEmployee.mobileNumber ? `Mobile: ${validEmployee.mobileNumber}` : "",
+      ]
+        .filter(Boolean)
+        .join("\n")
+    : "";
+
   return (
     <div className="space-y-5">
       {/* A page of its own for paper: the sheet below replaces the screen layout, and the browser's date/URL margins are dropped. */}
@@ -109,18 +166,20 @@ export default async function InstantViewPage({
 
       {validEmployee && (
         <div className="card space-y-6 p-6 print:hidden">
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-start gap-5">
             {/* A snapshot used to identify someone at a gate needs the face. */}
-            <span className="h-20 w-20 shrink-0 overflow-hidden rounded-full border border-default bg-surface-sunken">
+            <span className="block h-40 w-[8.25rem] shrink-0 overflow-hidden rounded-2xl border border-default bg-surface-sunken">
               {validEmployee.photoData ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={`/api/employees/${validEmployee.id}/photo`}
-                  alt=""
-                  className="h-full w-full object-cover"
-                />
+                <a href={`/api/employees/${validEmployee.id}/photo`} target="_blank" rel="noreferrer" title="Open photo full size" className="block h-full w-full">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={`/api/employees/${validEmployee.id}/photo`}
+                    alt={`Photo of ${validEmployee.name}`}
+                    className="h-full w-full object-cover"
+                  />
+                </a>
               ) : (
-                <span className="flex h-full w-full items-center justify-center text-lg font-semibold text-subtle">
+                <span className="flex h-full w-full items-center justify-center text-3xl font-semibold text-subtle">
                   {validEmployee.name
                     .split(/\s+/)
                     .slice(0, 2)
@@ -130,8 +189,8 @@ export default async function InstantViewPage({
                 </span>
               )}
             </span>
-            <div className="min-w-0">
-              <h2 className="flex flex-wrap items-center gap-2 text-lg font-semibold text-primary">
+            <div className="min-w-0 flex-1 space-y-1.5 pt-1">
+              <h2 className="flex flex-wrap items-center gap-2 text-2xl font-semibold text-primary">
                 {validEmployee.name}
                 <Badge color={validEmployee.supplierId ? "amber" : validEmployee.category === "STAFF" ? "blue" : "green"}>{rosterLabel(validEmployee)}</Badge>
               </h2>
@@ -140,7 +199,38 @@ export default async function InstantViewPage({
                 {validEmployee.trade ? ` · ${validEmployee.trade}` : ""}
                 {validEmployee.supplier?.name ? ` · ${validEmployee.supplier.name}` : ""}
               </p>
+              <p className="text-sm text-muted">
+                {[validEmployee.nationality, validEmployee.branch?.name].filter(Boolean).join(" · ")}
+              </p>
             </div>
+            <div className="flex flex-wrap gap-2 print:hidden">
+              <CopyButton text={summary} label="Copy summary" />
+              <Link href={`/employees/${validEmployee.id}`} className="btn btn-secondary btn-sm">
+                Open full profile
+              </Link>
+            </div>
+          </div>
+
+          {/* One line that answers "is this worker fine?" before any row is read. */}
+          <div className="flex flex-wrap items-center gap-2 rounded-lg bg-surface-sunken px-3.5 py-3">
+            <Badge color={validEmployee.active ? "green" : "slate"}>{validEmployee.active ? "Active" : "Inactive"}</Badge>
+            <Badge color={validEmployee.project ? "blue" : "slate"}>{validEmployee.project ? `Deployed · ${validEmployee.project.name}` : "Not deployed · on bench"}</Badge>
+            {problems.length > 0 ? (
+              <Badge color={expired.length > 0 ? "red" : "amber"}>
+                {problems.length} document{problems.length === 1 ? "" : "s"} need{problems.length === 1 ? "s" : ""} action
+              </Badge>
+            ) : (
+              <Badge color="green">Documents in order</Badge>
+            )}
+            {!arrivalRecorded && validEmployee.active && <Badge color="amber">Arrival not recorded</Badge>}
+            {problems.length > 0 && (
+              <span className={`ml-auto text-xs font-medium ${expired.length > 0 ? "text-[var(--error)]" : "text-[var(--warning)]"}`}>
+                {problems
+                  .slice(0, 3)
+                  .map((p) => (p.days < 0 ? `${p.label} overdue by ${Math.abs(p.days)} days` : `${p.label} expires in ${p.days} days`))
+                  .join(" · ")}
+              </span>
+            )}
           </div>
 
           <div>
@@ -160,6 +250,17 @@ export default async function InstantViewPage({
                     <span className="text-muted">{field.label}</span>
                     <span className="flex items-center gap-2">
                       <span className="tabular text-primary">{formatDate(value)}</span>
+                      {docFor(field.key) && (
+                        <a
+                          href={`/api/documents/${docFor(field.key)!.id}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 text-xs text-[var(--brand-primary)] hover:underline"
+                        >
+                          <FileText className="h-3 w-3" aria-hidden />
+                          View
+                        </a>
+                      )}
                       {value && (
                         <Badge color={STATUS_COLOR[status]}>
                           {days === null
@@ -179,6 +280,58 @@ export default async function InstantViewPage({
             </div>
           </div>
 
+          <div>
+            <h3 className="mb-2 text-sm font-semibold text-primary">Arrival &amp; mobilisation</h3>
+            <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+              <div className="rounded-lg bg-surface-sunken p-3">
+                <span className="block text-xs text-muted">Joined</span>
+                <span className="font-medium text-primary">{formatDate(validEmployee.joinDate)}</span>
+              </div>
+              <div className="rounded-lg bg-surface-sunken p-3">
+                <span className="block text-xs text-muted">Arrived on site</span>
+                <span className={`font-medium ${arrivalRecorded ? "text-primary" : "text-[var(--warning)]"}`}>
+                  {arrivalRecorded ? formatDate(validEmployee.siteArrivalDate) : "Not recorded"}
+                </span>
+              </div>
+              <div className="rounded-lg bg-surface-sunken p-3">
+                <span className="block text-xs text-muted">Current site</span>
+                <span className="font-medium text-primary">{validEmployee.site?.name || "—"}</span>
+              </div>
+              <div className="rounded-lg bg-surface-sunken p-3">
+                <span className="block text-xs text-muted">Last mobilised</span>
+                <span className="font-medium text-primary">
+                  {validEmployee.assignmentHistory[0] ? formatDate(validEmployee.assignmentHistory[0].mobilizedDate) : "Never"}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
+            {[
+              { label: "Mobile", name: null, phone: validEmployee.mobileNumber },
+              { label: "Emergency contact", name: validEmployee.emergencyContactName, phone: validEmployee.emergencyContactPhone },
+            ].map((c) => (
+              <div key={c.label}>
+                <span className="block text-xs font-medium text-muted">{c.label}</span>
+                <span className="flex flex-wrap items-center gap-2">
+                  {[c.name, c.phone].filter(Boolean).join(" · ") || "—"}
+                  {c.phone && (
+                    <span className="flex gap-1.5 print:hidden">
+                      <a href={`tel:${dialable(c.phone)}`} className="inline-flex items-center gap-1 rounded-md border border-default px-2 py-0.5 text-xs font-medium text-[var(--brand-primary)] hover:bg-surface-sunken">
+                        <Phone className="h-3 w-3" aria-hidden />
+                        Call
+                      </a>
+                      <a href={`https://wa.me/${dialable(c.phone).replace(/^\+/, "")}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-md border border-default px-2 py-0.5 text-xs font-medium text-[var(--brand-primary)] hover:bg-surface-sunken">
+                        <MessageCircle className="h-3 w-3" aria-hidden />
+                        WhatsApp
+                      </a>
+                    </span>
+                  )}
+                </span>
+              </div>
+            ))}
+          </div>
+
           <div className="grid grid-cols-1 gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
             <div>
               <span className="block text-xs font-medium text-muted">Employee ID</span>
@@ -187,10 +340,6 @@ export default async function InstantViewPage({
             <div>
               <span className="block text-xs font-medium text-muted">Previous ID</span>
               {validEmployee.previousId || "—"}
-            </div>
-            <div>
-              <span className="block text-xs font-medium text-muted">Mobile</span>
-              {validEmployee.mobileNumber || "—"}
             </div>
             <div>
               <span className="block text-xs font-medium text-muted">Trade</span>
