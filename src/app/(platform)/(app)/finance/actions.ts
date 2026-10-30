@@ -231,7 +231,6 @@ export async function markReimbursedAction(formData: FormData): Promise<State> {
 
 export async function setExpenseLimitAction(_prev: State, formData: FormData): Promise<State> {
   await requireWrite("finance");
-  await requirePermission("finance", "edit");
   { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
   const user = await requirePermission("finance", "approve");
   const { branchId } = await requireUserWithBranch();

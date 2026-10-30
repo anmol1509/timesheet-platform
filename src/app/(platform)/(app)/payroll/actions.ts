@@ -276,7 +276,6 @@ const PAYMENT_STATUSES = ["PENDING", "PAID", "REJECTED", "RESUBMIT"] as const;
 /** Record what the bank did with one worker's salary after the WPS file went out. */
 export async function setLinePaymentAction(formData: FormData): Promise<State> {
   await requireWrite("payroll.payroll");
-  await requirePermission("payroll.payroll", "edit");
   { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
   await requirePermission("payroll.payroll", "approve");
   const lineId = String(formData.get("lineId") || "");
@@ -322,7 +321,6 @@ export async function refreshLineBankAction(formData: FormData): Promise<State> 
 /** Set (or clear) the run total above which the creator may not approve their own run. */
 export async function setDueDaysAction(formData: FormData): Promise<State> {
   await requireWrite("payroll.payroll");
-  await requirePermission("payroll.payroll", "edit");
   { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
   await requirePermission("payroll.payroll", "approve");
   const { user, branchId } = await requireUserWithBranch();

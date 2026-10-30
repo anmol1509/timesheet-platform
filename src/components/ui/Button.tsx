@@ -135,7 +135,7 @@ export function Button(props: ButtonAsButton | ButtonAsLink) {
   );
 
   if ("href" in props && props.href) {
-    if (/\/new(\/|$)/.test(hrefText) && !mayCreate) return null;
+    if (/\/new(?:[/?#]|$)/.test(hrefText) && !mayCreate) return null;
     if (props.disabled) {
       return (
         <span aria-disabled data-variant={variant} className={cn(classes, "pointer-events-none opacity-50")}>
