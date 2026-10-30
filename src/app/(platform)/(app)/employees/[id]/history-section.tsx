@@ -5,14 +5,14 @@ import { auditSentence } from "@/lib/auditSentence";
 const SHOW = 12;
 
 /** The last changes made to this worker's record, in plain words. Pay figures only appear for people who can see pay. */
-export async function HistorySection({ employeeId, employeeName, canSeePay }: { employeeId: string; employeeName: string; canSeePay: boolean }) {
+export async function HistorySection({ employeeId, employeeName, canSeePay, canOpenLog = false }: { employeeId: string; employeeName: string; canSeePay: boolean; canOpenLog?: boolean }) {
   const rows = await prisma.auditLog.findMany({ where: { entityType: "EMPLOYEE", entityId: employeeId }, orderBy: { createdAt: "desc" }, take: SHOW + 1 });
   const shown = rows.slice(0, SHOW);
   return (
     <section className="card p-5">
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-sm font-semibold text-primary">Change history</h2>
-        <Link href={`/audit-log?entityType=EMPLOYEE&entityId=${employeeId}`} className="text-xs text-[var(--brand-primary)] hover:underline">Open in audit log</Link>
+        {canOpenLog && <Link href={`/audit-log?entityType=EMPLOYEE&entityId=${employeeId}`} className="text-xs text-[var(--brand-primary)] hover:underline">Open in audit log</Link>}
       </div>
       {shown.length === 0 ? (
         <p className="text-sm text-muted">No changes recorded for this worker yet.</p>

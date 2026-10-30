@@ -1,8 +1,9 @@
+import { isAdminRole } from "@/lib/roles";
 import { History } from "lucide-react";
 import { HeroHeader, heroButton } from "@/components/HeroHeader";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch, subjectOf } from "@/lib/auth";
-import { can, canRecover } from "@/lib/permissions";
+import { can } from "@/lib/permissions";
 import { auditNames } from "@/lib/auditNames";
 import { branchWhere } from "@/lib/branch";
 import { AuditLogList } from "./audit-log-list";
@@ -23,11 +24,15 @@ function startOfUaeToday() {
 
 export default async function AuditLogPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { user, branchId } = await requireUserWithBranch();
+  // The audit trail is for administrators only, whatever a role grants elsewhere.
+  if (!isAdminRole(user.role)) {
+    return <div className="empty-state"><p className="text-sm text-muted">The audit log is for administrators.</p></div>;
+  }
   const sp = await searchParams;
   const query = parseAuditQuery(sp);
   const pageNo = Math.max(1, Number(Array.isArray(sp.page) ? sp.page[0] : sp.page) || 1);
   const canSeePay = can(subjectOf(user), "payroll", "view");
-  const canRevert = canRecover(subjectOf(user), "edit");
+  const canRevert = true; // everyone who reaches this page is an administrator
 
   const where = await auditWhere(query, branchId);
   const todayStart = startOfUaeToday();

@@ -49,7 +49,7 @@ export const SENSITIVE_MODULE = "sensitive";
 /** The permission module for the My Companies area. */
 export const MY_COMPANIES_MODULE = "mycompanies";
 /** Modules nobody gets by default: not through a "view everything" role, a starter role, or having no role at all. */
-/** The permission module for restoring deleted records and putting back changes from the audit log. */
+/** The permission module for seeing and restoring recently deleted records. (The audit log and putting changes back are for administrators only.) */
 export const RECOVERY_MODULE = "recovery";
 export const OPT_IN_MODULES: readonly string[] = [SENSITIVE_MODULE, MY_COMPANIES_MODULE, RECOVERY_MODULE];
 
@@ -198,8 +198,8 @@ const DEFS: ModuleDef[] = [
   {
     // Opt-in only: see canRecover. Admins always have it; staff only when their role names it.
     key: "recovery",
-    label: "Recently deleted & put-back",
-    description: "See recently deleted records and restore them, and put back changes from the audit log",
+    label: "Recently deleted",
+    description: "See recently deleted records and restore them",
     actions: ["view", "edit"],
     pages: [],
   },
@@ -323,7 +323,7 @@ export function canMyCompanies(subject: PermissionSubject, action: PermissionAct
   return !!subject.permissions?.includes(permissionKey(MY_COMPANIES_MODULE, action));
 }
 
-/** Recently deleted (view) and restoring or putting back (edit). Admins always may; staff only when their role names it. */
+/** Recently deleted (view) and restoring a deleted record (edit). Admins always may; staff only when their role names it. */
 export function canRecover(subject: PermissionSubject, action: "view" | "edit" = "view"): boolean {
   if (subject.role === "SUPER_ADMIN" || subject.role === "BRANCH_ADMIN") return true;
   const perms = subject.permissions;
