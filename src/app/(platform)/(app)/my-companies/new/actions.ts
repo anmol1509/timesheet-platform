@@ -1,5 +1,6 @@
 "use server";
 
+import { isUniqueClash, uniqueClashMessage } from "@/lib/uniqueGuard";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch, subjectOf } from "@/lib/auth";
@@ -97,7 +98,9 @@ export async function createOwnCompanyWizardAction(formData: FormData): Promise<
     }
 
     const code = typed || (await uniqueSupplierCode(name, branchId));
-    const created = await prisma.$transaction(async (tx) => {
+    let created;
+    try {
+    created = await prisma.$transaction(async (tx) => {
       const company = await tx.supplier.create({
         data: {
           name, code, branchId, isOwnCompany: true, status: "ACTIVE", logoId,
@@ -132,6 +135,10 @@ export async function createOwnCompanyWizardAction(formData: FormData): Promise<
       }
       return { company, personIds };
     });
+    } catch (e) {
+      if (isUniqueClash(e)) return { error: uniqueClashMessage(e) };
+      throw e;
+    }
 
     await logAudit({ entityType: "SUPPLIER", entityId: created.company.id, action: "CREATE", after: { name, code, isOwnCompany: true, owners: owners.length, people: links.length }, userId: user.id, userName: user.name, branchId });
     revalidatePath("/my-companies");

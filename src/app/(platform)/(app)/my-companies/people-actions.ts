@@ -1,5 +1,6 @@
 "use server";
 
+import { isUniqueClash, uniqueClashMessage } from "@/lib/uniqueGuard";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { canMyCompanies, canViewSensitive } from "@/lib/permissions";
@@ -115,11 +116,17 @@ export async function savePersonAction(input: { partyId?: string; person?: NewPe
     if (bad) return { error: bad };
   }
 
-  const id = await prisma.$transaction(async (tx) => {
+  let id: string;
+  try {
+  id = await prisma.$transaction(async (tx) => {
     const pid = partyId ?? (await tx.supplierParty.create({ data: { name: clean(input.person!.name, 120)!, nationality: clean(input.person!.nationality, 60), phone: clean(input.person!.phone, 40), email: clean(input.person!.email, 120), branchId } })).id;
     for (const l of links) await tx.supplierPartyLink.create({ data: { supplierId: l.supplierId, partyId: pid, role: l.role, ownershipPercent: l.role === OWNER_ROLE ? l.percent! : null, branchId } });
     return pid;
   });
+  } catch (e) {
+    if (isUniqueClash(e)) return { error: uniqueClashMessage(e) };
+    throw e;
+  }
   await logAudit({ entityType: "SUPPLIER_PARTY", entityId: id, action: "CREATE", after: { person: input.person?.name ?? "existing person", links: links.map((l) => `${PARTY_ROLE_LABEL[l.role] ?? l.role} of ${companies.find((c) => c.id === l.supplierId)?.name}`).join(", ") || "none yet" }, userId: ctx.user.id, userName: ctx.user.name, branchId });
   revalidatePath("/my-companies/people");
   revalidatePath("/my-companies");

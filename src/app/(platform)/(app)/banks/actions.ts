@@ -1,5 +1,6 @@
 "use server";
 
+import { isUniqueClash, uniqueClashMessage } from "@/lib/uniqueGuard";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch, requirePermission, requireWrite } from "@/lib/auth";
@@ -60,7 +61,13 @@ export async function createBankAction(_prev: State, formData: FormData): Promis
   if (!branchId) return { error: isSuperAdmin ? "Sign in as a company administrator before adding a bank." : "Your account has no company assigned. Contact an admin." };
   const r = await readFields(formData, branchId);
   if (!r.ok) return { error: r.error };
-  const created = await prisma.bank.create({ data: { ...r.data, branchId } });
+  let created;
+  try {
+    created = await prisma.bank.create({ data: { ...r.data, branchId } });
+  } catch (e) {
+    if (isUniqueClash(e)) return { error: uniqueClashMessage(e) };
+    throw e;
+  }
   await logAudit({ entityType: "BANK", entityId: created.id, action: "CREATE", after: { accountName: r.data.accountName, bankName: r.data.bankName }, userId: user.id, userName: user.name, branchId });
   revalidatePath("/banks");
   return { error: null, ok: true, id: created.id };
