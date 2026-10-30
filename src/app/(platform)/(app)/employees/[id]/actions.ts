@@ -454,7 +454,7 @@ export async function bulkImportEmployeesAction(rows: Record<string, string>[]) 
 
 export async function uploadPhotoAction(formData: FormData) {
   assertContactsValid(formData);
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("employeeId") || "");
   const file = formData.get("photo");
   if (!id || !(file instanceof File) || file.size === 0) return;
@@ -463,10 +463,12 @@ export async function uploadPhotoAction(formData: FormData) {
   if (!(await assertEmployeeInBranch(id, branchId, isSuperAdmin))) return;
 
   const buffer = Buffer.from(await file.arrayBuffer());
+  const had = await prisma.employee.findUnique({ where: { id }, select: { photoMimeType: true } });
   await prisma.employee.update({
     where: { id },
     data: { photoData: buffer, photoMimeType: file.type || "image/jpeg" },
   });
+  await logAudit({ entityType: "EMPLOYEE", entityId: id, action: "UPDATE", before: { photo: had?.photoMimeType ? "on file" : null }, after: { photo: had?.photoMimeType ? "replaced" : "added" }, userId: user.id, userName: user.name, branchId });
 
   revalidatePath(`/employees/${id}`);
   revalidatePath("/employees");
@@ -474,7 +476,7 @@ export async function uploadPhotoAction(formData: FormData) {
 
 export async function applyExtractedFieldsAction(formData: FormData) {
   assertContactsValid(formData);
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const employeeId = String(formData.get("employeeId") || "");
   if (!employeeId) return;
   if (!(await assertEmployeeInBranch(employeeId, branchId, isSuperAdmin))) return;
@@ -498,7 +500,9 @@ export async function applyExtractedFieldsAction(formData: FormData) {
   if (dateOfBirth) data.dateOfBirth = dateOfBirth;
   if (Object.keys(data).length === 0) return;
 
+  const before = await prisma.employee.findUnique({ where: { id: employeeId }, select: { name: true, passportNumber: true, emiratesId: true, dateOfBirth: true, nationality: true } });
   await prisma.employee.update({ where: { id: employeeId }, data });
+  if (before) await logAudit({ entityType: "EMPLOYEE", entityId: employeeId, action: "UPDATE", before, after: { ...before, ...data }, userId: user.id, userName: user.name, branchId });
   revalidatePath(`/employees/${employeeId}`);
 }
 
@@ -583,7 +587,7 @@ export async function deleteDocumentAction(formData: FormData) {
 
 export async function addSkillAction(formData: FormData) {
   assertContactsValid(formData);
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const employeeId = String(formData.get("employeeId") || "");
   const skillName = String(formData.get("skillName") || "").trim();
   const proficiencyPercent = numberOrNull(formData.get("proficiencyPercent"));
@@ -605,11 +609,14 @@ export async function addSkillAction(formData: FormData) {
     rate,
     rateType,
   };
+  const hadSkill = await prisma.employeeSkill.findUnique({ where: { employeeId_skillId: { employeeId, skillId: skill.id } }, select: { rate: true, proficiencyPercent: true } });
   await prisma.employeeSkill.upsert({
     where: { employeeId_skillId: { employeeId, skillId: skill.id } },
     update: detail,
     create: { employeeId, skillId: skill.id, ...detail },
   });
+
+  await logAudit({ entityType: "EMPLOYEE", entityId: employeeId, action: "UPDATE", before: { [`skill_${skill.name}`]: hadSkill ? `${hadSkill.proficiencyPercent ?? ""}%${hadSkill.rate != null ? `, rate ${Number(hadSkill.rate)}` : ""}` : null }, after: { [`skill_${skill.name}`]: `${detail.proficiencyPercent}%${rate != null ? `, rate ${rate}` : ""}` }, userId: user.id, userName: user.name, branchId: skillOwner.branchId });
 
   await syncTradeFromSkills(employeeId, skill.name);
 

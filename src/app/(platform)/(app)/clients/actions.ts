@@ -9,7 +9,7 @@ import { prisma } from "@/lib/db";
 import { requireUserWithBranch, requirePermission, requireView, requireWrite } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { MAX_UPLOAD_BYTES } from "@/lib/constants";
-import { logAudit } from "@/lib/audit";
+import { describeContact, logAudit, logChildChange } from "@/lib/audit";
 import { checkPartner } from "@/lib/dataChecks";
 import { partnerDuplicates } from "@/lib/duplicateCheck";
 import { assertContactsValid } from "@/lib/validators";
@@ -206,13 +206,13 @@ export async function updateClientAction(formData: FormData): Promise<{ error: s
 export async function addClientContactAction(formData: FormData) {
   await requireWrite("partners.clients");
   assertContactsValid(formData);
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const clientId = String(formData.get("clientId") || "");
   const name = String(formData.get("name") || "").trim();
   if (!clientId || !name) return;
   if (!(await assertClientInBranch(clientId, branchId, isSuperAdmin))) return;
 
-  await prisma.clientContact.create({
+  const created = await prisma.clientContact.create({
     data: {
       clientId,
       name,
@@ -221,6 +221,7 @@ export async function addClientContactAction(formData: FormData) {
       email: stringOrNull(formData.get("email")),
     },
   });
+  await logChildChange({ parentType: "CLIENT", parentId: clientId, field: "contact", from: null, to: describeContact(created), user, branchId });
 
   revalidatePath(`/clients/${clientId}`);
 }
@@ -228,14 +229,15 @@ export async function addClientContactAction(formData: FormData) {
 export async function updateClientContactAction(formData: FormData) {
   await requireWrite("partners.clients");
   assertContactsValid(formData);
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const clientId = String(formData.get("clientId") || "");
   const contactId = String(formData.get("contactId") || "");
   const name = String(formData.get("name") || "").trim();
   if (!contactId || !name) return;
   if (!(await assertClientInBranch(clientId, branchId, isSuperAdmin))) return;
 
-  await prisma.clientContact.update({
+  const old = await prisma.clientContact.findUnique({ where: { id: contactId } });
+  const updated = await prisma.clientContact.update({
     where: { id: contactId },
     data: {
       name,
@@ -244,6 +246,7 @@ export async function updateClientContactAction(formData: FormData) {
       email: stringOrNull(formData.get("email")),
     },
   });
+  await logChildChange({ parentType: "CLIENT", parentId: clientId, field: "contact", from: old ? describeContact(old) : null, to: describeContact(updated), user, branchId });
 
   revalidatePath(`/clients/${clientId}`);
 }
@@ -251,19 +254,21 @@ export async function updateClientContactAction(formData: FormData) {
 export async function removeClientContactAction(formData: FormData) {
   await requireWrite("partners.clients");
   assertContactsValid(formData);
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const clientId = String(formData.get("clientId") || "");
   const contactId = String(formData.get("contactId") || "");
   if (!contactId) return;
   if (!(await assertClientInBranch(clientId, branchId, isSuperAdmin))) return;
+  const old = await prisma.clientContact.findUnique({ where: { id: contactId } });
   await prisma.clientContact.delete({ where: { id: contactId } });
+  if (old) await logChildChange({ parentType: "CLIENT", parentId: clientId, field: "contact", from: describeContact(old), to: null, user, branchId });
   revalidatePath(`/clients/${clientId}`);
 }
 
 export async function addClientTradeRateAction(formData: FormData) {
   await requireWrite("partners.clients");
   assertContactsValid(formData);
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const clientId = String(formData.get("clientId") || "");
   const trade = String(formData.get("trade") || "").trim();
   const rate = numberOrNull(formData.get("rate"));
@@ -278,6 +283,7 @@ export async function addClientTradeRateAction(formData: FormData) {
   } else {
     await prisma.clientTradeRate.create({ data: { clientId, trade, rate } });
   }
+  await logChildChange({ parentType: "CLIENT", parentId: clientId, field: `rate_${trade}`, from: existing ? Number(existing.rate) : null, to: rate, user, branchId });
 
   revalidatePath(`/clients/${clientId}`);
 }
@@ -285,12 +291,14 @@ export async function addClientTradeRateAction(formData: FormData) {
 export async function removeClientTradeRateAction(formData: FormData) {
   await requireWrite("partners.clients");
   assertContactsValid(formData);
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const clientId = String(formData.get("clientId") || "");
   const rateId = String(formData.get("rateId") || "");
   if (!rateId) return;
   if (!(await assertClientInBranch(clientId, branchId, isSuperAdmin))) return;
+  const old = await prisma.clientTradeRate.findUnique({ where: { id: rateId }, select: { trade: true, rate: true } });
   await prisma.clientTradeRate.delete({ where: { id: rateId } });
+  if (old) await logChildChange({ parentType: "CLIENT", parentId: clientId, field: `rate_${old.trade}`, from: Number(old.rate), to: null, user, branchId });
   revalidatePath(`/clients/${clientId}`);
 }
 

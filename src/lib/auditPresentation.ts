@@ -12,6 +12,7 @@ export const ENTITY_META: Record<string, Meta> = {
   EMPLOYEE_SITE_ARRIVAL: M("Site arrival", "Demand"),
   EMPLOYEE_DEMOBILISATION: M("Demobilisation", "Demand"),
   DOCUMENT: M("Document", "Workforce"),
+  ATTACHMENT: M("File", "Documents"),
   VISA_APPLICATION: M("Visa application", "Workforce"),
   LABOUR_CARD_APPLICATION: M("Labour card", "Workforce"),
   SKILL: M("Trade", "Workforce", () => "/trades"),

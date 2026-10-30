@@ -218,6 +218,9 @@ export async function allocateEmployeesAction(
     ? new Date(rawDate + "T00:00:00.000Z")
     : null;
 
+  // Several workers mobilised together read as one line in the audit log.
+  const batch = employeeIds.length > 1 ? { batchId: crypto.randomUUID(), batchLabel: `Mobilised ${Math.min(employeeIds.length, remaining)} workers as ${trade.trade}` } : {};
+
   for (const employeeId of employeeIds) {
     if (allocated >= remaining) break;
 
@@ -268,6 +271,7 @@ export async function allocateEmployeesAction(
       userId: user.id,
       userName: user.name,
       branchId,
+      ...batch,
     });
 
     revalidatePath(`/employees/${employeeId}`);
@@ -557,6 +561,7 @@ export async function confirmSiteArrivalAction(formData: FormData) {
     (await markOnSite(onSiteProject.map((e) => e.id), siteArrivalDate, siteId)) +
     (await markOnSite(elsewhere.map((e) => e.id), siteArrivalDate, null));
 
+  const batch = allowed.length > 1 ? { batchId: crypto.randomUUID(), batchLabel: `Confirmed ${allowed.length} workers on site, arrived ${rawDate}` } : {};
   for (const employee of allowed) {
     await logAudit({
       entityType: "EMPLOYEE_SITE_ARRIVAL",
@@ -571,6 +576,7 @@ export async function confirmSiteArrivalAction(formData: FormData) {
       userId: user.id,
       userName: user.name,
       branchId,
+      ...batch,
     });
     revalidatePath(`/employees/${employee.id}`);
   }
@@ -610,6 +616,7 @@ export async function recordMissingArrivalAction(formData: FormData) {
     const site = await prisma.site.findUnique({ where: { id: siteId }, select: { projectId: true, project: { select: { branchId: true } } } });
     if (site && !isOutsideBranch(site.project.branchId, branchId, isSuperAdmin)) siteProjectId = site.projectId;
   }
+  const batch = allowed.length > 1 ? { batchId: crypto.randomUUID(), batchLabel: `Recorded arrival ${rawDate} for ${allowed.length} workers` } : {};
   for (const e of allowed) {
     await prisma.employee.update({ where: { id: e.id }, data: { siteArrivalDate, ...(siteProjectId && e.projectId === siteProjectId ? { siteId } : {}) } });
     await logAudit({
@@ -621,6 +628,7 @@ export async function recordMissingArrivalAction(formData: FormData) {
       userId: user.id,
       userName: user.name,
       branchId,
+      ...batch,
     });
     revalidatePath(`/employees/${e.id}`);
   }

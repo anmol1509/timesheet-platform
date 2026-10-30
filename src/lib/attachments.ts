@@ -9,6 +9,7 @@ import { isOutsideBranch } from "@/lib/branch";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
 import { resolveDocTypes, VEHICLE_EXPIRY_FIELD } from "@/lib/documentTypes";
 import { otherDocFilename } from "@/lib/otherDoc";
+import { logAudit } from "@/lib/audit";
 
 /**
  * The record types a generic attachment may be filed against, each with a lookup
@@ -94,7 +95,7 @@ export async function uploadAttachmentAction(
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());
-  await prisma.attachment.create({
+  const created = await prisma.attachment.create({
     data: {
       entityType,
       entityId,
@@ -109,6 +110,12 @@ export async function uploadAttachmentAction(
       branchId: entityBranchId,
       uploadedById: user.id,
     },
+    select: { id: true, filename: true },
+  });
+  await logAudit({
+    entityType: "ATTACHMENT", entityId: created.id, action: "CREATE",
+    after: { filename: created.filename, docType, attachedTo: entityType, attachedToId: entityId, expiryDate: expiryDate ? expiryDate.toISOString().slice(0, 10) : null, docNumber },
+    userId: user.id, userName: user.name, branchId: entityBranchId,
   });
 
   if (entityType === "VEHICLE") await syncVehicleExpiries(entityId);
@@ -121,7 +128,7 @@ export async function deleteAttachmentAction(formData: FormData) {
   const revalidate = String(formData.get("revalidate") || "");
   if (!id) return;
 
-  const attachment = await prisma.attachment.findUnique({ where: { id }, select: { branchId: true, entityType: true, entityId: true, docType: true } });
+  const attachment = await prisma.attachment.findUnique({ where: { id }, select: { branchId: true, entityType: true, entityId: true, docType: true, filename: true, expiryDate: true } });
   if (!attachment || isOutsideBranch(attachment.branchId, branchId, isSuperAdmin)) return;
 
   if (attachment.entityType === "VEHICLE") await requireWrite("facilities.transport");
@@ -131,6 +138,11 @@ export async function deleteAttachmentAction(formData: FormData) {
     if (owner?.isOwnCompany) return;
   }
   await prisma.attachment.delete({ where: { id } });
+  await logAudit({
+    entityType: "ATTACHMENT", entityId: id, action: "DELETE",
+    before: { filename: attachment.filename, docType: attachment.docType, attachedTo: attachment.entityType, attachedToId: attachment.entityId, expiryDate: attachment.expiryDate ? attachment.expiryDate.toISOString().slice(0, 10) : null },
+    userId: user.id, userName: user.name, branchId: attachment.branchId,
+  });
   if (attachment.entityType === "VEHICLE") await syncVehicleExpiries(attachment.entityId);
   if (revalidate) revalidatePath(revalidate);
 }
