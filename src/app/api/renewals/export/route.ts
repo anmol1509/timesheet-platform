@@ -13,7 +13,7 @@ const dmy = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice
  * is already in hand. The renewals are looked up again here from the keys sent, so only this branch's current
  * renewals can appear and the details always come from the records, not from the browser.
  */
-const KIND_LABEL: Record<RenewalItem["kind"], string> = { employee: "Employee", supplier: "Supplier", party: "Owner / sponsor", vehicle: "Vehicle" };
+const KIND_LABEL: Record<RenewalItem["kind"], string> = { employee: "Employee", supplier: "Supplier", party: "Owner / sponsor", vehicle: "Vehicle", record: "Record" };
 
 export async function POST(request: Request) {
   const { user, branchId } = await requireUserWithBranch();

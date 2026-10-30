@@ -3,6 +3,7 @@ import { branchWhere } from "@/lib/branch";
 import { daysUntil, COMPLIANCE_FIELDS } from "@/lib/compliance";
 import { EXPIRY_FIELD } from "@/lib/importer/documentRead";
 import { registryExpiries } from "@/lib/docExpiry";
+import { recordExpiries, type RecordFile } from "@/lib/recordExpiry";
 
 /**
  * The renewal queue.
@@ -29,7 +30,7 @@ export type RenewalItem = {
    * in the same queue as a worker's own papers rather than in a separate one
    * nobody opens.
    */
-  kind: "employee" | "supplier" | "party" | "vehicle";
+  kind: "employee" | "supplier" | "party" | "vehicle" | "record";
   /** Employee or supplier id, for linking through. */
   subjectId: string;
   subjectName: string;
@@ -265,6 +266,19 @@ export async function getRenewals(
     });
   }
 
+  // Documents kept on clients, projects, quotations, enquiries, bills and expenses: tracked when they were given an expiry date.
+  for (const r of recordExpiries(await recordFiles(branchId))) {
+    const days = daysUntil(r.expiry);
+    if (days > horizonDays) continue;
+    const tier = tierFor(days);
+    if (!tier) continue;
+    items.push({
+      kind: "record", subjectId: r.subjectId, subjectName: r.subjectName, subjectRef: r.subjectRef, hasPhoto: false, document: r.document,
+      expiry: r.expiry.toISOString(), days, tier, supplier: null, project: null, scan: null, field: null, docType: r.docType,
+      href: r.href, attachmentId: null, reminderDays: r.reminderDays,
+    });
+  }
+
   items.sort((a, b) => a.days - b.days);
   return items;
 }
@@ -277,4 +291,37 @@ export function summarise(items: RenewalItem[]) {
   >;
   for (const item of items) counts[item.tier] += 1;
   return counts;
+}
+
+const ATTACHED = ["QUOTATION", "ENQUIRY", "SUPPLIER_BILL", "EXPENSE"] as const;
+
+/** Every dated document on the records that have no queue of their own, with what it is filed against. */
+async function recordFiles(branchId: string | null): Promise<RecordFile[]> {
+  const scope = branchId ? { branchId } : {};
+  const [clientDocs, projectDocs, attachments] = await Promise.all([
+    prisma.clientDocument.findMany({ where: { expiryDate: { not: null }, client: scope }, select: { id: true, type: true, filename: true, expiryDate: true, client: { select: { id: true, name: true } } } }),
+    prisma.projectDocument.findMany({ where: { expiryDate: { not: null }, project: scope }, select: { id: true, type: true, filename: true, expiryDate: true, project: { select: { id: true, name: true } } } }),
+    prisma.attachment.findMany({ where: { entityType: { in: [...ATTACHED] }, expiryDate: { not: null }, ...scope }, select: { id: true, entityType: true, entityId: true, docType: true, filename: true, expiryDate: true } }),
+  ]);
+  const ids = (t: string) => [...new Set(attachments.filter((a) => a.entityType === t).map((a) => a.entityId))];
+  const [quotations, enquiries, bills, expenses] = await Promise.all([
+    ids("QUOTATION").length ? prisma.quotation.findMany({ where: { id: { in: ids("QUOTATION") } }, select: { id: true, quotationNumber: true } }) : [],
+    ids("ENQUIRY").length ? prisma.enquiry.findMany({ where: { id: { in: ids("ENQUIRY") } }, select: { id: true, client: { select: { name: true } } } }) : [],
+    ids("SUPPLIER_BILL").length ? prisma.supplierBill.findMany({ where: { id: { in: ids("SUPPLIER_BILL") } }, select: { id: true, description: true, supplier: { select: { name: true } } } }) : [],
+    ids("EXPENSE").length ? prisma.expense.findMany({ where: { id: { in: ids("EXPENSE") } }, select: { id: true, description: true } }) : [],
+  ]);
+  const where = new Map<string, { name: string; kind: string; href: string }>([
+    ...quotations.map((q) => [`QUOTATION|${q.id}`, { name: `Quotation ${q.quotationNumber}`, kind: "Quotation", href: `/sales/quotations/${q.id}` }] as const),
+    ...enquiries.map((e) => [`ENQUIRY|${e.id}`, { name: `Enquiry from ${e.client.name}`, kind: "Enquiry", href: `/sales/enquiries/${e.id}` }] as const),
+    ...bills.map((b) => [`SUPPLIER_BILL|${b.id}`, { name: b.description || `Bill from ${b.supplier.name}`, kind: `Supplier bill · ${b.supplier.name}`, href: "/finance/bills" }] as const),
+    ...expenses.map((x) => [`EXPENSE|${x.id}`, { name: x.description, kind: "Expense", href: "/finance/expenses" }] as const),
+  ]);
+  return [
+    ...clientDocs.map((d): RecordFile => ({ source: "clientdoc", id: d.id, ownerId: d.client.id, ownerName: d.client.name, ownerKind: "Client", href: `/clients/${d.client.id}`, docType: d.type, filename: d.filename, expiryDate: d.expiryDate! })),
+    ...projectDocs.map((d): RecordFile => ({ source: "projdoc", id: d.id, ownerId: d.project.id, ownerName: d.project.name, ownerKind: "Project", href: `/projects/${d.project.id}`, docType: d.type, filename: d.filename, expiryDate: d.expiryDate! })),
+    ...attachments.flatMap((a): RecordFile[] => {
+      const w = where.get(`${a.entityType}|${a.entityId}`);
+      return w ? [{ source: "attach", id: a.id, ownerId: a.entityId, ownerName: w.name, ownerKind: w.kind, href: w.href, docType: a.docType, filename: a.filename, expiryDate: a.expiryDate! }] : [];
+    }),
+  ];
 }

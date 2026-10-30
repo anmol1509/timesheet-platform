@@ -25,22 +25,31 @@ export async function updateRenewalsAction(refs: RenewalRef[], patch: RenewalPat
   const note = patch.note === undefined ? undefined : (patch.note ?? "").trim().slice(0, 300) || null;
 
   // Each renewal's branch comes from the person or supplier it belongs to, never from what the browser sent.
-  const clean = refs.filter((r) => ["employee", "supplier", "party", "vehicle"].includes(r.kind) && typeof r.subjectId === "string" && typeof r.document === "string" && /^\d{4}-\d{2}-\d{2}/.test(r.expiry));
+  const clean = refs.filter((r) => ["employee", "supplier", "party", "vehicle", "record"].includes(r.kind) && typeof r.subjectId === "string" && typeof r.document === "string" && /^\d{4}-\d{2}-\d{2}/.test(r.expiry));
   const employeeIds = [...new Set(clean.filter((r) => r.kind === "employee").map((r) => r.subjectId))];
   const supplierIds = [...new Set(clean.filter((r) => r.kind === "supplier").map((r) => r.subjectId))];
   const partyIds = [...new Set(clean.filter((r) => r.kind === "party").map((r) => r.subjectId))];
   const vehicleIds = [...new Set(clean.filter((r) => r.kind === "vehicle").map((r) => r.subjectId))];
-  const [employees, suppliers, parties, vehicles] = await Promise.all([
+  // A "record" renewal is a document kept on a client, project, quotation, enquiry, bill or expense: its id says which table.
+  const recordIds = clean.filter((r) => r.kind === "record").map((r) => r.subjectId);
+  const part = (src: string) => [...new Set(recordIds.filter((i) => i.startsWith(`${src}:`)).map((i) => i.slice(src.length + 1)))];
+  const [employees, suppliers, parties, vehicles, clientDocs, projectDocs, attached] = await Promise.all([
     prisma.employee.findMany({ where: { id: { in: employeeIds } }, select: { id: true, branchId: true } }),
     prisma.supplier.findMany({ where: { id: { in: supplierIds } }, select: { id: true, branchId: true } }),
     prisma.supplierParty.findMany({ where: { id: { in: partyIds } }, select: { id: true, branchId: true } }),
     prisma.vehicle.findMany({ where: { id: { in: vehicleIds }, branchId: { not: null } }, select: { id: true, branchId: true } }),
+    prisma.clientDocument.findMany({ where: { id: { in: part("clientdoc") } }, select: { id: true, client: { select: { branchId: true } } } }),
+    prisma.projectDocument.findMany({ where: { id: { in: part("projdoc") } }, select: { id: true, project: { select: { branchId: true } } } }),
+    prisma.attachment.findMany({ where: { id: { in: part("attach") }, branchId: { not: null } }, select: { id: true, branchId: true } }),
   ]);
   const branchOf = new Map<string, string>([
     ...employees.map((e) => [`employee|${e.id}`, e.branchId] as const),
     ...suppliers.map((s) => [`supplier|${s.id}`, s.branchId] as const),
     ...parties.map((p) => [`party|${p.id}`, p.branchId] as const),
     ...vehicles.map((v) => [`vehicle|${v.id}`, v.branchId!] as const),
+    ...clientDocs.map((d) => [`record|clientdoc:${d.id}`, d.client.branchId] as const),
+    ...projectDocs.map((d) => [`record|projdoc:${d.id}`, d.project.branchId] as const),
+    ...attached.map((a) => [`record|attach:${a.id}`, a.branchId!] as const),
   ]);
   const targets = clean.filter((r) => {
     const b = branchOf.get(`${r.kind}|${r.subjectId}`);
