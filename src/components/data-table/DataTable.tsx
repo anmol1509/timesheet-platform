@@ -22,6 +22,7 @@ import { useRowSelection } from "@/lib/useRowSelection";
 import { toCsv, downloadCsv } from "@/lib/csv";
 import { downloadXlsx } from "@/lib/spreadsheet";
 import { Select } from "@/components/ui/Select";
+import { FilterPanel } from "./FilterPanel";
 import { ScrollRestore } from "@/components/ScrollRestore";
 import { cn } from "@/lib/cn";
 
@@ -64,6 +65,9 @@ export type DataTableRowContext = {
 };
 
 /** A dropdown that narrows the rows: "All …" plus one option per value. */
+/** The heading each filter gets in the Filters panel, where the key alone would read badly. */
+const FILTER_TITLE: Record<string, string> = { owed: "Balance", licence: "Trade licence", approval: "Approvals", type: "Type", demand: "Demand", contract: "Contract" };
+
 export type DataTableFilter<T> = {
   key: string;
   /** Shown as the "All …" option, e.g. "All statuses". */
@@ -370,21 +374,32 @@ export function DataTable<T extends { id: string }>({
             </div>
           )}
 
-          {filters?.map((f) => (
-            <div key={f.key} className="w-44 shrink-0">
-            <Select
-              value={filterValues[f.key] ?? ""}
-              onChange={(v) => {
-                setFilterValues((prev) => ({ ...prev, [f.key]: v }));
+          {filters && filters.length === 1 && (
+            <div className="w-44 shrink-0">
+              <Select
+                value={filterValues[filters[0].key] ?? ""}
+                onChange={(v) => {
+                  setFilterValues((prev) => ({ ...prev, [filters[0].key]: v }));
+                  setPage(1);
+                }}
+                triggerClassName="h-9"
+                searchable={filters[0].options.length > 8}
+                placeholder={filters[0].label}
+                options={[{ value: "", label: filters[0].label }, ...filters[0].options]}
+              />
+            </div>
+          )}
+          {/* Two or more filters share one button and panel, so the toolbar stays on a single row. */}
+          {filters && filters.length > 1 && (
+            <FilterPanel
+              fields={filters.map((f) => ({ key: f.key, label: FILTER_TITLE[f.key] ?? f.key.replace(/^./, (c) => c.toUpperCase()), all: f.label, options: f.options }))}
+              values={filterValues}
+              onChange={(key, value) => {
+                setFilterValues((prev) => ({ ...prev, [key]: value }));
                 setPage(1);
               }}
-              triggerClassName="h-9"
-              searchable={f.options.length > 8}
-              placeholder={f.label}
-              options={[{ value: "", label: f.label }, ...f.options]}
             />
-            </div>
-          ))}
+          )}
 
           <div className="ml-auto flex flex-wrap items-center gap-2">
             {hideable.length > 0 && (
