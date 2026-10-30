@@ -51,7 +51,7 @@ export async function SupplierPartiesSection({ supplierId, branchId, types, canE
   const options: PersonOption[] = everyone.map((p) => ({ id: p.id, label: personLabel(p.name, p.links) }));
 
   const owners: OwnerRow[] = links.filter((l) => l.role === OWNER_ROLE).map((l) => ({ linkId: l.id, partyId: l.partyId, name: l.party.name, percent: l.ownershipPercent }));
-  const upload = activeDocTypes(types).map((t) => ({ value: t.key, label: t.label }));
+  const upload = activeDocTypes(types).map((t) => ({ value: t.key, label: t.label, hasExpiry: t.hasExpiry }));
 
   return (
     <div className="space-y-5">
