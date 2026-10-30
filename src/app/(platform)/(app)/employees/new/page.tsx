@@ -26,7 +26,7 @@ export default async function AddEmployeePage() {
   ]);
 
   return (
-    <div className="mx-auto max-w-3xl space-y-5">
+    <div className="form-comfy mx-auto max-w-5xl space-y-6">
       <PageHeader
         title="Add employee"
         description="Upload the worker's documents and the details are read out of them for you to review."

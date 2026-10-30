@@ -25,7 +25,7 @@ export default async function NewCandidatePage() {
   ]);
 
   return (
-    <div className="space-y-6">
+    <div className="form-comfy space-y-6">
       <PageHeader
         title="Add candidate"
         icon={FilePlus2}
