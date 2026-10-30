@@ -67,6 +67,11 @@ export async function demobiliseEmployees(
     },
   });
 
+  // Several workers demobilised together read as one line in the audit log.
+  const batch = employees.length > 1
+    ? { batchId: crypto.randomUUID(), batchLabel: `Demobilised ${employees.length} workers, came off ${opts.date.toISOString().slice(0, 10)}${opts.reason ? ` (${opts.reason})` : ""}` }
+    : {};
+
   for (const employee of employees) {
     // updateMany would take ids straight from the form, so the branch guard has
     // to happen here rather than inside it.
@@ -152,6 +157,7 @@ export async function demobiliseEmployees(
       userId: ctx.userId,
       userName: ctx.userName,
       branchId: ctx.branchId,
+      ...batch,
     });
 
     result.demobilised++;

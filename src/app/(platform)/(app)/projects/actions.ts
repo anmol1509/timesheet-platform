@@ -9,7 +9,7 @@ import { requireUserWithBranch, requirePermission, requireWrite } from "@/lib/au
 import { isOutsideBranch } from "@/lib/branch";
 import { refsBelongToBranch } from "@/lib/refScope";
 import { MAX_UPLOAD_BYTES } from "@/lib/constants";
-import { logAudit } from "@/lib/audit";
+import { describeContact, logAudit, logChildChange } from "@/lib/audit";
 import { assertContactsValid } from "@/lib/validators";
 import { availableItemStock } from "@/lib/inventoryStock";
 import { cellOf, rowError } from "@/lib/bulkImport";
@@ -316,7 +316,7 @@ export async function deleteProjectDocumentAction(formData: FormData) {
 export async function addProjectTradeRateAction(formData: FormData) {
   await requireWrite("projects.projects");
   assertContactsValid(formData);
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const projectId = String(formData.get("projectId") || "");
   const clientId = String(formData.get("clientId") || "");
   const trade = String(formData.get("trade") || "").trim();
@@ -334,6 +334,7 @@ export async function addProjectTradeRateAction(formData: FormData) {
   } else {
     await prisma.clientTradeRate.create({ data: { clientId, projectId, trade, rate } });
   }
+  await logChildChange({ parentType: "PROJECT", parentId: projectId, field: `rate_${trade}`, from: existing ? Number(existing.rate) : null, to: rate, user, branchId });
 
   revalidatePath(`/projects/${projectId}`);
 }
@@ -341,12 +342,14 @@ export async function addProjectTradeRateAction(formData: FormData) {
 export async function removeProjectTradeRateAction(formData: FormData) {
   await requireWrite("projects.projects");
   assertContactsValid(formData);
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const projectId = String(formData.get("projectId") || "");
   const rateId = String(formData.get("rateId") || "");
   if (!rateId) return;
   if (!(await assertProjectInBranch(projectId, branchId, isSuperAdmin))) return;
+  const old = await prisma.clientTradeRate.findUnique({ where: { id: rateId }, select: { trade: true, rate: true } });
   await prisma.clientTradeRate.delete({ where: { id: rateId } });
+  if (old) await logChildChange({ parentType: "PROJECT", parentId: projectId, field: `rate_${old.trade}`, from: Number(old.rate), to: null, user, branchId });
   revalidatePath(`/projects/${projectId}`);
 }
 
@@ -355,7 +358,7 @@ export async function removeProjectTradeRateAction(formData: FormData) {
 export async function addProjectHolidayAction(formData: FormData) {
   await requireWrite("projects.projects");
   assertContactsValid(formData);
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const projectId = String(formData.get("projectId") || "");
   const date = dateOrNull(formData.get("date"));
   const label = String(formData.get("label") || "").trim();
@@ -363,11 +366,13 @@ export async function addProjectHolidayAction(formData: FormData) {
   if (!projectId || !date || !label) return;
   if (!(await assertProjectInBranch(projectId, branchId, isSuperAdmin))) return;
 
+  const before = await prisma.projectHoliday.findUnique({ where: { projectId_date: { projectId, date } }, select: { label: true } });
   await prisma.projectHoliday.upsert({
     where: { projectId_date: { projectId, date } },
     update: { label, rateMultiplier },
     create: { projectId, date, label, rateMultiplier },
   });
+  await logChildChange({ parentType: "PROJECT", parentId: projectId, field: "holiday", from: before ? `${date.toISOString().slice(0, 10)} ${before.label}` : null, to: `${date.toISOString().slice(0, 10)} ${label}`, user, branchId });
 
   revalidatePath(`/projects/${projectId}`);
 }
@@ -375,12 +380,14 @@ export async function addProjectHolidayAction(formData: FormData) {
 export async function removeProjectHolidayAction(formData: FormData) {
   await requireWrite("projects.projects");
   assertContactsValid(formData);
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const projectId = String(formData.get("projectId") || "");
   const holidayId = String(formData.get("holidayId") || "");
   if (!holidayId) return;
   if (!(await assertProjectInBranch(projectId, branchId, isSuperAdmin))) return;
+  const old = await prisma.projectHoliday.findUnique({ where: { id: holidayId }, select: { label: true, date: true } });
   await prisma.projectHoliday.delete({ where: { id: holidayId } });
+  if (old) await logChildChange({ parentType: "PROJECT", parentId: projectId, field: "holiday", from: `${old.date.toISOString().slice(0, 10)} ${old.label}`, to: null, user, branchId });
   revalidatePath(`/projects/${projectId}`);
 }
 
@@ -389,13 +396,13 @@ export async function removeProjectHolidayAction(formData: FormData) {
 export async function addProjectContactAction(formData: FormData) {
   await requireWrite("projects.projects");
   assertContactsValid(formData);
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const projectId = String(formData.get("projectId") || "");
   const name = String(formData.get("name") || "").trim();
   if (!projectId || !name) return;
   if (!(await assertProjectInBranch(projectId, branchId, isSuperAdmin))) return;
 
-  await prisma.projectContact.create({
+  const created = await prisma.projectContact.create({
     data: {
       projectId,
       name,
@@ -404,6 +411,7 @@ export async function addProjectContactAction(formData: FormData) {
       email: stringOrNull(formData.get("email")),
     },
   });
+  await logChildChange({ parentType: "PROJECT", parentId: projectId, field: "contact", from: null, to: describeContact(created), user, branchId });
 
   revalidatePath(`/projects/${projectId}`);
 }
@@ -411,14 +419,15 @@ export async function addProjectContactAction(formData: FormData) {
 export async function updateProjectContactAction(formData: FormData) {
   await requireWrite("projects.projects");
   assertContactsValid(formData);
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const projectId = String(formData.get("projectId") || "");
   const contactId = String(formData.get("contactId") || "");
   const name = String(formData.get("name") || "").trim();
   if (!contactId || !name) return;
   if (!(await assertProjectInBranch(projectId, branchId, isSuperAdmin))) return;
 
-  await prisma.projectContact.update({
+  const old = await prisma.projectContact.findUnique({ where: { id: contactId } });
+  const updated = await prisma.projectContact.update({
     where: { id: contactId },
     data: {
       name,
@@ -427,6 +436,7 @@ export async function updateProjectContactAction(formData: FormData) {
       email: stringOrNull(formData.get("email")),
     },
   });
+  await logChildChange({ parentType: "PROJECT", parentId: projectId, field: "contact", from: old ? describeContact(old) : null, to: describeContact(updated), user, branchId });
 
   revalidatePath(`/projects/${projectId}`);
 }
@@ -434,12 +444,14 @@ export async function updateProjectContactAction(formData: FormData) {
 export async function removeProjectContactAction(formData: FormData) {
   await requireWrite("projects.projects");
   assertContactsValid(formData);
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const projectId = String(formData.get("projectId") || "");
   const contactId = String(formData.get("contactId") || "");
   if (!contactId) return;
   if (!(await assertProjectInBranch(projectId, branchId, isSuperAdmin))) return;
+  const old = await prisma.projectContact.findUnique({ where: { id: contactId } });
   await prisma.projectContact.delete({ where: { id: contactId } });
+  if (old) await logChildChange({ parentType: "PROJECT", parentId: projectId, field: "contact", from: describeContact(old), to: null, user, branchId });
   revalidatePath(`/projects/${projectId}`);
 }
 

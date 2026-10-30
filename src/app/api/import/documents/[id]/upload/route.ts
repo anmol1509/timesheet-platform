@@ -7,6 +7,7 @@ import { MAX_BATCH_BYTES, MAX_BATCH_FILES, MAX_BULK_FILE_BYTES } from "@/lib/imp
 import { isAcceptedPhotoType, safeFilename } from "@/lib/uploads";
 import { EXPIRY_FIELD, READ_FIELDS } from "@/lib/importer/documentRead";
 import { normalizePhone } from "@/lib/phone";
+import { logAudit } from "@/lib/audit";
 
 export const maxDuration = 60;
 
@@ -105,13 +106,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         }
         // The same file filed twice would only clutter the profile.
         if (await prisma.document.findFirst({ where: { employeeId: m.ownerId, type, filename }, select: { id: true } })) { results.push({ name, status: "duplicate", message: "Already on file." }); continue; }
-        await db.document.create({ data: { employeeId: m.ownerId, type, filename, fileData: bytes, mimeType: mime, expiryDate: expiry, uploadedById: who.user.id } });
+        const doc = await db.document.create({ data: { employeeId: m.ownerId, type, filename, fileData: bytes, mimeType: mime, expiryDate: expiry, uploadedById: who.user.id } });
+        await logAudit({ entityType: "DOCUMENT", entityId: doc.id, action: "CREATE", after: { employeeId: m.ownerId, type, filename, expiryDate: expiry ? expiry.toISOString().slice(0, 10) : null }, userId: who.user.id, userName: who.user.name, branchId: who.branchId, source: "IMPORT", batchId: batch.id, batchLabel: `Imported documents: ${batch.filename}` });
         if (m.updateExpiry) updated = await syncRecord("EMPLOYEE", m.ownerId, type, expiry, m.fields);
       } else if (m.ownerKind === "SUPPLIER") {
         if (!okSup.has(m.ownerId)) throw new Error("That supplier isn't in this company.");
         const docType = SUP_TYPES.has(m.type) ? m.type : "OTHER";
         if (await prisma.attachment.findFirst({ where: { entityType: "SUPPLIER", entityId: m.ownerId, docType, filename }, select: { id: true } })) { results.push({ name, status: "duplicate", message: "Already on file." }); continue; }
-        await db.attachment.create({ data: { entityType: "SUPPLIER", entityId: m.ownerId, docType, filename, fileData: bytes, mimeType: mime, expiryDate: expiry, branchId: who.branchId, uploadedById: who.user.id } });
+        const att = await db.attachment.create({ data: { entityType: "SUPPLIER", entityId: m.ownerId, docType, filename, fileData: bytes, mimeType: mime, expiryDate: expiry, branchId: who.branchId, uploadedById: who.user.id } });
+        await logAudit({ entityType: "ATTACHMENT", entityId: att.id, action: "CREATE", after: { filename, docType, attachedTo: "SUPPLIER", attachedToId: m.ownerId, expiryDate: expiry ? expiry.toISOString().slice(0, 10) : null }, userId: who.user.id, userName: who.user.name, branchId: who.branchId, source: "IMPORT", batchId: batch.id, batchLabel: `Imported documents: ${batch.filename}` });
         if (m.updateExpiry) updated = await syncRecord("SUPPLIER", m.ownerId, docType, expiry, m.fields);
       } else throw new Error("No owner chosen.");
       results.push({ name, status: "created", recordUpdated: updated });
