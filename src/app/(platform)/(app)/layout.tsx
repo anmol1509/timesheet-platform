@@ -1,3 +1,6 @@
+import { TRADES } from "@/lib/trades";
+import { loadTradeNames } from "@/lib/tradeNamesServer";
+import { TradesProvider } from "@/components/TradesProvider";
 import { DeniedNotice } from "@/components/DeniedNotice";
 import { PermissionsProvider } from "@/components/PermissionsProvider";
 import { countPendingApprovals } from "@/lib/approvals";
@@ -47,7 +50,7 @@ export default async function AppLayout({
   // wrap the layout.js in its own segment). Degrade to an empty header
   // instead of crashing the whole shell.
   // One round trip for everything the header and sidebar need, instead of four in a row.
-  const [alertsResult, branchesResult, inboxResult, unreadResult, aiResult, approvalsResult, ticketsResult] = await Promise.allSettled([
+  const [alertsResult, branchesResult, inboxResult, unreadResult, aiResult, approvalsResult, ticketsResult, tradesResult] = await Promise.allSettled([
     getComplianceAlerts(branchId),
     // Only SUPER_ADMIN gets a switcher — everyone else has exactly one branch.
     prisma.branch.findMany({
@@ -68,6 +71,7 @@ export default async function AppLayout({
     // Sidebar badges, only where somebody has to act: documents expiring or expired, and supplier tickets still
     // waiting for a reply. Both degrade to "no badge" rather than failing the page.
     prisma.supplierTicket.count({ where: { ...branchWhere(branchId), status: "OPEN" } }),
+    loadTradeNames(branchId),
   ]);
   const inbox = inboxResult.status === "fulfilled"
     ? inboxResult.value.map((n) => ({ id: n.id, title: n.title, body: n.body, href: n.href, read: n.readAt !== null }))
@@ -78,6 +82,7 @@ export default async function AppLayout({
   const aiStatus = aiResult.status === "fulfilled" ? aiResult.value : null;
   const pendingApprovals = approvalsResult.status === "fulfilled" ? approvalsResult.value : 0;
   const openTickets = ticketsResult.status === "fulfilled" ? ticketsResult.value : 0;
+  const tradeNames = tradesResult.status === "fulfilled" ? tradesResult.value : [...TRADES];
   const isAdmin = user.role !== "STAFF";
   const showOwner = ownerConsoleOn() && isOwnerUser(user);
   const allowedModules = viewableModules(subjectOf(user));
@@ -128,6 +133,7 @@ export default async function AppLayout({
 
   return (
     <PermissionsProvider subject={subjectOf(user)}>
+    <TradesProvider names={tradeNames}>
     <ToastProvider>
       <AppAnalytics userId={user.id} role={user.role} />
       <Suspense fallback={null}>
@@ -154,6 +160,7 @@ export default async function AppLayout({
         {children}
       </AppShell>
     </ToastProvider>
+    </TradesProvider>
     </PermissionsProvider>
   );
 }

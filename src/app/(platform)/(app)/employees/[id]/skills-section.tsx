@@ -1,5 +1,6 @@
 "use client";
 
+import { useTradeNames } from "@/components/TradesProvider";
 import { useRef, useState, useTransition } from "react";
 import {
   DEFAULT_SKILL_LEVEL,
@@ -10,7 +11,7 @@ import {
 } from "@/lib/skillLevel";
 import { Slider } from "@/components/ui/Slider";
 import { Select } from "@/components/ui/Select";
-import { TRADES, RATE_TYPES } from "@/lib/trades";
+import { RATE_TYPES } from "@/lib/trades";
 import { addSkillAction, removeSkillAction } from "./actions";
 import { NumberInput } from "@/components/ui/NumberInput";
 
@@ -34,6 +35,7 @@ export function SkillsSection({
   workerRate?: number | null;
   workerTrade?: string | null;
 }) {
+  const tradeNames = useTradeNames();
   const [pending, startTransition] = useTransition();
   const [trade, setTrade] = useState("");
   const [level, setLevel] = useState(DEFAULT_SKILL_LEVEL);
@@ -104,7 +106,7 @@ export function SkillsSection({
               onChange={setTrade}
               searchable
               placeholder="Select a trade…"
-              options={TRADES.map((t) => ({ value: t, label: t }))}
+              options={tradeNames.map((t) => ({ value: t, label: t }))}
             />
           </div>
           {/* Range and wording match the registration wizard — the two

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTradeNames } from "@/components/TradesProvider";
 import { SaveWarnings } from "@/components/SaveWarnings";
 import {
   startTransition,
@@ -27,7 +28,7 @@ import { PhoneInput } from "@/components/ui/PhoneInput";
 import { Slider } from "@/components/ui/Slider";
 import { pdfPageToImage } from "@/lib/pdfPageToImage";
 import { cn } from "@/lib/cn";
-import { TRADES, RATE_TYPES, type RateType } from "@/lib/trades";
+import { RATE_TYPES, type RateType } from "@/lib/trades";
 import {
   DEFAULT_SKILL_LEVEL,
   SKILL_LEVEL_MAX,
@@ -210,6 +211,7 @@ export function EmployeeWizard({
    */
   onRegistered?: () => void;
 }) {
+  const tradeNames = useTradeNames();
   const [state, formAction, pending] = useActionState(createEmployeeAction, {
     error: null as string | null,
     warnings: undefined as string[] | undefined,
@@ -1196,7 +1198,7 @@ export function EmployeeWizard({
                   value={fields.position}
                   onChange={(v) => set("position", v)}
                   placeholder="Select trade"
-                  options={TRADES.map((t) => ({ value: t, label: t }))}
+                  options={tradeNames.map((t) => ({ value: t, label: t }))}
                 />
               </Field>
             )}
@@ -1379,7 +1381,7 @@ export function EmployeeWizard({
               value=""
               onChange={(v) => addSkill(v)}
               placeholder="Add a trade…"
-              options={TRADES.filter(
+              options={tradeNames.filter(
                 (t) => !skills.some((s) => s.name.toLowerCase() === t.toLowerCase())
               ).map((t) => ({ value: t, label: t }))}
             />

@@ -1,14 +1,15 @@
 "use client";
 
+import { useTradeNames } from "@/components/TradesProvider";
 import { useTransition } from "react";
 import { Select } from "@/components/ui/Select";
 import { createEnquiryAction } from "../actions";
 import { ComboSelect } from "@/components/ui/ComboSelect";
-import { TRADES } from "@/lib/trades";
 import { ENQUIRY_SOURCES } from "@/lib/formLists";
 
 import { Button } from "@/components/ui/Button";
 export function NewEnquiryForm({ clients }: { clients: { id: string; name: string }[] }) {
+  const tradeNames = useTradeNames();
   const [pending, startTransition] = useTransition();
 
   return (
@@ -30,7 +31,7 @@ export function NewEnquiryForm({ clients }: { clients: { id: string; name: strin
       </label>
       <label className="block">
         <span className="mb-1 block text-xs font-medium text-muted">Required trade</span>
-        <Select name="requiredTrade" searchable options={[{ value: "", label: "Not set" }, ...TRADES.map((t) => ({ value: t, label: t }))]} defaultValue="" />
+        <Select name="requiredTrade" searchable options={[{ value: "", label: "Not set" }, ...tradeNames.map((t) => ({ value: t, label: t }))]} defaultValue="" />
       </label>
       <label className="block">
         <span className="mb-1 block text-xs font-medium text-muted">Source</span>

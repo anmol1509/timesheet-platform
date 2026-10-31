@@ -1,9 +1,9 @@
+import { loadTradeNames } from "@/lib/tradeNamesServer";
 import { FilePlus2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
-import { TRADES } from "@/lib/trades";
 import { DemandRequestForm } from "./demand-request-form";
 
 export const metadata = { title: "New demand" };
@@ -21,7 +21,7 @@ export default async function NewDemandRequestPage() {
 
   // The closed trade list, not whatever strings happen to be on the roster:
   // a demand for a trade nobody is recorded under can't be matched.
-  const tradeOptions = [...TRADES];
+  const tradeOptions = await loadTradeNames(branchId);
 
   return (
     <div className="form-comfy space-y-6">
