@@ -7,6 +7,8 @@ const WHAT: Record<string, string> = {
   Project: "project", Client: "client", Supplier: "supplier", Employee: "employee", Bank: "bank", Quotation: "quotation",
   Vehicle: "vehicle", Lpo: "LPO", ClientInvoice: "invoice", Enquiry: "enquiry", Camp: "camp", Site: "site", Trade: "trade",
   SupplierParty: "person", SupplierPartyLink: "owner or sponsor", Branch: "company", User: "user",
+  Room: "room", Bed: "bed", Skill: "trade", InventoryItem: "inventory item", InventoryVariant: "variant", LookupValue: "list value",
+  TimesheetTemplate: "template", ExpenseBudget: "budget", Account: "account", ExchangeRate: "exchange rate", AccessRole: "role",
 };
 const FIELD: Record<string, string> = {
   code: "code", name: "name", employeeIdNo: "employee ID", plateNumber: "plate number", email: "email address",

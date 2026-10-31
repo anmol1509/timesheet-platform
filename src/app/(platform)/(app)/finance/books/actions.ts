@@ -1,5 +1,6 @@
 "use server";
 
+import { orBack } from "@/lib/actionNotice";
 import { amountError } from "@/lib/books/validate";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
@@ -312,7 +313,7 @@ export async function importOpeningBalancesAction(rows: ImportRow[]): Promise<Re
         while (usedCodes.has(String(n))) n++;
         code = String(n);
       }
-      const acc = await prisma.account.create({ data: { branchId, code, name, type: r.newType } });
+      const acc = await orBack(() => prisma.account.create({ data: { branchId, code: code as string, name, type: r.newType as string } }));
       usedCodes.add(code);
       existing.push({ id: acc.id, code });
       id = acc.id;
@@ -479,7 +480,7 @@ export async function saveExchangeRateAction(input: { currency: string; date: st
   if (!date) return { error: "Choose the date the rate is for." };
   const rate = Number(input.rate);
   if (!Number.isFinite(rate) || rate <= 0 || rate > 100000) return { error: "Enter the rate: AED for 1 unit of the currency." };
-  await prisma.exchangeRate.upsert({ where: { branchId_currency_date: { branchId, currency, date } }, create: { branchId, currency, date, rate }, update: { rate } });
+  await orBack(() => prisma.exchangeRate.upsert({ where: { branchId_currency_date: { branchId, currency, date } }, create: { branchId, currency, date, rate }, update: { rate } }));
   await logAudit({ entityType: "BOOKS", entityId: branchId, action: "UPDATE", after: { rate: { currency, date: input.date, rate } }, userId: user.id, userName: user.name, branchId });
   const result = await syncPostings(branchId);
   refresh();

@@ -1,5 +1,6 @@
 "use server";
 
+import { orBack } from "@/lib/actionNotice";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
@@ -281,7 +282,7 @@ export async function bulkImportInventoryAction(rows: Record<string, string>[]):
       const category = blank(cellOf(r, "Category"));
       const notes = blank(cellOf(r, "Notes"));
       if (!item) {
-        const made = await prisma.inventoryItem.create({ data: { name: itemName, branchId, category, notes }, include: { variants: true } });
+        const made = await orBack(() => prisma.inventoryItem.create({ data: { name: itemName, branchId, category, notes }, include: { variants: true } }));
         await logAudit({ entityType: "INVENTORY_ITEM", entityId: made.id, action: "CREATE", after: { name: itemName, category, notes }, userId: user.id, userName: user.name, branchId });
         item = made;
         byKey.set(itemName.toLowerCase(), made);
@@ -300,7 +301,7 @@ export async function bulkImportInventoryAction(rows: Record<string, string>[]):
         Object.assign(variant, changes);
         results.push({ row: i + 2, name: `${itemName} · ${variant.name}`, status: created ? "created" : "updated" });
       } else {
-        const v = await prisma.inventoryVariant.create({ data: { itemId: item.id, name: variantName, sku, stock: stock === null ? 0 : Math.trunc(stock) } });
+        const v = await orBack(() => prisma.inventoryVariant.create({ data: { itemId: item.id, name: variantName, sku, stock: stock === null ? 0 : Math.trunc(stock) } }));
         item.variants.push(v);
         results.push({ row: i + 2, name: `${itemName} · ${v.name}`, status: created ? "created" : "updated" });
       }

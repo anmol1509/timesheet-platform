@@ -1,5 +1,6 @@
 "use server";
 
+import { isUniqueClash } from "@/lib/uniqueGuard";
 import { checkOutNow, settleDueCheckouts } from "@/lib/accommodationCheckout";
 import { checkoutKind, checkoutProblem, dayKey } from "@/lib/checkoutReasons";
 import { revalidatePath } from "next/cache";
@@ -71,8 +72,9 @@ export async function createCampWithRoomsAction(
       }
       return camp.id;
     });
-  } catch {
-    return { error: `A camp named "${name}" already exists.` };
+  } catch (e) {
+    const onRoom = (e as { meta?: { modelName?: string } } | null)?.meta?.modelName === "Room";
+    return { error: onRoom ? "Two rooms have the same name. Give each room its own name." : `A camp named "${name}" already exists.` };
   }
 
   await logAudit({
@@ -155,9 +157,16 @@ export async function createRoomAction(formData: FormData) {
   const campOwner = await campBranch(campId, { branchId, isSuperAdmin });
   if (campOwner === undefined) return;
 
-  const room = await prisma.room.create({
-    data: { campId, name, bedSpace, usableBedSpace, roomType, nationality },
-  });
+  // Two rooms in one camp can't share a name: say so on the camp's page instead of showing the error page.
+  let room;
+  try {
+    room = await prisma.room.create({
+      data: { campId, name, bedSpace, usableBedSpace, roomType, nationality },
+    });
+  } catch (e) {
+    if (isUniqueClash(e)) redirect(`/accommodation/camps?campId=${encodeURIComponent(campId)}&error=${encodeURIComponent(`This camp already has a room called "${name}". Give the new room a different name.`)}`);
+    throw e;
+  }
   await prisma.bed.createMany({
     data: [
       ...Array.from({ length: bedCount }, (_, i) => ({ roomId: room.id, label: singleLabel(i + 1) })),

@@ -1,5 +1,6 @@
 "use server";
 
+import { orBack } from "@/lib/actionNotice";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
@@ -38,9 +39,9 @@ export async function customiseTemplateAction(formData: FormData) {
   if (!branchId) redirect("/timesheet-templates?error=" + encodeURIComponent("Pick a company first."));
   const baseKey = str(formData.get("baseKey"));
   if (!isTemplateKey(baseKey)) redirect("/timesheet-templates");
-  const created = await prisma.timesheetTemplate.create({
+  const created = await orBack(async () => prisma.timesheetTemplate.create({
     data: { branchId, baseKey, name: await freeName(branchId, `${templateByKey(baseKey).name} (custom)`), config: defaultConfig(baseKey) },
-  });
+  }));
   await logAudit({ entityType: "TIMESHEET_TEMPLATE", entityId: created.id, action: "CREATE", after: { name: created.name, baseKey }, userId: user.id, userName: user.name, branchId });
   revalidatePath("/timesheet-templates");
   redirect(`/timesheet-templates/${created.id}`);
@@ -70,7 +71,7 @@ export async function duplicateTimesheetTemplateAction(formData: FormData) {
   assertContactsValid(formData);
   const { user, row } = await ownTemplate(str(formData.get("id")));
   if (!row) redirect("/timesheet-templates");
-  const created = await prisma.timesheetTemplate.create({ data: { branchId: row.branchId, baseKey: row.baseKey, name: await freeName(row.branchId, `${row.name} copy`), config: row.config as object } });
+  const created = await orBack(async () => prisma.timesheetTemplate.create({ data: { branchId: row.branchId, baseKey: row.baseKey, name: await freeName(row.branchId, `${row.name} copy`), config: row.config as object } }));
   await logAudit({ entityType: "TIMESHEET_TEMPLATE", entityId: created.id, action: "CREATE", after: { name: created.name, copiedFrom: row.id }, userId: user.id, userName: user.name, branchId: row.branchId });
   revalidatePath("/timesheet-templates");
   redirect(`/timesheet-templates/${created.id}`);

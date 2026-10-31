@@ -1,5 +1,6 @@
 "use server";
 
+import { orBack } from "@/lib/actionNotice";
 import { ownBankId } from "@/lib/books/banks";
 import { lockedPeriodError, markBooksStale } from "@/lib/books/lockCheck";
 import { revalidatePath } from "next/cache";
@@ -261,7 +262,7 @@ export async function saveBudgetAction(_prev: State, formData: FormData): Promis
   } else {
     const monthlyLimit = money(raw);
     if (!(monthlyLimit > 0)) return { error: "Enter a monthly limit above zero, or clear it to remove the budget." };
-    await prisma.expenseBudget.upsert({ where: { branchId_category: { branchId, category } }, create: { branchId, category, monthlyLimit }, update: { monthlyLimit } });
+    await orBack(() => prisma.expenseBudget.upsert({ where: { branchId_category: { branchId, category } }, create: { branchId, category, monthlyLimit }, update: { monthlyLimit } }));
     await logAudit({ entityType: "EXPENSE_BUDGET", entityId: category, action: "UPDATE", after: { category, monthlyLimit }, userId: user.id, userName: user.name, branchId });
   }
   revalidatePath("/finance/expenses");
