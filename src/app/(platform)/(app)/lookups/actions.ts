@@ -1,5 +1,6 @@
 "use server";
 
+import { orBack } from "@/lib/actionNotice";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
@@ -23,9 +24,9 @@ export async function createLookupValueAction(formData: FormData) {
   const value = String(formData.get("value") || "").trim();
   if (!branchId || !value || !LOOKUP_CATEGORIES.some((c) => c.key === category)) return;
 
-  const created = await prisma.lookupValue.create({
+  const created = await orBack(() => prisma.lookupValue.create({
     data: { branchId, category, value },
-  });
+  }));
 
   await logAudit({
     entityType: "LOOKUP_VALUE",

@@ -1,5 +1,6 @@
 "use server";
 
+import { orBack } from "@/lib/actionNotice";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch, requirePermission, requireWrite } from "@/lib/auth";
@@ -42,7 +43,7 @@ export async function createSkillAction(formData: FormData) {
     });
   } else {
     // Owned by the branch that added it (shared when a super admin has no branch selected).
-    const created = await prisma.skill.create({ data: { name, category, trending, branchId } });
+    const created = await orBack(() => prisma.skill.create({ data: { name, category, trending, branchId } }));
     await logAudit({
       entityType: "SKILL",
       entityId: created.id,
