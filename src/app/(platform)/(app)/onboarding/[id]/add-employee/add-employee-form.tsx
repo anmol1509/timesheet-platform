@@ -1,5 +1,6 @@
 "use client";
 
+import { useTradeNames } from "@/components/TradesProvider";
 import { useActionState, useRef, useState, startTransition } from "react";
 import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
@@ -8,7 +9,6 @@ import { CountrySelect } from "@/components/ui/CountrySelect";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { PhoneField } from "@/components/ui/PhoneField";
 import { SaveWarnings } from "@/components/SaveWarnings";
-import { TRADES } from "@/lib/trades";
 import { addCandidateAsEmployeeAction, type AddEmployeeState } from "../../add-employee-actions";
 
 import { Button } from "@/components/ui/Button";
@@ -22,7 +22,6 @@ type Initial = {
 };
 
 const lbl = "mb-1 block text-xs font-medium text-muted";
-const TRADE_OPTIONS = [{ value: "", label: "Not set" }, ...TRADES.map((t) => ({ value: t, label: t }))];
 const GENDER = [{ value: "", label: "Not set" }, { value: "MALE", label: "Male" }, { value: "FEMALE", label: "Female" }];
 const BLOOD = ["", "A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map((v) => ({ value: v, label: v || "Not set" }));
 const PAY = [
@@ -46,6 +45,8 @@ function Section({ title, hint, children }: { title: string; hint?: string; chil
 export function AddEmployeeForm({ candidateId, ready, canEditPay, proposedIds, suppliers, projects, files, initial }: {
   candidateId: string; ready: boolean; canEditPay: boolean; /** The next employee ID each company would give, by company id. */ proposedIds: Record<string, string>; suppliers: Opt[]; projects: Opt[]; files: FileRow[]; initial: Initial;
 }) {
+  const tradeNames = useTradeNames();
+  const TRADE_OPTIONS = [{ value: "", label: "Not set" }, ...tradeNames.map((t) => ({ value: t, label: t }))];
   const [state, action, pending] = useActionState(async (_p: AddEmployeeState, fd: FormData) => addCandidateAsEmployeeAction(_p, fd), { error: null } as AddEmployeeState);
   const formRef = useRef<HTMLFormElement>(null);
   const [payChoice, setPayChoice] = useState("LATER");

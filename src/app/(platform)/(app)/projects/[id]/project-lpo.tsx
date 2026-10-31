@@ -1,10 +1,10 @@
 "use client";
 
+import { useTradeNames } from "@/components/TradesProvider";
 import { Plus } from "lucide-react";
 import { useState, useTransition } from "react";
 import { addLpoAction, updateLpoAction, closeLpoAction } from "../actions";
 import { Select } from "@/components/ui/Select";
-import { TRADES } from "@/lib/trades";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { NumberInput } from "@/components/ui/NumberInput";
 
@@ -36,6 +36,7 @@ export function ProjectLpo({
   clientId: string;
   lpos: Lpo[];
 }) {
+  const tradeNames = useTradeNames();
   const [pending, startTransition] = useTransition();
   const [showNew, setShowNew] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -95,7 +96,7 @@ export function ProjectLpo({
                   <NumberInput name="quantity" defaultValue={lpo.quantity ?? ""} />
                 </Field>
                 <Field label="Trade">
-                  <Select name="trade" searchable options={[{ value: "", label: "Not set" }, ...TRADES.map((t) => ({ value: t, label: t }))]} defaultValue={lpo.trade ?? ""} />
+                  <Select name="trade" searchable options={[{ value: "", label: "Not set" }, ...tradeNames.map((t) => ({ value: t, label: t }))]} defaultValue={lpo.trade ?? ""} />
                 </Field>
                 <Field label="Rate (AED/hr)">
                   <NumberInput name="rate" defaultValue={lpo.rate ?? ""} step={0.01} />
@@ -195,7 +196,7 @@ export function ProjectLpo({
               <NumberInput name="quantity" />
             </Field>
             <Field label="Trade">
-              <Select name="trade" searchable options={[{ value: "", label: "Not set" }, ...TRADES.map((t) => ({ value: t, label: t }))]} defaultValue="" />
+              <Select name="trade" searchable options={[{ value: "", label: "Not set" }, ...tradeNames.map((t) => ({ value: t, label: t }))]} defaultValue="" />
             </Field>
             <Field label="Rate (AED/hr)">
               <NumberInput name="rate" step={0.01} />

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTradeNames } from "@/components/TradesProvider";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FileWarning } from "lucide-react";
@@ -430,7 +431,8 @@ function TradeEditor({ data, reload }: { data: QuickView; reload: () => void }) 
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [add, setAdd] = useState<{ trade: string; level: number; rate: number | "" }>({ trade: "", level: DEFAULT_SKILL_LEVEL, rate: "" });
-  const options = [...new Set([...(data.trade ? [data.trade] : []), ...TRADES])].map((t) => ({ value: t, label: t }));
+  const tradeNames = useTradeNames();
+  const options = [...new Set([...(data.trade ? [data.trade] : []), ...tradeNames])].map((t) => ({ value: t, label: t }));
   const current = data.skills.find((k) => k.name.toLowerCase() === (data.trade ?? "").toLowerCase());
   const hourlyNoRate = data.payStructure === "HOURLY" && !!current && current.rate == null;
 

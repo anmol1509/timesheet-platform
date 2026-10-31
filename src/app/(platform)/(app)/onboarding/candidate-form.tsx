@@ -1,5 +1,6 @@
 "use client";
 
+import { useTradeNames } from "@/components/TradesProvider";
 import { useActionState, useState } from "react";
 import { useRouter } from "next/navigation";
 import { UserRound, IdCard, Building2, MessageSquareText } from "lucide-react";
@@ -7,7 +8,6 @@ import { Select } from "@/components/ui/Select";
 import { CountrySelect } from "@/components/ui/CountrySelect";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { PhoneField } from "@/components/ui/PhoneField";
-import { TRADES } from "@/lib/trades";
 import { CANDIDATE_TYPES } from "@/lib/onboarding";
 import { ContactPicker, type AgencyContactOption } from "./contact-picker";
 import { AgencyPicker, type AgencyOption } from "./agency-picker";
@@ -15,7 +15,6 @@ import { createCandidateAction, updateCandidateAction } from "./actions";
 
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/Alert";
-const TRADE_OPTIONS = [{ value: "", label: "Not set" }, ...TRADES.map((t) => ({ value: t, label: t }))];
 
 type Option = { id: string; name: string };
 type DemandOption = { id: string; requestNo: number; project: { name: string } };
@@ -89,6 +88,8 @@ export function CandidateForm({
   /** A person who may only look: every field is disabled and there is nothing to save. */
   readOnly?: boolean;
 }) {
+  const tradeNames = useTradeNames();
+  const TRADE_OPTIONS = [{ value: "", label: "Not set" }, ...tradeNames.map((t) => ({ value: t, label: t }))];
   const router = useRouter();
   const [agencyId, setAgencyId] = useState(candidate?.agencyId ?? "");
   const [agencyList, setAgencyList] = useState(agencies);

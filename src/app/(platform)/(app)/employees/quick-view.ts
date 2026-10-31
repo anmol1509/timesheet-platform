@@ -14,7 +14,7 @@ import { recordProjectChange } from "@/lib/employeeAssignment";
 import { requestProjectAssignment } from "@/lib/projectAssignment";
 import { BLOOD_GROUPS } from "./quick-view-fields";
 import { TRADES } from "@/lib/trades";
-import { getOrCreateSkill } from "@/lib/skillScope";
+import { getOrCreateSkill, findVisibleSkill } from "@/lib/skillScope";
 import { DEFAULT_SKILL_LEVEL } from "@/lib/skillLevel";
 import { normalizeNationality } from "@/lib/nationality";
 import { normalizePhone } from "@/lib/phone";
@@ -335,7 +335,9 @@ export async function setEmployeeTradeAction(input: { id: string; trade: string 
   if (before.category === "STAFF") return { error: "Office staff have a position, not a trade." };
   const name = input.trade.trim();
   const known = before.skills.some((k) => k.skill.name.toLowerCase() === name.toLowerCase());
-  if (!name || (!(TRADES as readonly string[]).includes(name) && !known)) return { error: "Choose a trade from the list." };
+  // Any trade on the company's list is allowed: the built-in ones, one the worker already has, or one added on the Trades page.
+  const inCatalogue = !!name && (await findVisibleSkill(name, before.branchId));
+  if (!name || (!(TRADES as readonly string[]).includes(name) && !known && !inCatalogue)) return { error: "Choose a trade from the list." };
 
   const skill = await getOrCreateSkill(name, before.branchId);
   await prisma.employeeSkill.upsert({
