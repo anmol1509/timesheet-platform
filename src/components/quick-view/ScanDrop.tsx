@@ -1,5 +1,6 @@
 "use client";
 
+import { UploadTiles, type UploadTile } from "@/components/UploadTiles";
 import { useRef, useState } from "react";
 import { Loader2, ScanLine } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -10,7 +11,7 @@ import { Alert } from "@/components/Alert";
  * files (reading, filing, filling the record) belongs to the caller, which passes `onFiles` and reports back in
  * `status` (progress text while busy) and `error`.
  */
-export function ScanDrop({ title, hint, compact, multiple, status, error, onFiles, onCancel }: {
+export function ScanDrop({ title, hint, compact, multiple, status, error, tiles, onClearTiles, onFiles, onCancel }: {
   title?: string;
   hint?: string;
   compact?: boolean;
@@ -18,6 +19,9 @@ export function ScanDrop({ title, hint, compact, multiple, status, error, onFile
   /** Progress text while the caller is working; null when idle. */
   status: string | null;
   error?: string | null;
+  /** The files being read, drawn as tiles under the drop zone. */
+  tiles?: UploadTile[];
+  onClearTiles?: () => void;
   onFiles: (files: File[]) => void;
   /** Shown while busy: stops reading and saving. Files already saved stay. */
   onCancel?: () => void;
@@ -45,6 +49,12 @@ export function ScanDrop({ title, hint, compact, multiple, status, error, onFile
       </label>
       {busy && onCancel && <button type="button" onClick={onCancel} className="btn btn-secondary btn-sm shrink-0">Cancel</button>}
       </div>
+      {tiles && tiles.length > 0 && (
+        <div className="mt-3">
+          <UploadTiles tiles={tiles} />
+          {!busy && onClearTiles && <button type="button" onClick={onClearTiles} className="mt-2 text-xs font-medium text-muted underline-offset-2 hover:text-primary hover:underline">Clear</button>}
+        </div>
+      )}
       {error && <Alert inline className="mt-1">{error}</Alert>}
     </div>
   );

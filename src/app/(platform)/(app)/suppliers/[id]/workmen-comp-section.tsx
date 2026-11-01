@@ -10,6 +10,7 @@ import { deleteWorkmenCompAction, setWorkmenCompExpiryAction } from "../actions"
 import { ingestWorkmenComp } from "./workmen-comp-ingest";
 import { WorkmenCompWorkers } from "./workmen-comp-workers";
 import { Alert } from "@/components/Alert";
+import { UploadTiles, useUploadTiles } from "@/components/UploadTiles";
 
 export type WcPolicy = { id: string; filename: string; expiryDate: string | null; covered: number };
 type Progress = { name: string; state: "waiting" | "working" | "done" | "failed"; note?: string };
@@ -37,6 +38,7 @@ export function WorkmenCompSection({ supplierId, policies, workers, canEdit, onC
   const toggle = (id: string) => setOpenIds((cur) => { const n = new Set(cur); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const ut = useUploadTiles();
   const [progress, setProgress] = useState<Progress[]>([]);
   const [over, setOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,18 +52,22 @@ export function WorkmenCompSection({ supplierId, policies, workers, canEdit, onC
     const added: string[] = [];
     const rows: Progress[] = files.map((f) => ({ name: f.name, state: "waiting" }));
     setProgress(rows);
+    ut.start(files);
     const set = (i: number, patch: Partial<Progress>) => setProgress((cur) => cur.map((r, j) => (j === i ? { ...r, ...patch } : r)));
     for (const [i, file] of files.entries()) {
       set(i, { state: "working" });
+      ut.set(i, { state: "reading" });
       try {
         const r = await ingestWorkmenComp(supplierId, file);
-        if (!r.id) { set(i, { state: "failed", note: r.error ?? "Could not upload." }); continue; }
+        if (!r.id) { set(i, { state: "failed", note: r.error ?? "Could not upload." }); ut.set(i, { state: "failed" }); continue; }
         added.push(r.id);
         const parts = [r.expiry ? `expires ${r.expiry}` : "no expiry date found", r.names.length > 0 ? `${r.linked} of ${r.names.length} named workers linked` : "no names found on it"];
         if (r.unmatched.length > 0) parts.push(`${r.unmatched.length} not on this company's roster`);
         set(i, { state: "done", note: parts.join(" · ") });
+        ut.set(i, { state: "done", note: "Added" });
       } catch {
         set(i, { state: "failed", note: "Could not read or upload this file." });
+        ut.set(i, { state: "failed" });
       }
     }
     setBusy(false);
@@ -141,16 +147,17 @@ export function WorkmenCompSection({ supplierId, policies, workers, canEdit, onC
       )}
 
       {progress.length > 0 && (
-        <ul className="space-y-2 text-xs" aria-live="polite">
-          {progress.map((r, i) => r.state === "failed" ? (
-            <li key={i}><Alert title={`${r.name} wasn’t added`}>{r.note}</Alert></li>
-          ) : (
-            <li key={i} className={cn("flex gap-2", r.state === "done" ? "text-secondary" : "text-muted")}>
-              <span className="w-14 shrink-0">{r.state === "working" ? "Reading…" : r.state === "waiting" ? "Waiting" : "Added"}</span>
-              <span className="min-w-0 truncate">{r.name}{r.note ? `: ${r.note}` : ""}</span>
-            </li>
-          ))}
-        </ul>
+        <div className="space-y-2">
+          <UploadTiles tiles={ut.tiles} />
+          <ul className="space-y-2 text-xs" aria-live="polite">
+            {progress.map((r, i) => r.state === "failed" ? (
+              <li key={i}><Alert title={`${r.name} wasn’t added`}>{r.note}</Alert></li>
+            ) : r.state === "done" && r.note ? (
+              <li key={i} className="min-w-0 truncate text-secondary" title={`${r.name}: ${r.note}`}>{r.name}: {r.note}</li>
+            ) : null)}
+          </ul>
+          {!busy && <button type="button" onClick={() => { setProgress([]); ut.clear(); }} className="text-xs font-medium text-muted underline-offset-2 hover:text-primary hover:underline">Clear</button>}
+        </div>
       )}
       {error && <Alert>{error}</Alert>}
     </div>
