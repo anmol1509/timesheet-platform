@@ -2,6 +2,7 @@
 
 import { Alert } from "@/components/Alert";
 import { useEffect, useRef, useState } from "react";
+import { TriangleAlert, CircleHelp } from "lucide-react";
 import { Dialog, DialogContent, DialogFooter } from "./Dialog";
 import { Button } from "./Button";
 
@@ -94,16 +95,16 @@ export function ConfirmDialog({
     <>
       {trigger(() => setOpen(true))}
       <Dialog open={open} onOpenChange={change}>
-        <DialogContent title={title} description={description}>
+        <DialogContent title={title} description={description} tone={danger ? "danger" : undefined} icon={danger ? <TriangleAlert className="h-[18px] w-[18px]" /> : <CircleHelp className="h-[18px] w-[18px]" />}>
           {error && (
             <Alert className="mt-4">{error}</Alert>
           )}
-          {danger && (
-            <p role="status" className={`mt-3 text-xs ${hint ? "text-[var(--error)]" : "text-subtle"}`}>
-              {hint ? `Keep holding ${confirmLabel} until it fills.` : `Press and hold ${confirmLabel} to confirm.`}
-            </p>
-          )}
           <DialogFooter>
+            {danger && (
+              <p role="status" className={`mr-auto text-xs ${hint ? "text-[var(--error)]" : "text-subtle"}`}>
+                {hint ? `Keep holding ${confirmLabel} until it fills.` : `Press and hold ${confirmLabel} to confirm.`}
+              </p>
+            )}
             <Button variant="secondary" onClick={() => change(false)} disabled={pending}>
               Cancel
             </Button>

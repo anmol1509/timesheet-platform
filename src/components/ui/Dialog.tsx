@@ -14,6 +14,7 @@ export function DialogContent({
   description,
   hideTitle,
   icon,
+  tone,
 }: {
   children: React.ReactNode;
   className?: string;
@@ -23,6 +24,8 @@ export function DialogContent({
   hideTitle?: boolean;
   /** A small icon shown in a soft round tile beside the title. */
   icon?: React.ReactNode;
+  /** "danger" tints the icon tile red, for confirmations that delete something. */
+  tone?: "danger";
 }) {
   // A width asked for by the caller replaces the default one. Without this the default cap won over any wider size
   // (the two classes tie and the smaller cap is defined later), so wide dialogs were stuck at the default width.
@@ -37,7 +40,7 @@ export function DialogContent({
         )}
       >
         <div className={cn("mb-4 flex items-start gap-3.5", hideTitle && !icon && "contents")}>
-          {icon && <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface-sunken text-secondary" aria-hidden>{icon}</span>}
+          {icon && <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-full", tone === "danger" ? "bg-[var(--error-soft)] text-[var(--error)]" : "bg-surface-sunken text-secondary")} aria-hidden>{icon}</span>}
           <div className="min-w-0 flex-1">
             {hideTitle ? (
               <RadixDialog.Title className="sr-only">{title}</RadixDialog.Title>

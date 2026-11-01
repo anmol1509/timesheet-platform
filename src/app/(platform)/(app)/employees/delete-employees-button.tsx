@@ -90,9 +90,15 @@ export function DeleteEmployeesButton({
 
       <Dialog open={confirming} onOpenChange={setConfirming}>
         <DialogContent
-          title="Confirm delete"
-          description={`Delete ${label}? Their documents, skills and photo go with them, but a copy is kept for 30 days in Recently deleted. Employees with timesheet or attendance history can't be deleted. You'll be offered to deactivate those instead.`}
+          tone="danger"
+          icon={<Trash2 className="h-[18px] w-[18px]" />}
+          title={`Delete ${label}?`}
+          description="Their documents, skills and photo go with them."
         >
+          <ul className="space-y-2.5 rounded-card bg-surface-sunken px-4 py-3.5 text-sm text-secondary">
+            <li className="flex gap-2.5"><span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--text-subtle)]" aria-hidden />A copy is kept for 30 days in Recently deleted.</li>
+            <li className="flex gap-2.5"><span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--text-subtle)]" aria-hidden />Anyone with timesheet or attendance history can&rsquo;t be deleted. You&rsquo;ll be offered to deactivate them instead.</li>
+          </ul>
           <DialogFooter>
             <button
               type="button"
@@ -101,11 +107,7 @@ export function DeleteEmployeesButton({
             >
               Cancel
             </button>
-            <button
-              type="button"
-              onClick={runDelete}
-              className="rounded-lg bg-[var(--error)] px-3 py-2 text-sm font-medium text-white transition hover:bg-[var(--error)]"
-            >
+            <button type="button" onClick={runDelete} className="btn btn-danger px-4">
               Delete
             </button>
           </DialogFooter>
