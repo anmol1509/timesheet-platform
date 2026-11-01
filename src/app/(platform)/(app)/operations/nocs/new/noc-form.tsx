@@ -20,15 +20,19 @@ type RequestOption = {
 export function NocForm({
   requests,
   templates,
+  ownCompanies,
   initialDemandRequestId,
 }: {
   requests: RequestOption[];
   templates: { id: string; name: string; title: string; html: string }[];
+  ownCompanies: { id: string; name: string }[];
   initialDemandRequestId: string;
 }) {
   const [pending, startTransition] = useTransition();
   const [demandRequestId, setDemandRequestId] = useState(initialDemandRequestId);
   const [templateId, setTemplateId] = useState("");
+  // Our company the letter is addressed to; chosen for us when there is only one.
+  const [addresseeId, setAddresseeId] = useState(ownCompanies.length === 1 ? ownCompanies[0].id : "");
   const [selectedEmployees, setSelectedEmployees] = useState<Set<string>>(new Set());
   const [displayFields, setDisplayFields] = useState<Set<string>>(new Set(DEFAULT_NOC_DISPLAY_FIELDS));
   const [mobilizeDate, setMobilizeDate] = useState("");
@@ -63,10 +67,11 @@ export function NocForm({
   }
 
   function handleSubmit() {
-    if (!demandRequestId || !templateId || selectedEmployees.size === 0) return;
+    if (!demandRequestId || !templateId || selectedEmployees.size === 0 || (ownCompanies.length > 0 && !addresseeId)) return;
     const formData = new FormData();
     formData.append("demandRequestId", demandRequestId);
     formData.append("templateId", templateId);
+    formData.append("addresseeId", addresseeId);
     for (const id of selectedEmployees) formData.append("employeeId", id);
     formData.append("displayFields", [...displayFields].join(","));
     formData.append("mobilizeDate", mobilizeDate);
@@ -104,6 +109,12 @@ export function NocForm({
             options={templates.map((t) => ({ value: t.id, label: t.name }))}
           />
         </label>
+        {ownCompanies.length > 0 && (
+          <label className="block sm:col-span-2">
+            <span className="mb-1 block text-xs font-medium text-muted">Addressed to (our company)</span>
+            <Select value={addresseeId} onChange={setAddresseeId} placeholder="Choose our company" options={ownCompanies.map((c) => ({ value: c.id, label: c.name }))} />
+          </label>
+        )}
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-muted">Mobilize Date</span>
           <DatePicker value={mobilizeDate} onChange={(v) => setMobilizeDate(v)} className="w-full" />
@@ -171,7 +182,7 @@ export function NocForm({
         </div>
       </div>
 
-      <Button size="btn" type="button" onClick={handleSubmit} disabled={pending || !demandRequestId || !templateId || selectedEmployees.size === 0} loading={pending}>
+      <Button size="btn" type="button" onClick={handleSubmit} disabled={pending || !demandRequestId || !templateId || selectedEmployees.size === 0 || (ownCompanies.length > 0 && !addresseeId)} loading={pending}>
         Create NOC
       </Button>
     </div>

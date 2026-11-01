@@ -46,11 +46,11 @@ export const LETTER_MERGE_FIELDS: MergeField[] = [
 export const LETTER_TABLE_COLUMNS = [
   { key: "SNO", label: "S.No", width: 28, always: true },
   { key: "NAME", label: "Name", width: 90, always: true },
-  { key: "COMPANY", label: "Company Name", width: 104, always: true },
+  { key: "COMPANY", label: "Company Name", width: 92, always: true },
   { key: "DESIGNATION", label: "Designation", width: 58, always: false },
   { key: "NATIONALITY", label: "Nationality", width: 56, always: false },
   { key: "PASSPORT", label: "Passport No.", width: 64, always: false },
-  { key: "ID_NUMBER", label: "ID Number", width: 76, always: false },
+  { key: "ID_NUMBER", label: "ID Number", width: 100, always: false },
   { key: "EMPLOYEE_ID", label: "Employee ID", width: 58, always: false },
   { key: "VISA_STATUS", label: "Visa Status", width: 58, always: false },
 ] as const;
@@ -171,4 +171,22 @@ export function letterCellValue(key: string, worker: LetterWorker, index: number
     case "VISA_STATUS": return worker.visaStatus ?? "";
     default: return "";
   }
+}
+
+/**
+ * A value never runs into the next column: a piece that cannot wrap by itself (an ID, a passport number) and is
+ * wider than its column is broken onto the next line. Ordinary words wrap as usual and short text is untouched.
+ */
+export function wrapToWidth(text: string, size: number, room: number): string {
+  // Capital letters and digits average about 0.6 of the font size in width.
+  const fits = Math.max(3, Math.floor(room / (size * 0.6)));
+  return text
+    .split(/(\s+)/)
+    .map((part) => {
+      if (/^\s*$/.test(part) || part.length <= fits) return part;
+      const lines: string[] = [];
+      for (let i = 0; i < part.length; i += fits) lines.push(part.slice(i, i + fits));
+      return lines.join("\n");
+    })
+    .join("");
 }

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { templateHtml } from "@/lib/letterHtml";
+import { loadOwnCompanies } from "@/lib/nocAddressee";
 import { NocForm } from "./noc-form";
 
 export const metadata = { title: "New NOC" };
@@ -16,7 +17,7 @@ export default async function NewNocPage({
   const { demandRequestId } = await searchParams;
   const { branchId } = await requireUserWithBranch();
 
-  const [demandRequests, templates] = await Promise.all([
+  const [demandRequests, templates, ownCompanies] = await Promise.all([
     prisma.demandRequest.findMany({
       where: branchWhere(branchId),
       include: {
@@ -28,6 +29,7 @@ export default async function NewNocPage({
     }),
     // Only the NOC wording belongs here; salary certificates, warnings and the rest have their own screens.
     prisma.letterTemplate.findMany({ where: { ...branchWhere(branchId), category: "No Objection Letter" }, orderBy: { name: "asc" } }),
+    loadOwnCompanies(branchId),
   ]);
 
   const requests = demandRequests.map((r) => {
@@ -59,6 +61,7 @@ export default async function NewNocPage({
       />
       <NocForm
         requests={requests}
+        ownCompanies={ownCompanies}
         templates={templates.map((t) => ({ id: t.id, name: t.name, title: t.title || t.name, html: templateHtml(t) }))}
         initialDemandRequestId={demandRequestId || ""}
       />

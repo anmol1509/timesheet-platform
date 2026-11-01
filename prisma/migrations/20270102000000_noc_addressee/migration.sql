@@ -1,0 +1,1 @@
+ALTER TABLE "Noc" ADD COLUMN "addresseeId" TEXT;

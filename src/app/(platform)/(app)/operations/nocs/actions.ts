@@ -7,6 +7,7 @@ import { requireUserWithBranch, requirePermission } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { assertContactsValid } from "@/lib/validators";
+import { checkAddressee } from "@/lib/nocAddressee";
 
 function stringOrNull(value: FormDataEntryValue | null) {
   const s = String(value || "").trim();
@@ -38,6 +39,8 @@ export async function createNocAction(formData: FormData) {
   const letterDate = dateOrNull(formData.get("letterDate")) ?? new Date();
   const remarks = stringOrNull(formData.get("remarks"));
   if (!demandRequestId || !templateId || !branchId) return;
+  const addresseeId = stringOrNull(formData.get("addresseeId"));
+  if (await checkAddressee(addresseeId, branchId)) return;
 
   const [request, template] = await Promise.all([
     prisma.demandRequest.findUnique({ where: { id: demandRequestId }, select: { branchId: true } }),
@@ -54,6 +57,7 @@ export async function createNocAction(formData: FormData) {
       displayFields: displayFields || null,
       mobilizeDate,
       letterDate,
+      addresseeId,
       remarks,
       requestedById: user.id,
       employees: { create: employeeIds.map((employeeId) => ({ employeeId })) },
@@ -121,6 +125,9 @@ export async function issueNocAction(formData: FormData): Promise<{ id?: string;
   if (!branchId) return { error: "Pick a company first." };
   if (!demandRequestId || !templateId) return { error: "Choose a template." };
   if (asked.length === 0) return { error: "Tick at least one worker." };
+  const addresseeId = stringOrNull(formData.get("addresseeId"));
+  const addresseeProblem = await checkAddressee(addresseeId, branchId);
+  if (addresseeProblem) return { error: addresseeProblem };
 
   const [request, template] = await Promise.all([
     prisma.demandRequest.findUnique({
@@ -144,6 +151,7 @@ export async function issueNocAction(formData: FormData): Promise<{ id?: string;
       displayFields: displayFields || null,
       mobilizeDate,
       letterDate,
+      addresseeId,
       remarks,
       requestedById: user.id,
       employees: { create: employeeIds.map((employeeId) => ({ employeeId })) },
