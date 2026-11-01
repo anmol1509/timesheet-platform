@@ -36,7 +36,7 @@ export function DialogContent({
           className
         )}
       >
-        <div className={cn("flex items-start gap-3.5", hideTitle && !icon && "contents")}>
+        <div className={cn("mb-4 flex items-start gap-3.5", hideTitle && !icon && "contents")}>
           {icon && <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface-sunken text-secondary" aria-hidden>{icon}</span>}
           <div className="min-w-0 flex-1">
             {hideTitle ? (
