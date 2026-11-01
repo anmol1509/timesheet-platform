@@ -63,6 +63,7 @@ export function DocumentTabs(props: {
   undertakingTemplates: Template[];
   nocs: Noc[];
   sponsors: Record<string, Sponsor>;
+  ownCompanies: { id: string; name: string; address: string | null }[];
   company: Company;
 }) {
   const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("noc");
@@ -95,7 +96,7 @@ const toLetterWorker = (w: Worker): LetterWorker => ({
 });
 
 function LetterBuilder({
-  kind, demand, workers, templates, nocs, sponsors, company,
+  kind, demand, workers, templates, nocs, sponsors, ownCompanies, company,
 }: {
   kind: "noc" | "undertaking";
   demand: Demand;
@@ -103,11 +104,15 @@ function LetterBuilder({
   templates: Template[];
   nocs: Noc[];
   sponsors: Record<string, Sponsor>;
+  ownCompanies: { id: string; name: string; address: string | null }[];
   company: Company;
 }) {
   const isNoc = kind === "noc";
   const [templateId, setTemplateId] = useState(templates[0]?.id ?? "");
   const [chosen, setChosen] = useState<Set<string>>(() => new Set(workers.map((w) => w.id)));
+  // Our company a NOC is addressed to; chosen for us when there is only one.
+  const [addresseeId, setAddresseeId] = useState(ownCompanies.length === 1 ? ownCompanies[0].id : "");
+  const addressee = ownCompanies.find((c) => c.id === addresseeId) ?? null;
   const [onLetterhead, setOnLetterhead] = useState(true);
   const [mobilizeDate, setMobilizeDate] = useState("");
   // The date printed on the letter (NOC or undertaking); empty means today.
@@ -176,6 +181,7 @@ function LetterBuilder({
     const fd = new FormData();
     fd.set("demandRequestId", demand.id);
     fd.set("templateId", templateId);
+    fd.set("addresseeId", addresseeId);
     for (const id of chosen) fd.append("employeeId", id);
     fd.set("displayFields", [...fields].join(","));
     fd.set("mobilizeDate", mobilizeDate);
@@ -200,7 +206,7 @@ function LetterBuilder({
     return <div className="card p-8 text-center text-sm text-muted">Nobody is mobilised on this demand yet. Mobilise workers first.</div>;
   }
 
-  const ready = !!template && picked.length > 0;
+  const ready = !!template && picked.length > 0 && (!isNoc || ownCompanies.length === 0 || !!addresseeId);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)]">
@@ -210,6 +216,12 @@ function LetterBuilder({
             <span className="mb-1 block text-xs font-medium text-muted">Letter</span>
             <Select value={templateId} onChange={setTemplateId} searchable={false} options={templates.map((t) => ({ value: t.id, label: t.name }))} />
           </label>
+          {isNoc && ownCompanies.length > 0 && (
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium text-muted">Addressed to (our company)</span>
+              <Select value={addresseeId} onChange={setAddresseeId} searchable={false} placeholder="Choose our company" options={ownCompanies.map((c) => ({ value: c.id, label: c.name }))} />
+            </label>
+          )}
           {templateId && (
             <div className="-mt-2 flex items-center gap-3 text-xs">
               <EditWording target={{ kind: isNoc ? "noc-draft" : "undertaking", subjectId: overrideScope }} label="Edit wording" onChanged={() => setOverrideTick((n) => n + 1)} />
@@ -353,6 +365,7 @@ function LetterBuilder({
           ) : (
             groups.map((g, i) => (
               <SheetFor
+                addressee={isNoc ? addressee : null}
                 key={g.id ?? `none-${i}`}
                 label={groups.length > 1 ? `Letter ${i + 1} of ${groups.length} · ${g.issuer}` : null}
                 demand={demand}
@@ -380,8 +393,9 @@ function LetterBuilder({
 }
 
 function SheetFor({
-  label, demand, template, kind, issuerName, workers, columns, onLetterhead, letterheadUrl, topMm, bottomMm, margins, signing, mobilizeDate, letterDate,
+  addressee, label, demand, template, kind, issuerName, workers, columns, onLetterhead, letterheadUrl, topMm, bottomMm, margins, signing, mobilizeDate, letterDate,
 }: {
+  addressee: { name: string; address: string | null } | null;
   label: string | null;
   demand: Demand;
   template: Template;
@@ -418,8 +432,8 @@ function SheetFor({
       {label && <p className="mb-2 text-xs font-semibold text-secondary">{label}</p>}
       <ClientLetterPaper
         date={formatLetterDate(now)}
-        clientName={demand.clientName}
-        clientAddress={demand.clientAddress}
+        clientName={addressee?.name ?? demand.clientName}
+        clientAddress={addressee ? addressee.address : demand.clientAddress}
         projectName={demand.projectName}
         title={template.title}
         bodyHtml={body}

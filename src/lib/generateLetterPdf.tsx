@@ -5,6 +5,7 @@ import {
   LETTER_TABLE_COLUMNS,
   formatLetterDate,
   letterCellValue as cellValue,
+  wrapToWidth,
   type LetterColumnKey,
   type LetterGroup,
   type LetterWorker,
@@ -54,6 +55,8 @@ export type LetterPdfInput = {
   title: string;
   clientName: string;
   clientAddress: string | null;
+  /** When set, the letter is addressed to this (our own company) instead of the client. */
+  addressee?: { name: string; address: string | null } | null;
   projectName: string;
   date: Date;
   sections: LetterSection[];
@@ -139,8 +142,10 @@ function LetterBody({
   const fit = sides ? Math.min(1, (A4_WIDTH - (sides.left + sides.right) * MM) / 507) : 1;
   const cellSize = Math.round(8 * fit * 10) / 10;
   const totalWeight = selected.reduce((sum, c) => sum + c.width, 0) || 1;
+  // Room for text in each column, in points (the 507pt table less the cell padding), so a value that cannot wrap can be shrunk to fit.
   const columns = selected.map((c) => ({
     ...c,
+    room: Math.max(10, (c.width / totalWeight) * (507 * fit) - 8),
     percent: `${((c.width / totalWeight) * 100).toFixed(4)}%`,
   }));
 
@@ -149,8 +154,8 @@ function LetterBody({
       <Text style={s.date}>Date: {formatLetterDate(input.date)}</Text>
 
       <Text style={s.addressee}>To,</Text>
-      <Text style={[s.addressee, s.addresseeName]}>M/s. {input.clientName.toUpperCase()}</Text>
-      {input.clientAddress && <Text style={s.addressee}>{input.clientAddress}</Text>}
+      <Text style={[s.addressee, s.addresseeName]}>M/s. {(input.addressee?.name ?? input.clientName).toUpperCase()}</Text>
+      {(input.addressee ? input.addressee.address : input.clientAddress) && <Text style={s.addressee}>{input.addressee ? input.addressee.address : input.clientAddress}</Text>}
 
       <Text style={s.project}>Project: {input.projectName}</Text>
 
@@ -171,7 +176,10 @@ function LetterBody({
             <View key={w.id} style={s.row} wrap={false}>
               {columns.map((c) => (
                 <View key={c.key} style={[s.cell, { width: c.percent }]}>
-                  <Text style={[s.bodyCell, { fontSize: cellSize }]}>{cellValue(c.key, w, i, companyName)}</Text>
+                  {(() => {
+                    const text = cellValue(c.key, w, i, companyName);
+                    return <Text style={[s.bodyCell, { fontSize: cellSize }]}>{wrapToWidth(text, cellSize, c.room)}</Text>;
+                  })()}
                 </View>
               ))}
             </View>

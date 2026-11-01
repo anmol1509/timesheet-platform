@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { templateHtml } from "@/lib/letterHtml";
+import { loadOwnCompanies } from "@/lib/nocAddressee";
 import { DocumentTabs } from "./document-tabs";
 
 export const metadata = { title: "Demand documents" };
@@ -81,6 +82,7 @@ export default async function DemandDocumentsPage({
     ])
   );
 
+  const ownCompanies = await loadOwnCompanies(branchId);
   const b = demand.branch;
   const asOption = (t: (typeof templates)[number]) => ({ id: t.id, name: t.name, title: t.title || t.category || t.name, html: templateHtml(t) });
 
@@ -107,6 +109,7 @@ export default async function DemandDocumentsPage({
         undertakingTemplates={templates.filter((t) => t.category === "Undertaking Letter" || t.category === "Supplier Undertaking").map(asOption)}
         nocs={demand.nocs.map((n) => ({ id: n.id, docNo: n.docNo, status: n.status, createdAt: n.createdAt.toISOString(), workers: n._count.employees }))}
         sponsors={issuerInfo}
+        ownCompanies={ownCompanies}
         company={{
           name: b.name,
           letterheadUrl: b.letterheadImageId ? `/api/images/${b.letterheadImageId}` : null,

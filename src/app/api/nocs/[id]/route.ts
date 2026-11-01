@@ -6,6 +6,7 @@ import { isOutsideBranch } from "@/lib/branch";
 import { prisma } from "@/lib/db";
 import { generateLetterPdf } from "@/lib/generateLetterPdf";
 import { buildLetterSections, toLetterWorker, loadPaperMargins } from "@/lib/letterIssuer";
+import { addresseeOf } from "@/lib/nocAddressee";
 import { columnsFromNocFields } from "@/lib/letterLayout";
 
 /**
@@ -38,6 +39,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   }
 
   const edit = await findDocEdit("noc", noc.id);
+  const addressee = await addresseeOf(noc.addresseeId);
   const { sections, missingLetterheads } = await buildLetterSections({
     workers: noc.employees.map((ne) => toLetterWorker(ne.employee)),
     // Wording and heading changed for this NOC alone win over the template's.
@@ -66,6 +68,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     title: edit?.title || noc.template.title || noc.template.category || "No Objection Certificate",
     clientName: noc.demandRequest.client.name,
     clientAddress: noc.demandRequest.client.billingAddress,
+    addressee,
     projectName: noc.demandRequest.project.name,
     date: noc.letterDate ?? new Date(),
     sections,
