@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useUploadTiles } from "@/components/UploadTiles";
 import { DrawerFrame } from "@/components/quick-view/DrawerFrame";
 import { companyNameMatches } from "@/lib/companyName";
 import { ScanDrop } from "@/components/quick-view/ScanDrop";
@@ -278,6 +279,7 @@ function CompanyScan({ adapter, id, names, onDone, title, hint }: { adapter: Com
   const [held, setHeld] = useState<Held[]>([]);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const ut = useUploadTiles();
   const abort = useRef<AbortController | null>(null);
 
   /** Keeps the file against the company and puts what was read on the record. */
@@ -306,16 +308,19 @@ function CompanyScan({ adapter, id, names, onDone, title, hint }: { adapter: Com
   async function run(files: File[]) {
     if (files.length === 0) return;
     setError(null);
+    ut.start(files);
     const ac = new AbortController();
     abort.current = ac;
     const out: CompanyScanOutcome = { applied: [], conflicts: [], files: 0, unread: 0, reason: null };
     try {
       for (const [n, raw] of files.entries()) {
         if (ac.signal.aborted) break;
+        ut.set(n, { state: "reading" });
         setStatus(files.length > 1 ? `Reading ${n + 1} of ${files.length}…` : "Reading the document…");
         const file = await shrinkImage(raw);
-        if (file.size > MAX_UPLOAD_BYTES) { setError(`"${file.name}" is too large: max ${MAX_UPLOAD_LABEL}.`); continue; }
+        if (file.size > MAX_UPLOAD_BYTES) { setError(`"${file.name}" is too large: max ${MAX_UPLOAD_LABEL}.`); ut.set(n, { state: "failed", note: "Too large" }); continue; }
         let fields: ExtractedCompanyFields = {};
+        const unreadBefore = out.unread;
         if (file.type.startsWith("image/") || file.type === "application/pdf") {
           const body = new FormData();
           body.append("file", file);
@@ -329,13 +334,18 @@ function CompanyScan({ adapter, id, names, onDone, title, hint }: { adapter: Com
         // A document plainly belonging to another company is held back, not filed against this one.
         if (OWN_NAME_DOCS.has(docType) && !companyNameMatches(fields.companyName, names)) {
           setHeld((h) => [...h, { file, fields, docType, companyName: (fields.companyName ?? "").trim() }]);
+          ut.set(n, { state: "failed", note: "Other company" });
           continue;
         }
         setStatus("Saving…");
+        const filedBefore = out.files;
         await commit(file, fields, docType, out);
+        if (out.files === filedBefore) ut.set(n, { state: "failed", note: "Not saved" });
+        else ut.set(n, out.unread > unreadBefore ? { state: "done", note: "Filed, not read" } : { state: "done" });
       }
     } catch {
       setError("That didn't upload. Please try again.");
+      ut.failReading();
     } finally {
       setStatus(null);
     }
@@ -345,7 +355,7 @@ function CompanyScan({ adapter, id, names, onDone, title, hint }: { adapter: Com
 
   return (
     <div>
-      <ScanDrop title={title} hint={hint} compact multiple status={status} error={error} onFiles={(f) => void run(f)} onCancel={() => abort.current?.abort()} />
+      <ScanDrop title={title} hint={hint} compact multiple status={status} error={error} tiles={ut.tiles} onClearTiles={ut.clear} onFiles={(f) => void run(f)} onCancel={() => abort.current?.abort()} />
       {held.map((h) => (
         <div key={`${h.file.name}-${h.file.size}-${h.file.lastModified}`} role="alert" className="mt-2 rounded-lg border border-[var(--error-border)] bg-[var(--error-soft)] p-3 text-sm">
           <p className="font-semibold text-[var(--error)]">This doesn’t look like {names[0] ? `${names[0]}’s` : `this ${adapter.noun}’s`} document.</p>

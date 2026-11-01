@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { ScanDrop } from "@/components/quick-view/ScanDrop";
+import { useUploadTiles } from "@/components/UploadTiles";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
 import { shrinkImage } from "@/lib/compressImage";
 import { pdfPageToImage } from "@/lib/pdfPageToImage";
@@ -46,22 +47,27 @@ export function ScanUpload({ employeeId, docType, hasPhoto, multiple, title, hin
 }) {
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const ut = useUploadTiles();
   const abort = useRef<AbortController | null>(null);
 
   async function run(picked: File[]) {
     if (picked.length === 0) return;
     setError(null);
+    ut.start(picked);
     const ac = new AbortController();
     abort.current = ac;
     const out: ScanOutcome = { applied: [], conflicts: [], files: 0, unread: 0, reason: null, photo: false };
     try {
       for (const [n, raw] of picked.entries()) {
         if (ac.signal.aborted) break;
+        ut.set(n, { state: "reading" });
         setStatus(picked.length > 1 ? `Reading ${n + 1} of ${picked.length}…` : "Reading the document…");
         const file = await shrinkImage(raw);
-        if (file.size > MAX_UPLOAD_BYTES) { setError(`"${file.name}" is too large: max ${MAX_UPLOAD_LABEL}.`); continue; }
+        if (file.size > MAX_UPLOAD_BYTES) { setError(`"${file.name}" is too large: max ${MAX_UPLOAD_LABEL}.`); ut.set(n, { state: "failed", note: "Too large" }); continue; }
 
         let fields: ExtractedDocumentFields = {};
+        let failed = false;
+        const unreadBefore = out.unread;
         if (file.type.startsWith("image/") || file.type === "application/pdf") {
           const body = new FormData();
           body.append("file", file);
@@ -76,6 +82,7 @@ export function ScanUpload({ employeeId, docType, hasPhoto, multiple, title, hin
         // Kept as a document under each type it holds, so renewals, lists and reminders find it where they look.
         const found = (fields.documentsFound ?? []).filter((t) => t in EXPIRY_OF);
         const types = docType === "COMBINED" ? (found.length ? found : ["DOCUMENT_PACK"]) : [docType];
+        const unreadNow = out.unread > unreadBefore;
         setStatus("Saving…");
         for (const type of types) {
           const form = new FormData();
@@ -85,9 +92,11 @@ export function ScanUpload({ employeeId, docType, hasPhoto, multiple, title, hin
           form.append("expiryDate", key && typeof fields[key] === "string" ? (fields[key] as string) : "");
           form.append("file", file);
           const r = await uploadDocumentAction(form);
-          if (r.error) { setError(r.error); break; }
+          if (r.error) { setError(r.error); failed = true; break; }
         }
+        if (failed) { ut.set(n, { state: "failed", note: "Not saved" }); continue; }
         out.files++;
+        ut.set(n, unreadNow ? { state: "done", note: "Filed, not read" } : { state: "done" });
 
         if (Object.keys(fields).length > 0) {
           const r = await applyScanAction({ id: employeeId, fields });
@@ -113,6 +122,7 @@ export function ScanUpload({ employeeId, docType, hasPhoto, multiple, title, hin
       }
     } catch {
       setError("That didn't upload. Please try again.");
+      ut.failReading();
     } finally {
       setStatus(null);
     }
@@ -120,5 +130,5 @@ export function ScanUpload({ employeeId, docType, hasPhoto, multiple, title, hin
     if (out.files > 0) onDone(out);
   }
 
-  return <ScanDrop title={title} hint={hint} compact={compact} multiple={multiple} status={status} error={error} onFiles={(f) => void run(f)} onCancel={() => abort.current?.abort()} />;
+  return <ScanDrop title={title} hint={hint} compact={compact} multiple={multiple} status={status} error={error} tiles={ut.tiles} onClearTiles={ut.clear} onFiles={(f) => void run(f)} onCancel={() => abort.current?.abort()} />;
 }
