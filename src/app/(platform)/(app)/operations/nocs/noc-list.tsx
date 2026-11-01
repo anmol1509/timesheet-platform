@@ -10,6 +10,8 @@ type NocRow = {
   id: string;
   docNo: number;
   clientName: string;
+  /** Our own company the letter is addressed to; null on older NOCs. */
+  addressedTo: string | null;
   projectName: string;
   templateName: string;
   status: string;
@@ -25,6 +27,7 @@ type NocRow = {
 export function NocList({ nocs }: { nocs: NocRow[] }) {
   const columns: DataTableColumn<NocRow>[] = [
     { key: "docNo", header: "Doc No", render: (n) => `NOC-${n.docNo}`, csvValue: (n) => String(n.docNo) },
+    { key: "addressedTo", header: "Addressed to", render: (n) => n.addressedTo ?? <span className="text-muted">—</span>, csvValue: (n) => n.addressedTo ?? "" },
     { key: "clientName", header: "Client", render: (n) => n.clientName, csvValue: (n) => n.clientName },
     { key: "projectName", header: "Project", render: (n) => n.projectName, csvValue: (n) => n.projectName },
     { key: "templateName", header: "Template", render: (n) => n.templateName, csvValue: (n) => n.templateName },
@@ -93,6 +96,7 @@ export function NocList({ nocs }: { nocs: NocRow[] }) {
       rowHref={(n) => `/operations/nocs/${n.id}`}
       filters={[
         { key: "status", label: "All statuses", options: optionsOf(nocs, (n) => n.status), get: (n) => n.status },
+        { key: "addressedTo", label: "All our companies", options: optionsOf(nocs, (n) => n.addressedTo ?? "Not set"), get: (n) => n.addressedTo ?? "Not set" },
         { key: "client", label: "All clients", options: optionsOf(nocs, (n) => n.clientName), get: (n) => n.clientName },
         { key: "project", label: "All projects", options: optionsOf(nocs, (n) => n.projectName), get: (n) => n.projectName },
         {

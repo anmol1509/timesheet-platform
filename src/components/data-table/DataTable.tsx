@@ -68,7 +68,7 @@ export type DataTableRowContext = {
 
 /** A dropdown that narrows the rows: "All …" plus one option per value. */
 /** The heading each filter gets in the Filters panel, where the key alone would read badly. */
-const FILTER_TITLE: Record<string, string> = { owed: "Balance", licence: "Trade licence", approval: "Approvals", type: "Type", demand: "Demand", contract: "Contract" };
+const FILTER_TITLE: Record<string, string> = { owed: "Balance", licence: "Trade licence", approval: "Approvals", type: "Type", demand: "Demand", contract: "Contract", addressedTo: "Addressed to" };
 
 export type DataTableFilter<T> = {
   key: string;

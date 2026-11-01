@@ -27,6 +27,13 @@ export default async function NocsPage() {
     orderBy: { docNo: "desc" },
   });
 
+  // The own company each NOC is addressed to (older NOCs have none).
+  const addresseeIds = [...new Set(nocs.map((n) => n.addresseeId).filter((id): id is string => !!id))];
+  const addressees = addresseeIds.length
+    ? await prisma.supplier.findMany({ where: { id: { in: addresseeIds } }, select: { id: true, name: true, fullName: true } })
+    : [];
+  const addresseeName = new Map(addressees.map((s) => [s.id, s.fullName || s.name]));
+
   return (
     <div className="space-y-5">
       <HeroHeader
@@ -57,6 +64,7 @@ export default async function NocsPage() {
             id: n.id,
             docNo: n.docNo,
             clientName: n.demandRequest.client.name,
+            addressedTo: (n.addresseeId && addresseeName.get(n.addresseeId)) || null,
             projectName: n.demandRequest.project.name,
             templateName: n.template.name,
             status: n.status,
