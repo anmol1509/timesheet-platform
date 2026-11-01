@@ -1,5 +1,6 @@
 "use server";
 
+import { isUniqueClash } from "@/lib/uniqueGuard";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { getVendor } from "@/lib/vendor/session";
@@ -88,8 +89,9 @@ export async function submitInvoiceAction(_prev: State, formData: FormData): Pro
       },
     });
     billId = bill.id;
-  } catch {
-    return { error: `You already have an invoice numbered ${d.billNo}.` };
+  } catch (e) {
+    // Only a repeated number is blamed on the number; any other failure says so plainly instead of accusing it.
+    return { error: isUniqueClash(e) ? `You already have an invoice numbered ${d.billNo}.` : "That couldn't be saved. Please try again." };
   }
   await saveFile(d.file, billId, vendor.id, vendor.branchId);
   await tellFinance(vendor.branchId, vendor.name, d.billNo, d.amount + d.vatAmount, false);
@@ -120,8 +122,9 @@ export async function resubmitInvoiceAction(_prev: State, formData: FormData): P
         periodMonth: d.periodMonth, timesheetAmount: sheet.entryCount > 0 ? sheet.net : null, timesheetHours: sheet.entryCount > 0 ? sheet.hours : null, description: d.description, approvalStatus: "PENDING", approvalNote: null, approvedAt: null, approvedById: null,
       },
     });
-  } catch {
-    return { error: `You already have an invoice numbered ${d.billNo}.` };
+  } catch (e) {
+    // Only a repeated number is blamed on the number; any other failure says so plainly instead of accusing it.
+    return { error: isUniqueClash(e) ? `You already have an invoice numbered ${d.billNo}.` : "That couldn't be saved. Please try again." };
   }
   if (d.file) await saveFile(d.file, bill.id, vendor.id, vendor.branchId);
   await tellFinance(vendor.branchId, vendor.name, d.billNo, d.amount + d.vatAmount, true);

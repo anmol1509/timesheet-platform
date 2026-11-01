@@ -1,5 +1,6 @@
 "use server";
 
+import { isUniqueClash } from "@/lib/uniqueGuard";
 import { orBack } from "@/lib/actionNotice";
 import { ownBankId } from "@/lib/books/banks";
 import { lockedPeriodError, markBooksStale } from "@/lib/books/lockCheck";
@@ -162,8 +163,8 @@ export async function createBillAction(_prev: State, formData: FormData): Promis
       data: { supplierId, billNo, billDate, dueDate, amount, vatAmount, periodMonth, timesheetAmount: sheet.entryCount > 0 ? sheet.net : null, timesheetHours: sheet.entryCount > 0 ? sheet.hours : null, approvalStatus: "PENDING", description: str(formData.get("description")) || null, branchId },
     });
     await logAudit({ entityType: "SUPPLIER_BILL", entityId: created.id, action: "CREATE", after: { supplier: supplier.name, billNo, amount, vatAmount }, userId: user.id, userName: user.name, branchId });
-  } catch {
-    return { error: `${supplier.name} already has a bill numbered ${billNo}.` };
+  } catch (e) {
+    return { error: isUniqueClash(e) ? `${supplier.name} already has a bill numbered ${billNo}.` : "That couldn't be saved. Please try again." };
   }
   revalidatePath("/finance/bills");
   revalidatePath("/finance");
