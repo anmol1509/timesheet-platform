@@ -11,7 +11,6 @@ import { complianceStatus, daysUntil } from "@/lib/compliance";
 import { cn } from "@/lib/cn";
 import { Slider } from "@/components/ui/Slider";
 import { NumberInput } from "@/components/ui/NumberInput";
-import { TRADES } from "@/lib/trades";
 import { DEFAULT_SKILL_LEVEL, SKILL_LEVEL_MAX, SKILL_LEVEL_MIN, SKILL_LEVEL_STEP, skillLevelLabel } from "@/lib/skillLevel";
 import { addSkillAction, removeSkillAction } from "./[id]/actions";
 import { loadQuickViewAction, saveEmployeeFieldAction, setEmployeeTradeAction, type QuickView } from "./quick-view";
@@ -483,7 +482,7 @@ function TradeEditor({ data, reload }: { data: QuickView; reload: () => void }) 
             </div>
           ))}
           <div className="space-y-2 border-t border-default pt-2">
-            <Select value={add.trade} onChange={(v) => setAdd((a) => ({ ...a, trade: v }))} options={TRADES.map((t) => ({ value: t, label: t }))} placeholder="Add another trade…" searchable />
+            <Select value={add.trade} onChange={(v) => setAdd((a) => ({ ...a, trade: v }))} options={tradeNames.map((t) => ({ value: t, label: t }))} placeholder="Add another trade…" searchable />
             <Slider label="Level" valueLabel={`${skillLevelLabel(add.level)} · ${add.level}%`} min={SKILL_LEVEL_MIN} max={SKILL_LEVEL_MAX} step={SKILL_LEVEL_STEP} value={add.level} onChange={(v) => setAdd((a) => ({ ...a, level: v }))} ariaLabel="Trade level" />
             {data.canViewPay && <NumberInput step={0.01} min={0} value={add.rate} onChange={(v) => setAdd((a) => ({ ...a, rate: v }))} placeholder="Rate (AED per hour)" ariaLabel="Trade rate" />}
             <button type="button" className="btn btn-secondary btn-sm" disabled={!add.trade || busy} onClick={() => void addTrade()}>Add trade</button>
