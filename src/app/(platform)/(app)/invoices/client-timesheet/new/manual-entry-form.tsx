@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useMemo, useState } from "react";
-import { CalendarDays, FileUp, Loader2, Plus, ScanLine, Trash2, UsersRound, Wand2 } from "lucide-react";
+import { CalendarDays, FileUp, Loader2, Plus, ScanLine, Split, Trash2, UsersRound, Wand2 } from "lucide-react";
 import { matchRoster, type ReadTimesheetRow } from "@/lib/timesheetRead";
 import { ExportMenu, type ExportFormat } from "@/components/ExportMenu";
 import { downloadXlsx, parseSpreadsheetFile } from "@/lib/spreadsheet";
@@ -27,6 +27,10 @@ type RowState = {
   supplierName: string;
   clientName: string;
   days: string[];
+  /** This worker's weekly day off (JS weekday "0"-"6", "none"), or "" to use the default above the table. */
+  weekOff: string;
+  /** The project the worker is on now, used for their rate when no project is chosen for the whole sheet. */
+  projectId: string;
 };
 
 function currentMonthValue() {
@@ -50,12 +54,16 @@ function blankRow(dayCount: number): RowState {
     supplierName: "",
     clientName: "",
     days: Array(dayCount).fill(""),
+    weekOff: "",
+    projectId: "",
   };
 }
 
 type ProjectOption = { id: string; code: string; name: string; clientName: string };
-type RosterPerson = { employeeIdNo: string; name: string; trade: string; supplierName: string; nationality: string; projectName: string; clientName: string; onWork: boolean };
+type RosterPerson = { projectId: string; employeeIdNo: string; name: string; trade: string; supplierName: string; nationality: string; projectName: string; clientName: string; onWork: boolean };
 type RateOption = { client: string; projectId: string | null; trade: string; rate: number };
+const WEEKDAYS = [["0", "Sunday"], ["1", "Monday"], ["2", "Tuesday"], ["3", "Wednesday"], ["4", "Thursday"], ["5", "Friday"], ["6", "Saturday"]] as const;
+const WD_SHORT = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
 type SiteOption = { id: string; name: string; projectId: string };
 
@@ -115,6 +123,32 @@ export function ManualEntryForm({
     setRows((prev) => [...prev, blankRow(dayCount)]);
   }
 
+  /** A worker on one trade for some days and another for the rest: a second row for them, with the days they do the other trade. */
+  function splitRow(id: string) {
+    setRows((prev) => {
+      const i = prev.findIndex((r) => r.id === id);
+      if (i < 0) return prev;
+      const r = prev[i];
+      const next: RowState = { ...blankRow(dayCount), employeeIdNo: r.employeeIdNo, employeeName: r.employeeName, supplierName: r.supplierName, clientName: r.clientName, projectId: r.projectId, weekOff: r.weekOff };
+      return [...prev.slice(0, i + 1), next, ...prev.slice(i + 1)];
+    });
+  }
+
+  // The same worker on two rows with hours on the same day would be paid and billed twice.
+  const doubleBooked = useMemo(() => {
+    const out = new Set<string>();
+    const byWorker = new Map<string, RowState[]>();
+    for (const r of rows) { const k = r.employeeIdNo.trim().toLowerCase(); if (k) byWorker.set(k, [...(byWorker.get(k) ?? []), r]); }
+    for (const list of byWorker.values()) {
+      if (list.length < 2) continue;
+      for (let d = 0; d < dayCount; d++) {
+        const worked = list.filter((r) => /^\d/.test((r.days[d] ?? "").trim()) && Number(r.days[d]) > 0);
+        if (worked.length > 1) for (const r of worked) out.add(`${r.id}:${d}`);
+      }
+    }
+    return out;
+  }, [rows, dayCount]);
+
   function removeRow(id: string) {
     setRows((prev) => (prev.length > 1 ? prev.filter((r) => r.id !== id) : prev));
   }
@@ -127,6 +161,10 @@ export function ManualEntryForm({
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [hoursPerDay, setHoursPerDay] = useState("10");
   const [dayOff, setDayOff] = useState("5"); // JS weekday: 5 = Friday, 0 = Sunday, "" = none
+  // Public holidays (days of the month) that are a day off for everyone.
+  const [holidays, setHolidays] = useState<Set<number>>(new Set());
+  const toggleHoliday = (d: number) => setHolidays((s) => { const n = new Set(s); if (n.has(d)) n.delete(d); else n.add(d); return n; });
+  const weekdayOf = (d: number) => { const [y, m] = month.split("-").map(Number); return new Date(y, m - 1, d).getDay(); };
   const [onlyEmpty, setOnlyEmpty] = useState(true);
   const distinct = (get: (r: RosterPerson) => string) => [...new Set(roster.map(get).filter(Boolean))].sort((a, b) => a.localeCompare(b)).map((v) => ({ value: v, label: v }));
   const filterOptions = useMemo(() => ({
@@ -148,18 +186,21 @@ export function ManualEntryForm({
   /** The client's rate for a trade: the project's own rate if it has one, else the client-wide one. */
   function rateFor(clientName: string, trade: string, project: string): string {
     const c = norm(clientName), t = norm(trade);
-    if (!c || !t) return "";
+    if (!c) return "";
     const mine = rates.filter((r) => norm(r.client) === c && norm(r.trade) === t);
     const hit = (project && mine.find((r) => r.projectId === project)) || mine.find((r) => !r.projectId);
-    return hit ? String(hit.rate) : "";
+    if (hit) return String(hit.rate);
+    // No rate for this trade: the client's general hourly rate, when it has one.
+    const general = rates.find((r) => norm(r.client) === c && norm(r.trade) === "");
+    return general ? String(general.rate) : "";
   }
   const projectClient = projects.find((p) => p.id === projectId)?.clientName ?? "";
 
   /** Fills the client and the rate where they are still empty, from the project (or the client on the row) and the row's trade. */
   function fillRates() {
     setRows((prev) => prev.map((r) => {
-      const clientName = r.clientName || projectClient;
-      return { ...r, clientName, rate: r.rate || rateFor(clientName, r.trade, projectId) };
+      const clientName = r.clientName || projectClient || roster.find((p) => p.employeeIdNo === r.employeeIdNo)?.clientName || "";
+      return { ...r, clientName, rate: r.rate || rateFor(clientName, r.trade, projectId || r.projectId) };
     }));
   }
 
@@ -249,7 +290,7 @@ export function ManualEntryForm({
     const chosen = roster.filter((r) => picked.has(r.employeeIdNo) && !taken.has(r.employeeIdNo.toLowerCase()));
     setRows((prev) => {
       const kept = prev.filter((r) => r.employeeIdNo.trim() || r.employeeName.trim() || r.days.some((d) => d.trim()));
-      return [...kept, ...chosen.map((e) => ({ ...blankRow(dayCount), employeeIdNo: e.employeeIdNo, employeeName: e.name, trade: e.trade, supplierName: e.supplierName, clientName: projectClient, rate: rateFor(projectClient, e.trade, projectId) }))];
+      return [...kept, ...chosen.map((e) => ({ ...blankRow(dayCount), employeeIdNo: e.employeeIdNo, employeeName: e.name, trade: e.trade, supplierName: e.supplierName, projectId: e.projectId, clientName: projectClient || e.clientName, rate: rateFor(projectClient || e.clientName, e.trade, projectId || e.projectId) }))];
     });
     setPicked(new Set());
     setPicking(false);
@@ -258,16 +299,25 @@ export function ManualEntryForm({
   function fillDays() {
     const [y, m] = month.split("-").map(Number);
     const hours = hoursPerDay.trim() || "10";
-    const pattern = Array.from({ length: dayCount }, (_, i) => (dayOff !== "" && new Date(y, m - 1, i + 1).getDay() === Number(dayOff) ? "OFF" : hours));
-    setRows((prev) => prev.map((r) => (onlyEmpty && r.days.some((d) => d.trim()) ? r : { ...r, days: pattern })));
+    const patternFor = (off: string) => Array.from({ length: dayCount }, (_, i) => (holidays.has(i + 1) || (off !== "none" && off !== "" && new Date(y, m - 1, i + 1).getDay() === Number(off)) ? "OFF" : hours));
+    setRows((prev) => prev.map((r) => (onlyEmpty && r.days.some((d) => d.trim()) ? r : { ...r, days: patternFor(r.weekOff || (dayOff === "" ? "none" : dayOff)) })));
   }
 
   const rowsJson = JSON.stringify(
-    rows.map(({ id: _id, ...rest }) => rest)
+    rows.map(({ id: _id, weekOff: _w, projectId: _p, ...rest }) => rest)
   );
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form
+      action={formAction}
+      onSubmit={(e) => {
+        if (doubleBooked.size > 0) {
+          e.preventDefault();
+          setReadNote({ tone: "warn", text: "A worker has hours on the same day in two rows (marked red). Move those hours to one row, or clear one of the days, then save." });
+        }
+      }}
+      className="space-y-4"
+    >
       <input type="hidden" name="month" value={month} />
       <input type="hidden" name="rowsJson" value={rowsJson} readOnly />
       <input type="hidden" name="projectId" value={projectId} />
@@ -348,7 +398,7 @@ export function ManualEntryForm({
         </label>
         <button type="button" onClick={fillDays} className="btn btn-secondary flex gap-1.5 px-3"><CalendarDays className="h-4 w-4" /> Fill the days</button>
         <button type="button" onClick={fillRates} className="btn btn-secondary flex gap-1.5 px-3" title="Fills the client and the hourly rate from the project and each row's trade, where they are empty">Fill the rates</button>
-        <p className="w-full text-xs text-subtle">Then change any day by hand: a different number of hours, A for absent, or OFF.</p>
+        <p className="w-full text-xs text-subtle">The weekly day off here is the default; pick another for a worker in their row. Click a day number above the grid to mark a public holiday for everyone ({holidays.size === 0 ? "none marked" : `${holidays.size} marked`}). Then change any day by hand: a different number of hours, A for absent, or OFF.</p>
       </div>
 
       <Dialog open={picking} onOpenChange={setPicking}>
@@ -402,11 +452,19 @@ export function ManualEntryForm({
               <th className="px-3 py-3">Rate</th>
               <th className="px-3 py-3">Supplier</th>
               <th className="px-3 py-3">Client</th>
-              {Array.from({ length: dayCount }, (_, i) => (
-                <th key={i} className="px-2 py-3 text-center">
-                  {i + 1}
-                </th>
-              ))}
+              <th className="px-3 py-3">Week off</th>
+              {Array.from({ length: dayCount }, (_, i) => {
+                const wd = weekdayOf(i + 1);
+                const off = holidays.has(i + 1);
+                return (
+                  <th key={i} className={`px-1 py-2 text-center normal-case ${off ? "bg-[var(--warning-soft)] text-[var(--warning)]" : wd === 5 || wd === 0 ? "text-[var(--brand-primary)]" : ""}`}>
+                    <button type="button" onClick={() => toggleHoliday(i + 1)} title={off ? "Public holiday: click to undo" : "Click to mark this day as a public holiday for everyone"} className="block w-12 rounded py-0.5 hover:bg-surface-hover">
+                      <span className="block text-sm">{i + 1}</span>
+                      <span className="block text-[10px] font-normal tracking-normal">{WD_SHORT[wd]}</span>
+                    </button>
+                  </th>
+                );
+              })}
               <th className="px-2 py-3" />
             </tr>
           </thead>
@@ -470,18 +528,32 @@ export function ManualEntryForm({
                     className="w-40 min-w-[10rem] px-2 py-1.5"
                   />
                 </td>
-                {row.days.map((value, dayIndex) => (
-                  <td key={dayIndex} className="px-1 py-2">
-                    <input
-                      value={value}
-                      onChange={(e) => updateDay(row.id, dayIndex, e.target.value)}
-                      placeholder="—"
-                      title="Hours worked, or A for absent, or OFF"
-                      className="input w-12 px-1 py-1.5 text-center text-xs"
-                    />
-                  </td>
-                ))}
-                <td className="px-2 py-2">
+                <td className="px-3 py-2">
+                  <select value={row.weekOff} onChange={(e) => updateRow(row.id, { weekOff: e.target.value })} aria-label="This worker's weekly day off" className="input w-32 px-2 py-1.5 text-xs">
+                    <option value="">Same as above</option>
+                    {WEEKDAYS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                    <option value="none">No weekly day off</option>
+                  </select>
+                </td>
+                {row.days.map((value, dayIndex) => {
+                  const clash = doubleBooked.has(`${row.id}:${dayIndex}`);
+                  const wd = weekdayOf(dayIndex + 1);
+                  return (
+                    <td key={dayIndex} className={`px-1 py-2 ${holidays.has(dayIndex + 1) ? "bg-[var(--warning-soft)]" : wd === 5 || wd === 0 ? "bg-[var(--brand-soft)]" : ""}`}>
+                      <input
+                        value={value}
+                        onChange={(e) => updateDay(row.id, dayIndex, e.target.value)}
+                        placeholder="—"
+                        title={clash ? "This worker has hours on this day in another trade row too" : "Hours worked, or A for absent, or OFF"}
+                        className={`input w-12 px-1 py-1.5 text-center text-xs ${clash ? "border-[var(--error)] bg-[var(--error-soft)]" : ""}`}
+                      />
+                    </td>
+                  );
+                })}
+                <td className="whitespace-nowrap px-2 py-2">
+                  <button type="button" onClick={() => splitRow(row.id)} className="rounded-lg p-1.5 text-subtle hover:bg-surface-hover hover:text-primary" title="The same worker on another trade for some days: adds a second row for them" aria-label="Add another trade for this worker">
+                    <Split className="h-4 w-4" />
+                  </button>
                   <button
                     type="button"
                     onClick={() => removeRow(row.id)}
