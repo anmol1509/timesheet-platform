@@ -17,7 +17,7 @@ export default async function RecurringPage() {
       include: { employee: { select: { name: true, employeeIdNo: true } } },
     }),
     branchId
-      ? prisma.employee.findMany({ where: { branchId, status: { not: "TERMINATED" } }, select: { id: true, name: true, employeeIdNo: true }, orderBy: { name: "asc" } })
+      ? prisma.employee.findMany({ where: { branchId, status: { notIn: ["TERMINATED", "ABSCONDING"] } }, select: { id: true, name: true, employeeIdNo: true }, orderBy: { name: "asc" } })
       : [],
   ]);
 

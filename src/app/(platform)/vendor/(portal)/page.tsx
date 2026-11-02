@@ -22,7 +22,7 @@ export default async function VendorHome() {
   const now = new Date();
   const soon = new Date(now.getTime() + 30 * DAY);
   const [workers, offers, bills, expiring] = await Promise.all([
-    prisma.employee.groupBy({ by: ["status"], where: { supplierId: vendor.id, status: { not: "TERMINATED" } }, _count: true }),
+    prisma.employee.groupBy({ by: ["status"], where: { supplierId: vendor.id, status: { notIn: ["TERMINATED", "ABSCONDING"] } }, _count: true }),
     prisma.demandSupplierOffer.findMany({
       where: { supplierId: vendor.id, status: "SENT", demandRequest: { status: { notIn: ["Closed", "Rejected"] } } },
       orderBy: { sentAt: "desc" },
@@ -32,7 +32,7 @@ export default async function VendorHome() {
     prisma.employee.findMany({
       where: {
         supplierId: vendor.id,
-        status: { not: "TERMINATED" },
+        status: { notIn: ["TERMINATED", "ABSCONDING"] },
         OR: DOCS.map(([, f]) => ({ [f]: { lte: soon } })),
       },
       select: { id: true, name: true, employeeIdNo: true, visaExpiry: true, laborCardExpiry: true, medicalExpiry: true, passportExpiry: true, emiratesIdExpiry: true },

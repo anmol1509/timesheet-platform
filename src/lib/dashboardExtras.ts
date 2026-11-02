@@ -94,7 +94,7 @@ export async function getDemandFill(branchId: string | null): Promise<DemandFill
     }),
     prisma.employee.groupBy({
       by: ["trade"],
-      where: { ...bw, active: true, projectId: null, status: { notIn: ["TERMINATED", "ON_VACATION"] }, trade: { not: null } },
+      where: { ...bw, active: true, projectId: null, status: { notIn: ["TERMINATED", "ABSCONDING", "ON_VACATION"] }, trade: { not: null } },
       _count: { _all: true },
     }),
   ]);
@@ -145,7 +145,7 @@ export async function getAttendanceToday(branchId: string | null): Promise<Atten
   const today = dubaiToday();
   const [workers, marks] = await Promise.all([
     prisma.employee.findMany({
-      where: { ...bw, active: true, projectId: { not: null }, status: { notIn: ["TERMINATED", "ON_VACATION"] } },
+      where: { ...bw, active: true, projectId: { not: null }, status: { notIn: ["TERMINATED", "ABSCONDING", "ON_VACATION"] } },
       select: { id: true, projectId: true, project: { select: { name: true } } },
     }),
     prisma.attendance.findMany({ where: { ...bw, date: today }, select: { employeeId: true, status: true } }),

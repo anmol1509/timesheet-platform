@@ -477,7 +477,7 @@ async function draftLetter(input: Record<string, unknown>, ctx: ToolContext): Pr
   if (q.length < 2 || word.length < 2) return { content: "Need a worker and a letter name." };
   const where = branchWhere(ctx.branchId);
   const [emps, templates] = await Promise.all([
-    prisma.employee.findMany({ where: { ...where, status: { not: "TERMINATED" }, supplier: { isOwnCompany: true }, OR: [{ name: contains(q) }, { employeeIdNo: contains(q) }] }, select: { id: true, name: true, employeeIdNo: true }, take: 4 }),
+    prisma.employee.findMany({ where: { ...where, status: { notIn: ["TERMINATED", "ABSCONDING"] }, supplier: { isOwnCompany: true }, OR: [{ name: contains(q) }, { employeeIdNo: contains(q) }] }, select: { id: true, name: true, employeeIdNo: true }, take: 4 }),
     prisma.letterTemplate.findMany({ where: { ...where, audience: "EMPLOYEE", name: contains(word) }, select: { name: true }, take: 3 }),
   ]);
   if (emps.length === 0) return { content: "No employee of the user's own company matches that name." };

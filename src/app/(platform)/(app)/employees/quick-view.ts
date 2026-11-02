@@ -40,6 +40,10 @@ export type QuickView = {
   active: boolean;
   status: string;
   trade: string | null;
+  visaProfession: string | null;
+  abscondedAt: string | null;
+  abscondRemarks: string | null;
+  abscondCaseStatus: string | null;
   position: string | null;
   department: string | null;
   camp: string | null;
@@ -92,6 +96,10 @@ export async function loadQuickViewAction(id: string): Promise<QuickView | null>
     active: e.active,
     status: e.status,
     trade: e.trade,
+    visaProfession: e.visaProfession,
+    abscondedAt: iso(e.abscondedAt),
+    abscondRemarks: e.abscondRemarks,
+    abscondCaseStatus: e.abscondCaseStatus,
     position: e.position,
     department: e.department,
     camp: e.bed ? `${e.bed.room.camp.name} · ${e.bed.room.name} · ${e.bed.label}` : null,
@@ -125,7 +133,7 @@ export async function loadQuickViewAction(id: string): Promise<QuickView | null>
   };
 }
 
-const TEXT = new Set(["name", "mobileNumber", "passportNumber", "emiratesId", "nationality", "gender", "bloodGroup", "laborCardNumber", "laborCardPersonalNo", "visaNumber", "unifiedNo", "position", "department"]);
+const TEXT = new Set(["name", "mobileNumber", "passportNumber", "emiratesId", "nationality", "gender", "bloodGroup", "laborCardNumber", "laborCardPersonalNo", "visaNumber", "unifiedNo", "position", "department", "visaProfession"]);
 const DATES = new Set(["dateOfBirth", "joinDate", "visaExpiry", "laborCardExpiry", "medicalExpiry", "passportExpiry", "emiratesIdExpiry"]);
 const FIELDS = new Set([...TEXT, ...DATES, "projectId"]);
 

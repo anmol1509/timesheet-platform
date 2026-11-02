@@ -32,7 +32,7 @@ async function employeesForPhone(e164: string) {
   const tail = phoneTail(e164);
   const rows = await prisma.$queryRaw<{ id: string; mobileNumber: string | null; whatsappNumber: string | null }[]>`
     SELECT id, "mobileNumber", "whatsappNumber" FROM "Employee"
-    WHERE "essEnabled" = true AND status <> 'TERMINATED'
+    WHERE "essEnabled" = true AND status NOT IN ('TERMINATED', 'ABSCONDING')
       AND (regexp_replace(coalesce("mobileNumber", ''), '\\D', '', 'g') LIKE ${"%" + tail}
         OR regexp_replace(coalesce("whatsappNumber", ''), '\\D', '', 'g') LIKE ${"%" + tail})`;
   return rows.filter((r) => normalizePhone(r.mobileNumber) === e164 || normalizePhone(r.whatsappNumber) === e164);

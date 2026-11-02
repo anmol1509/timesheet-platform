@@ -98,7 +98,7 @@ export default async function CampsPage({
       : [];
 
   const unhoused = await prisma.employee.findMany({
-    where: { ...branchWhere(branchId), bed: null, active: true, status: { not: "TERMINATED" } },
+    where: { ...branchWhere(branchId), bed: null, active: true, status: { notIn: ["TERMINATED", "ABSCONDING"] } },
     select: { id: true, name: true, employeeIdNo: true, trade: true, photoMimeType: true },
     orderBy: { name: "asc" },
     take: 500,

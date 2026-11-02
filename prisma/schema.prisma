@@ -735,6 +735,8 @@ enum EmployeeStatus {
   ACTIVE
   ON_VACATION
   TERMINATED
+  // Left without notice and a case is open. Kept in lists, but never paid, scheduled or allocated, like TERMINATED.
+  ABSCONDING
 }
 
 enum EmployeeCategory {
@@ -784,6 +786,12 @@ model Employee {
   employeeIdNo       String              @unique
   name               String
   trade              String?
+  /// The profession printed on the UAE visa. It can differ from the trade the worker actually does (`trade`).
+  visaProfession     String?
+  /// Absconding case: set when status is ABSCONDING.
+  abscondedAt        DateTime?
+  abscondRemarks     String?
+  abscondCaseStatus  String? // "Reported" | "Under investigation" | "Closed" | "Returned"
   // Kept alongside the legacy `active` boolean during the transition — existing
   // dashboard/list queries still read `active`; new code should prefer `status`.
   status             EmployeeStatus      @default(ACTIVE)

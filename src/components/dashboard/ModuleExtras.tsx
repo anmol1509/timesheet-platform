@@ -27,7 +27,7 @@ export async function WorkforceExtras({ branchId, isAdmin }: { branchId: string 
   const [bench, joined, demobilised, onLeave, health] = await Promise.all([
     prisma.employee.groupBy({
       by: ["trade"],
-      where: { ...bw, active: true, projectId: null, status: { notIn: ["TERMINATED", "ON_VACATION"] } },
+      where: { ...bw, active: true, projectId: null, status: { notIn: ["TERMINATED", "ABSCONDING", "ON_VACATION"] } },
       _count: { _all: true },
       orderBy: { _count: { trade: "desc" } },
       take: 8,

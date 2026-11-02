@@ -9,7 +9,7 @@ export const metadata = { title: "New client timesheet" };
 
 export default async function NewClientTimesheetEntryPage() {
   const { branchId } = await requireUserWithBranch();
-  const [suppliers, clients, projects, sites] = await Promise.all([
+  const [suppliers, clients, projects, sites, roster] = await Promise.all([
     prisma.supplier.findMany({ where: branchWhere(branchId), select: { name: true }, orderBy: { name: "asc" } }),
     prisma.client.findMany({ where: branchWhere(branchId), select: { name: true }, orderBy: { name: "asc" } }),
     prisma.project.findMany({
@@ -23,6 +23,13 @@ export default async function NewClientTimesheetEntryPage() {
       select: { id: true, name: true, projectId: true },
       orderBy: { name: "asc" },
     }),
+    // Everyone who can still work, so a month can be started for a whole company in one go.
+    prisma.employee.findMany({
+      where: { ...branchWhere(branchId), active: true, status: { notIn: ["TERMINATED", "ABSCONDING"] } },
+      select: { employeeIdNo: true, name: true, trade: true, supplier: { select: { name: true, fullName: true } } },
+      orderBy: { name: "asc" },
+      take: 3000,
+    }),
   ]);
 
   return (
@@ -30,7 +37,7 @@ export default async function NewClientTimesheetEntryPage() {
       <PageHeader
         title="New Timesheet Entry"
         icon={FilePlus2}
-        description={<>Add timesheet rows by hand instead of uploading an Excel file. The columns match the Excel format. ID, name, trade, rate, supplier, client, and one column per day. Pick a Project to tag the location.</>}
+        description={<>Enter a whole month for many workers without an Excel file: add people from your roster in one go, fill the days with a pattern, then adjust any day by hand.</>}
       />
 
       <ManualEntryForm
@@ -38,6 +45,7 @@ export default async function NewClientTimesheetEntryPage() {
         clientNames={clients.map((c) => c.name)}
         projects={projects}
         sites={sites}
+        roster={roster.map((e) => ({ employeeIdNo: e.employeeIdNo, name: e.name, trade: e.trade ?? "", supplierName: e.supplier?.name ?? "" }))}
       />
     </div>
   );

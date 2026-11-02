@@ -11,7 +11,7 @@ export type DeploymentStage = { key: string; label: string; count: number };
 export async function getDeploymentPipeline(branchId: string | null): Promise<DeploymentStage[]> {
   const rows = await prisma.employee.groupBy({
     by: ["status"],
-    where: { ...branchWhere(branchId), status: { not: "TERMINATED" } },
+    where: { ...branchWhere(branchId), status: { notIn: ["TERMINATED", "ABSCONDING"] } },
     _count: { _all: true },
   });
   const byStatus = new Map(rows.map((r) => [r.status, r._count._all]));

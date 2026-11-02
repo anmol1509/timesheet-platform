@@ -38,6 +38,7 @@ export const STAGE_LABEL: Record<string, string> = {
   ACTIVE: "Active",
   ON_VACATION: "On vacation",
   TERMINATED: "Terminated",
+  ABSCONDING: "Absconding",
 };
 
 export const STAGE_COLOR: Record<string, "green" | "amber" | "slate" | "red" | "blue"> = {
@@ -47,6 +48,7 @@ export const STAGE_COLOR: Record<string, "green" | "amber" | "slate" | "red" | "
   ACTIVE: "green",
   ON_VACATION: "slate",
   TERMINATED: "red",
+  ABSCONDING: "red",
 };
 
 /**
