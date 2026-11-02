@@ -8,6 +8,8 @@ import { canWrite } from "@/lib/permissions";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { assertContactsValid } from "@/lib/validators";
+import { failBack } from "@/lib/actionNotice";
+import { isUniqueClash } from "@/lib/uniqueGuard";
 
 function dateOrNull(value: FormDataEntryValue | null) {
   const s = String(value || "").trim();
@@ -348,33 +350,45 @@ export async function allocateBedAction(formData: FormData) {
   if (!bed || bed.room.camp.ownerType !== "OWN") return;
   if (isOutsideBranch(bed.room.camp.branchId, branchId, isSuperAdmin) || bed.room.camp.branchId !== checkIn.employee.branchId) return;
   if (bed.employeeId && bed.employeeId !== checkIn.employeeId) return; // occupied by someone else
+  // A bed can be linked to only one check-in. One that looks free but is still linked to another worker's check-in
+  // (left over from an earlier move) used to reach the database and fail with an error page: say who holds it instead.
+  const holder = await prisma.campCheckIn.findFirst({
+    where: { bedId, id: { not: checkInId } },
+    select: { employee: { select: { name: true } } },
+  });
+  if (holder) return failBack(`That bed is still linked to ${holder.employee.name}'s check-in. Free it from that check-in first, or choose another bed.`);
 
   const employeeId = checkIn.employeeId;
 
-  await prisma.$transaction(async (tx) => {
-    if (checkIn.bedId && checkIn.bedId !== bedId) {
-      await tx.bed.update({ where: { id: checkIn.bedId }, data: { employeeId: null } });
-      const openHistory = await tx.accommodationHistory.findFirst({
-        where: { employeeId, checkOutDate: null },
-        orderBy: { checkInDate: "desc" },
-      });
-      if (openHistory) {
-        await tx.accommodationHistory.update({ where: { id: openHistory.id }, data: { checkOutDate: new Date(), checkOutReason: "Moved to another bed or camp" } });
+  try {
+    await prisma.$transaction(async (tx) => {
+      if (checkIn.bedId && checkIn.bedId !== bedId) {
+        await tx.bed.update({ where: { id: checkIn.bedId }, data: { employeeId: null } });
+        const openHistory = await tx.accommodationHistory.findFirst({
+          where: { employeeId, checkOutDate: null },
+          orderBy: { checkInDate: "desc" },
+        });
+        if (openHistory) {
+          await tx.accommodationHistory.update({ where: { id: openHistory.id }, data: { checkOutDate: new Date(), checkOutReason: "Moved to another bed or camp" } });
+        }
       }
-    }
 
-    await tx.bed.update({ where: { id: bedId }, data: { employeeId } });
-    await tx.accommodationHistory.create({
-      data: {
-        employeeId,
-        campName: bed.room.camp.name,
-        roomName: bed.room.name,
-        bedLabel: bed.label,
-        checkInDate,
-      },
+      await tx.bed.update({ where: { id: bedId }, data: { employeeId } });
+      await tx.accommodationHistory.create({
+        data: {
+          employeeId,
+          campName: bed.room.camp.name,
+          roomName: bed.room.name,
+          bedLabel: bed.label,
+          checkInDate,
+        },
+      });
+      await tx.campCheckIn.update({ where: { id: checkInId }, data: { bedId, campId: bed.room.campId, status: "BED_ALLOCATED" } });
     });
-    await tx.campCheckIn.update({ where: { id: checkInId }, data: { bedId, campId: bed.room.campId, status: "BED_ALLOCATED" } });
-  });
+  } catch (e) {
+    if (isUniqueClash(e)) return failBack("That bed has just been taken by someone else. Choose another bed and try again.");
+    throw e;
+  }
 
   await logAudit({
     entityType: "ACCOMMODATION",
