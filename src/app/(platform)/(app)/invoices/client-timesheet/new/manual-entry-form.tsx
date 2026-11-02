@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useMemo, useState } from "react";
-import { CalendarDays, FileUp, Loader2, Plus, ScanLine, Split, Trash2, UsersRound, Wand2 } from "lucide-react";
+import { Bookmark, BookmarkCheck, CalendarDays, FileUp, Loader2, Plus, ScanLine, Split, Trash2, UsersRound, Wand2 } from "lucide-react";
 import { matchRoster, type ReadTimesheetRow } from "@/lib/timesheetRead";
 import { ExportMenu, type ExportFormat } from "@/components/ExportMenu";
 import { downloadXlsx, parseSpreadsheetFile } from "@/lib/spreadsheet";
@@ -520,21 +520,32 @@ export function ManualEntryForm({
                   />
                 </td>
                 <td className="px-3 py-2">
-                  <input
-                    value={row.rate}
-                    onChange={(e) => updateRow(row.id, { rate: e.target.value, remember: false })}
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    placeholder="Rate"
-                    className="input w-20 px-2 py-1.5"
-                  />
-                  {/* Offered only for a rate the client doesn't already have for this trade. */}
-                  {Number(row.rate) > 0 && row.clientName.trim() && row.trade.trim() && Number(rateFor(row.clientName, row.trade, projectId || row.projectId)) !== Number(row.rate) && (
-                    <label className="mt-1 flex cursor-pointer items-center gap-1 text-[10px] leading-tight text-muted" title={`Save ${row.rate} as ${row.clientName}'s rate for ${row.trade}, so it is filled in next time`}>
-                      <input type="checkbox" checked={row.remember} onChange={(e) => updateRow(row.id, { remember: e.target.checked })} /> Remember
-                    </label>
-                  )}
+                  <div className="flex items-center gap-1">
+                    <input
+                      value={row.rate}
+                      onChange={(e) => updateRow(row.id, { rate: e.target.value, remember: false })}
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      placeholder="Rate"
+                      className="input w-20 px-2 py-1.5"
+                    />
+                    {/* Offered only for a rate the client doesn't already have for this trade. */}
+                    {Number(row.rate) > 0 && row.clientName.trim() && row.trade.trim() && Number(rateFor(row.clientName, row.trade, projectId || row.projectId)) !== Number(row.rate) ? (
+                      <button
+                        type="button"
+                        onClick={() => updateRow(row.id, { remember: !row.remember })}
+                        aria-pressed={row.remember}
+                        aria-label={`Remember ${row.rate} as ${row.clientName}'s rate for ${row.trade}`}
+                        title={row.remember ? `Will be saved as ${row.clientName}'s rate for ${row.trade}. Click to undo.` : `Remember ${row.rate} as ${row.clientName}'s rate for ${row.trade}, so it is filled in next time`}
+                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition ${row.remember ? "border-[var(--brand-primary)] bg-brand-soft text-[var(--brand-primary)]" : "border-default text-subtle hover:bg-surface-hover hover:text-primary"}`}
+                      >
+                        {row.remember ? <BookmarkCheck className="h-4 w-4" /> : <Bookmark className="h-4 w-4" />}
+                      </button>
+                    ) : (
+                      <span className="w-8 shrink-0" aria-hidden />
+                    )}
+                  </div>
                 </td>
                 <td className="px-3 py-2">
                   <Combobox
@@ -596,6 +607,9 @@ export function ManualEntryForm({
         </table>
       </div>
 
+      {rows.some((r) => Number(r.rate) > 0 && r.clientName.trim() && r.trade.trim() && Number(rateFor(r.clientName, r.trade, projectId || r.projectId)) !== Number(r.rate)) && (
+        <p className="flex items-center gap-1.5 text-xs text-muted"><Bookmark className="h-3.5 w-3.5" aria-hidden /> Click the bookmark beside a rate to keep it as that client&rsquo;s rate for the trade, so it is filled in next time.</p>
+      )}
       <p className="text-xs text-subtle">
         Enter hours worked per day, &ldquo;A&rdquo; for absent, or leave blank
         / &ldquo;OFF&rdquo; for a day off. Employees, suppliers, and clients

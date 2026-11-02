@@ -85,6 +85,7 @@ type Filter =
   | "idle"
   | "vacation"
   | "absconding"
+  | "terminated"
   | "incomplete";
 
 const CATEGORY_FILTER_LABEL: Partial<Record<Filter, string>> = {
@@ -95,6 +96,7 @@ const CATEGORY_FILTER_LABEL: Partial<Record<Filter, string>> = {
   idle: "Idle",
   vacation: "On Vacation",
   absconding: "Absconding",
+  terminated: "Terminated",
   incomplete: "Incomplete",
 };
 
@@ -171,6 +173,7 @@ export function EmployeeList({
     "idle",
     "vacation",
     "absconding",
+    "terminated",
     "incomplete",
   ];
   const [filter, setFilter] = useState<Filter>(
@@ -208,6 +211,8 @@ export function EmployeeList({
         return employees.filter((e) => e.status === "ON_VACATION");
       case "absconding":
         return employees.filter((e) => e.status === "ABSCONDING");
+      case "terminated":
+        return employees.filter((e) => e.status === "TERMINATED");
       case "incomplete":
         return employees.filter((e) => !e.complete);
       default:
@@ -501,7 +506,8 @@ export function EmployeeList({
   // Supplier/Our Employees already have their own dedicated tab above, so
   // they don't also need the clearable chip the other dashboard-linked
   // filters (site-staff, idle, vacation, incomplete) show.
-  const activeChip = OWNERSHIP_SEGMENTED_VALUES.includes(filter) ? undefined : CATEGORY_FILTER_LABEL[filter];
+  // Statuses (vacation, absconding, terminated) already show as a chip from the Filters panel.
+  const activeChip = OWNERSHIP_SEGMENTED_VALUES.includes(filter) || ["vacation", "absconding", "terminated"].includes(filter) ? undefined : CATEGORY_FILTER_LABEL[filter];
 
   return (
     <>
@@ -592,7 +598,7 @@ export function EmployeeList({
               { value: "our-workers", label: "Our Employees" },
             ]}
           />
-          {filterOptions && currentFilters && <EmployeeFilters options={filterOptions} values={currentFilters} onChange={setFilterParam} />}
+          {filterOptions && currentFilters && <EmployeeFilters options={filterOptions} values={currentFilters} onChange={setFilterParam} status={["vacation", "absconding", "terminated"].includes(filter) ? filter : ""} onStatus={(v) => { const next = (v || "all") as Filter; setFilter(next); router.replace(next === "all" ? "/employees" : `/employees?filter=${next}`, { scroll: false }); }} />}
           {activeChip && (
             <span className="inline-flex items-center gap-1 rounded-control bg-brand-soft py-1 pr-1 pl-2.5 text-xs font-medium text-[var(--brand-primary)]">
               {activeChip}

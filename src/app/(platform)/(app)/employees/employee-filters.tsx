@@ -15,7 +15,14 @@ const FIELDS: { key: FilterKey; label: string; all: string; from: keyof FilterOp
 ];
 
 /** The Employees page's filters: the choices come from the server with how many workers each has, and picking one reloads the list. */
-export function EmployeeFilters({ options, values, onChange }: { options: FilterOptions; values: FilterValues; onChange: (key: FilterKey, value: string) => void }) {
+const STATUS_OPTIONS = [
+  { value: "vacation", label: "On vacation" },
+  { value: "absconding", label: "Absconding" },
+  { value: "terminated", label: "Terminated" },
+];
+
+export function EmployeeFilters({ options, values, onChange, status, onStatus }: { options: FilterOptions; values: FilterValues; onChange: (key: FilterKey, value: string) => void; status: string; onStatus: (value: string) => void }) {
   const fields: FilterField[] = FIELDS.map((f) => ({ key: f.key, label: f.label, all: f.all, options: options[f.from].map((o) => ({ value: o.value, label: `${o.label} (${o.count})` })) }));
-  return <FilterPanel fields={fields} values={values} onChange={(k, v) => onChange(k as FilterKey, v)} />;
+  fields.push({ key: "status", label: "Status", all: "All statuses", options: STATUS_OPTIONS });
+  return <FilterPanel fields={fields} values={{ ...values, status }} onChange={(k, v) => (k === "status" ? onStatus(v) : onChange(k as FilterKey, v))} />;
 }
