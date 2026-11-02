@@ -20,7 +20,7 @@ export default async function LoansPage() {
     }),
     branchId
       ? prisma.employee.findMany({
-          where: { branchId, status: { not: "TERMINATED" } },
+          where: { branchId, status: { notIn: ["TERMINATED", "ABSCONDING"] } },
           select: { id: true, name: true, employeeIdNo: true },
           orderBy: { name: "asc" },
         })

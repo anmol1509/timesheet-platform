@@ -34,7 +34,7 @@ export default async function PayrollPage() {
     }),
     branchId ? prisma.branch.findUnique({ where: { id: branchId }, include: { wpsPayerBank: true } }) : null,
     branchId ? prisma.supplier.findMany({ where: { branchId, isOwnCompany: true }, select: { id: true, name: true, payType: true, wpsEstablishmentId: true }, orderBy: { name: "asc" } }) : [],
-    branchId ? prisma.employee.findMany({ where: { branchId, status: { not: "TERMINATED" }, supplier: { isOwnCompany: true } }, select: { ...PAYROLL_COMPANY_SELECT, payStructure: true, basicSalary: true, flatMonthlyRate: true, hourlyRate: true } }) : [],
+    branchId ? prisma.employee.findMany({ where: { branchId, status: { notIn: ["TERMINATED", "ABSCONDING"] }, supplier: { isOwnCompany: true } }, select: { ...PAYROLL_COMPANY_SELECT, payStructure: true, basicSalary: true, flatMonthlyRate: true, hourlyRate: true } }) : [],
     branchId ? prisma.bank.findMany({ where: { branchId, status: "ACTIVE" } }) : [],
   ]);
 

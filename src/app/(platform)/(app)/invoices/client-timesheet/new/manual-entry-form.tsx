@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState, useMemo, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { CalendarDays, Plus, Trash2, UsersRound, Wand2 } from "lucide-react";
+import { Dialog, DialogClose, DialogContent, DialogFooter } from "@/components/ui/Dialog";
 import { submitManualEntryAction } from "../actions";
 import { Select } from "@/components/ui/Select";
 import { Combobox } from "@/components/ui/Combobox";
@@ -52,11 +53,13 @@ export function ManualEntryForm({
   clientNames,
   projects,
   sites,
+  roster,
 }: {
   supplierNames: string[];
   clientNames: string[];
   projects: ProjectOption[];
   sites: SiteOption[];
+  roster: { employeeIdNo: string; name: string; trade: string; supplierName: string }[];
 }) {
   const [state, formAction, pending] = useActionState(submitManualEntryAction, {
     error: null,
@@ -101,6 +104,39 @@ export function ManualEntryForm({
 
   function removeRow(id: string) {
     setRows((prev) => (prev.length > 1 ? prev.filter((r) => r.id !== id) : prev));
+  }
+
+  // ---- Bulk month entry: people from the roster, and a pattern for the days ----
+  const [picking, setPicking] = useState(false);
+  const [pickSearch, setPickSearch] = useState("");
+  const [pickSupplier, setPickSupplier] = useState("");
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [hoursPerDay, setHoursPerDay] = useState("10");
+  const [dayOff, setDayOff] = useState("5"); // JS weekday: 5 = Friday, 0 = Sunday, "" = none
+  const [onlyEmpty, setOnlyEmpty] = useState(true);
+  const rosterSuppliers = useMemo(() => [...new Set(roster.map((r) => r.supplierName).filter(Boolean))].sort(), [roster]);
+  const shown = useMemo(() => {
+    const q = pickSearch.trim().toLowerCase();
+    return roster.filter((r) => (!pickSupplier || r.supplierName === pickSupplier) && (!q || r.name.toLowerCase().includes(q) || r.employeeIdNo.toLowerCase().includes(q) || r.trade.toLowerCase().includes(q)));
+  }, [roster, pickSearch, pickSupplier]);
+  const taken = useMemo(() => new Set(rows.map((r) => r.employeeIdNo.trim().toLowerCase()).filter(Boolean)), [rows]);
+  const offered = shown.filter((r) => !taken.has(r.employeeIdNo.toLowerCase()));
+
+  function addPicked() {
+    const chosen = roster.filter((r) => picked.has(r.employeeIdNo) && !taken.has(r.employeeIdNo.toLowerCase()));
+    setRows((prev) => {
+      const kept = prev.filter((r) => r.employeeIdNo.trim() || r.employeeName.trim() || r.days.some((d) => d.trim()));
+      return [...kept, ...chosen.map((e) => ({ ...blankRow(dayCount), employeeIdNo: e.employeeIdNo, employeeName: e.name, trade: e.trade, supplierName: e.supplierName }))];
+    });
+    setPicked(new Set());
+    setPicking(false);
+  }
+
+  function fillDays() {
+    const [y, m] = month.split("-").map(Number);
+    const hours = hoursPerDay.trim() || "10";
+    const pattern = Array.from({ length: dayCount }, (_, i) => (dayOff !== "" && new Date(y, m - 1, i + 1).getDay() === Number(dayOff) ? "OFF" : hours));
+    setRows((prev) => prev.map((r) => (onlyEmpty && r.days.some((d) => d.trim()) ? r : { ...r, days: pattern })));
   }
 
   const rowsJson = JSON.stringify(
@@ -153,14 +189,65 @@ export function ManualEntryForm({
             options={siteOptions}
           />
         </label>
-        <button
-          type="button"
-          onClick={addRow}
-          className="btn btn-secondary flex gap-1.5 px-3"
-        >
-          <Plus className="h-4 w-4" /> Add Row
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={() => setPicking(true)} className="btn btn-primary flex gap-1.5 px-3">
+            <UsersRound className="h-4 w-4" /> Add from roster
+          </button>
+          <button type="button" onClick={addRow} className="btn btn-secondary flex gap-1.5 px-3">
+            <Plus className="h-4 w-4" /> Add Row
+          </button>
+        </div>
       </div>
+
+      <div className="card flex flex-wrap items-end gap-3 p-4">
+        <p className="flex w-full items-center gap-2 text-xs font-semibold tracking-wide text-muted uppercase"><Wand2 className="h-3.5 w-3.5" aria-hidden /> Fill the month</p>
+        <label className="block">
+          <span className="mb-1 block text-xs font-medium text-muted">Hours on a working day</span>
+          <input value={hoursPerDay} onChange={(e) => setHoursPerDay(e.target.value)} inputMode="decimal" className="input w-24" />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-medium text-muted">Weekly day off</span>
+          <Select value={dayOff} onChange={setDayOff} searchable={false} options={[{ value: "5", label: "Friday" }, { value: "0", label: "Sunday" }, { value: "", label: "None" }]} />
+        </label>
+        <label className="flex items-center gap-2 pb-2 text-sm text-secondary">
+          <input type="checkbox" checked={onlyEmpty} onChange={(e) => setOnlyEmpty(e.target.checked)} /> Only rows with no hours yet
+        </label>
+        <button type="button" onClick={fillDays} className="btn btn-secondary flex gap-1.5 px-3"><CalendarDays className="h-4 w-4" /> Fill the days</button>
+        <p className="w-full text-xs text-subtle">Then change any day by hand: a different number of hours, A for absent, or OFF.</p>
+      </div>
+
+      <Dialog open={picking} onOpenChange={setPicking}>
+        <DialogContent icon={<UsersRound className="h-[18px] w-[18px]" />} title="Add people from the roster" description="Tick the workers to add. Their ID, name, trade and supplier are filled in for you." className="max-w-2xl">
+          <div className="mt-5 flex flex-wrap gap-2">
+            <input value={pickSearch} onChange={(e) => setPickSearch(e.target.value)} placeholder="Search name, ID or trade" className="input min-w-[12rem] flex-1" />
+            <div className="w-56"><Select value={pickSupplier} onChange={setPickSupplier} placeholder="All suppliers" options={[{ value: "", label: "All suppliers" }, ...rosterSuppliers.map((s) => ({ value: s, label: s }))]} /></div>
+          </div>
+          <div className="mt-3 flex items-center justify-between text-xs">
+            <span className="text-muted">{offered.length} shown{shown.length !== offered.length ? `, ${shown.length - offered.length} already in the table` : ""} · {picked.size} ticked</span>
+            <button type="button" className="font-medium text-[var(--brand-primary)] hover:underline" onClick={() => setPicked((p) => (offered.every((o) => p.has(o.employeeIdNo)) ? new Set([...p].filter((id) => !offered.some((o) => o.employeeIdNo === id))) : new Set([...p, ...offered.map((o) => o.employeeIdNo)])))}>
+              {offered.length > 0 && offered.every((o) => picked.has(o.employeeIdNo)) ? "Untick these" : "Tick all shown"}
+            </button>
+          </div>
+          <ul className="mt-2 max-h-72 divide-y divide-[var(--border)] overflow-y-auto rounded-card border border-default">
+            {offered.slice(0, 300).map((r) => (
+              <li key={r.employeeIdNo}>
+                <label className="flex cursor-pointer items-center gap-3 px-3 py-2 hover:bg-surface-hover">
+                  <input type="checkbox" checked={picked.has(r.employeeIdNo)} onChange={() => setPicked((p) => { const n = new Set(p); if (n.has(r.employeeIdNo)) n.delete(r.employeeIdNo); else n.add(r.employeeIdNo); return n; })} />
+                  <span className="min-w-0 flex-1 truncate text-sm text-primary">{r.name} <span className="tabular ml-1 text-xs text-subtle">{r.employeeIdNo}</span></span>
+                  <span className="hidden text-xs text-muted sm:block">{r.trade || "No trade"}</span>
+                  <span className="hidden w-36 truncate text-right text-xs text-subtle md:block">{r.supplierName}</span>
+                </label>
+              </li>
+            ))}
+            {offered.length === 0 && <li className="px-3 py-6 text-center text-sm text-muted">Nobody matches.</li>}
+            {offered.length > 300 && <li className="px-3 py-2 text-xs text-muted">Showing the first 300. Narrow it with the search or a supplier.</li>}
+          </ul>
+          <DialogFooter>
+            <DialogClose asChild><Button size="btn" type="button" variant="secondary">Cancel</Button></DialogClose>
+            <Button size="btn" type="button" onClick={addPicked} disabled={picked.size === 0}>Add {picked.size || ""} {picked.size === 1 ? "person" : "people"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="card overflow-x-auto">
         <table className="w-full text-sm">

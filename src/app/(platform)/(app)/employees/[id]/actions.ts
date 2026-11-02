@@ -215,6 +215,7 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
 
       visaNumber: stringOrNull(formData.get("visaNumber")),
       visaStatus: stringOrNull(formData.get("visaStatus")),
+      visaProfession: stringOrNull(formData.get("visaProfession")),
       molPersonCode: stringOrNull(formData.get("molPersonCode")),
       c3Id: stringOrNull(formData.get("c3Id")),
 

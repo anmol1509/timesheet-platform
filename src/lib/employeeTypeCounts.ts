@@ -40,7 +40,7 @@ export async function getEmployeeTypeCounts(
     }),
     // Deployed means linked to a project, so anyone active without one is idle,
     // whatever their stored stage says.
-    prisma.employee.count({ where: { ...where, active: true, projectId: null, status: { notIn: ["TERMINATED", "ON_VACATION"] } } }),
+    prisma.employee.count({ where: { ...where, active: true, projectId: null, status: { notIn: ["TERMINATED", "ABSCONDING", "ON_VACATION"] } } }),
   ]);
 
   const byStatus = Object.fromEntries(statusCounts.map((s) => [s.status, s._count._all]));

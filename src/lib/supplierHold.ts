@@ -26,7 +26,7 @@ export async function heldSuppliers(branchId: string | null): Promise<HeldSuppli
     where: {
       ...branchWhere(branchId),
       active: true,
-      status: { not: "TERMINATED" },
+      status: { notIn: ["TERMINATED", "ABSCONDING"] },
       projectId: null,
       supplier: { isOwnCompany: false, OR: [{ approvalStatus: { not: "Approved" } }, { labourApprovalStatus: { not: "Approved" } }] },
     },

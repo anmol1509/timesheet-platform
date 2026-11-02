@@ -51,7 +51,7 @@ export async function getDataHealth(branchId: string, opts: { realOnly?: boolean
     where: {
       branchId,
       active: true,
-      status: { not: "TERMINATED" },
+      status: { notIn: ["TERMINATED", "ABSCONDING"] },
       ...(opts.realOnly ? { NOT: { employeeIdNo: { startsWith: "SMP-" } } } : {}),
     },
     select: {

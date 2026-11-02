@@ -1,10 +1,11 @@
 import { isAdminRole } from "@/lib/roles";
+import { AbscondingCase } from "../absconding-case";
 import { toPlain } from "@/lib/plain";
 import { settleDueCheckouts } from "@/lib/accommodationCheckout";
 import { dayKey } from "@/lib/checkoutReasons";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { BadgeCheck, CalendarDays, ChevronRight, Hash, Home, MapPin, Phone } from "lucide-react";
+import { BadgeCheck, CalendarDays, ChevronRight, Hammer, Hash, Home, MapPin, Phone, Stamp } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { Badge } from "@/components/Badge";
 import { requireUserWithBranch, subjectOf } from "@/lib/auth";
@@ -294,11 +295,15 @@ export default async function EmployeeDetailPage({
 
           <dl className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm sm:grid-cols-3">
             <HeaderFact icon={CalendarDays} label="Joined" value={employee.joinDate ? formatShortDate(employee.joinDate) : "—"} />
+            <HeaderFact icon={Hammer} label="Working trade" value={employee.trade || "—"} />
+            <HeaderFact icon={Stamp} label="Visa profession" value={employee.visaProfession || "—"} />
             <HeaderFact icon={Hash} label="Category" value={employee.category === "STAFF" ? "Staff" : "Site staff"} />
             <HeaderFact icon={Phone} label="Mobile" value={employee.mobileNumber || "—"} />
           </dl>
         </div>
       </section>
+
+      <AbscondingCase info={{ id: employee.id, name: employee.name, status: employee.status, abscondedAt: employee.abscondedAt ? employee.abscondedAt.toISOString().slice(0, 10) : null, remarks: employee.abscondRemarks, caseStatus: employee.abscondCaseStatus, canEdit: can(subjectOf(user), "workforce", "edit") }} />
 
       <div className="flex justify-end">
         <Link href={`/employees/instant-view?employeeId=${employee.id}`} className="btn btn-secondary text-sm">Instant view</Link>

@@ -40,7 +40,7 @@ type EmployeeRow = {
   addedOn: string;
   isOwnCompanySupplier: boolean;
   onWork: boolean;
-  status: "ACTIVE" | "IDLE" | "UNDER_MOBILISATION" | "ON_SITE" | "ON_VACATION" | "TERMINATED";
+  status: "ACTIVE" | "IDLE" | "UNDER_MOBILISATION" | "ON_SITE" | "ON_VACATION" | "TERMINATED" | "ABSCONDING";
   worstStatus: ComplianceStatus;
   complete: boolean;
   projectName: string | null;
@@ -71,6 +71,7 @@ const DEPLOY_BADGE: Record<EmployeeRow["status"], { label: string; color: "green
   ON_SITE: { label: "On site", color: "green" },
   ON_VACATION: { label: "On leave", color: "slate" },
   TERMINATED: { label: "Terminated", color: "red" },
+  ABSCONDING: { label: "Absconding", color: "red" },
 };
 
 type Filter =
@@ -83,6 +84,7 @@ type Filter =
   | "our-workers"
   | "idle"
   | "vacation"
+  | "absconding"
   | "incomplete";
 
 const CATEGORY_FILTER_LABEL: Partial<Record<Filter, string>> = {
@@ -92,6 +94,7 @@ const CATEGORY_FILTER_LABEL: Partial<Record<Filter, string>> = {
   "our-workers": "Our Workers",
   idle: "Idle",
   vacation: "On Vacation",
+  absconding: "Absconding",
   incomplete: "Incomplete",
 };
 
@@ -167,6 +170,7 @@ export function EmployeeList({
     "our-workers",
     "idle",
     "vacation",
+    "absconding",
     "incomplete",
   ];
   const [filter, setFilter] = useState<Filter>(
@@ -199,9 +203,11 @@ export function EmployeeList({
         return employees.filter((e) => e.isOwnCompanySupplier);
       case "idle":
         // Same rule as the dashboard: active, not on leave, not linked to a project.
-        return employees.filter((e) => !e.onWork && e.status !== "ON_VACATION" && e.status !== "TERMINATED");
+        return employees.filter((e) => !e.onWork && e.status !== "ON_VACATION" && e.status !== "TERMINATED" && e.status !== "ABSCONDING");
       case "vacation":
         return employees.filter((e) => e.status === "ON_VACATION");
+      case "absconding":
+        return employees.filter((e) => e.status === "ABSCONDING");
       case "incomplete":
         return employees.filter((e) => !e.complete);
       default:

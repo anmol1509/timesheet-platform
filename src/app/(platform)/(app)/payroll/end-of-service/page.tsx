@@ -19,7 +19,7 @@ const aed = (n: number) => n.toLocaleString("en-AE", { minimumFractionDigits: 2,
 export default async function EndOfServicePage() {
   const { branchId } = await requireUserWithBranch();
   const employees = await prisma.employee.findMany({
-    where: { ...branchWhere(branchId), status: { not: "TERMINATED" }, payStructure: { not: null } },
+    where: { ...branchWhere(branchId), status: { notIn: ["TERMINATED", "ABSCONDING"] }, payStructure: { not: null } },
     select: { id: true, name: true, employeeIdNo: true, joinDate: true, payStructure: true, basicSalary: true, flatMonthlyRate: true },
     orderBy: { name: "asc" },
   });

@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FileWarning } from "lucide-react";
 import { EmployeeAvatar } from "@/components/Avatar";
+import { AbscondingCase } from "./absconding-case";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { Select } from "@/components/ui/Select";
 import { complianceStatus, daysUntil } from "@/lib/compliance";
@@ -26,7 +27,7 @@ export type DrawerPerson = { id: string; name: string; complete: boolean };
 type TabId = "overview" | "documents" | "missing";
 type Save = (field: string, value: string | null, label: string, confirm?: boolean) => Promise<SaveResult>;
 
-const STATUS_PILL: Record<string, string> = { ACTIVE: "Active", IDLE: "On bench", UNDER_MOBILISATION: "Mobilising", ON_SITE: "On site", ON_VACATION: "On leave", TERMINATED: "Terminated" };
+const STATUS_PILL: Record<string, string> = { ACTIVE: "Active", IDLE: "On bench", UNDER_MOBILISATION: "Mobilising", ON_SITE: "On site", ON_VACATION: "On leave", TERMINATED: "Terminated", ABSCONDING: "Absconding" };
 // `scan`: whether a scan of this type can be read. A medical certificate carries a date to type, nothing more.
 const DOCS = [
   { type: "VISA", label: "Visa", field: "visaExpiry", scan: true },
@@ -185,6 +186,7 @@ export function EmployeeDrawer({ id, order, people, onNavigate, onClose, initial
                 <button type="button" className="btn btn-primary btn-sm" onClick={() => { setTab("documents"); setOpenDoc(urgent.field); }}>Renew</button>
               </div>
             )}
+            <AbscondingCase info={{ id, name: data.name, status: data.status, abscondedAt: data.abscondedAt, remarks: data.abscondRemarks, caseStatus: data.abscondCaseStatus, canEdit: data.canEdit }} onChanged={reload} />
             <fieldset disabled={!data.canEdit} className="min-w-0">
               <h3 className="mb-2 text-xs font-semibold text-primary">Key details <span className="font-normal text-muted">· click a value to edit</span></h3>
               <dl className="rounded-[14px] border border-default">
@@ -192,6 +194,7 @@ export function EmployeeDrawer({ id, order, people, onNavigate, onClose, initial
                   <>
                     <Row label="Project"><ChoiceField kind="project" value={data.projectId} options={data.projects.map((p) => ({ value: p.id, label: p.name }))} onSave={bound("projectId", "Project")} placeholder="No project" /></Row>
                     <Row label="Trade"><TradeEditor data={data} reload={reload} /></Row>
+                    <Row label="Visa profession"><ClickToEdit label="visa profession" value={data.visaProfession} onSave={bound("visaProfession", "Visa profession")} /></Row>
                     <Row label="Camp / bed"><ReadOnly value={data.camp} href={profileHref} /></Row>
                   </>
                 ) : (

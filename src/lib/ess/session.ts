@@ -39,6 +39,6 @@ export async function getEssEmployee() {
       site: { select: { name: true } },
     },
   });
-  if (!employee || !employee.essEnabled || employee.status === "TERMINATED") return null;
+  if (!employee || !employee.essEnabled || (employee.status === "TERMINATED" || employee.status === "ABSCONDING")) return null;
   return employee;
 }

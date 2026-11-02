@@ -86,6 +86,7 @@ type Employee = {
   visaNumber: string | null;
   visaType: string | null;
   visaStatus: string | null;
+  visaProfession: string | null;
   visaDesignation: string | null;
   visaStampingDate: Date | null;
   molPersonCode: string | null;
@@ -598,6 +599,10 @@ export function EditForm({
             <TextField label="Visa number" name="visaNumber" defaultValue={employee.visaNumber} />
             <TextField label="Unified No" name="unifiedNo" defaultValue={employee.unifiedNo} />
             <LookupField label="Visa status" name="visaStatus" defaultValue={employee.visaStatus} options={lookups.VISA_STATUS} />
+            <Field label="Visa profession">
+              <input name="visaProfession" defaultValue={employee.visaProfession ?? ""} maxLength={120} placeholder="As printed on the UAE visa" className="input w-full" />
+              <span className="mt-1 block text-[11px] text-subtle">The trade the worker actually does is kept separately under Trade &amp; pay.</span>
+            </Field>
             <TextField label="MOL person code" name="molPersonCode" defaultValue={employee.molPersonCode} hint="MOL_PERSON_CODE" />
             <DateField label="Visa expiry date" name="visaExpiry" defaultValue={employee.visaExpiry} override={auto.visaExpiry} />
             <div />

@@ -51,14 +51,14 @@ export default async function WorkforceDashboardPage() {
     getComplianceRunway(branchId),
     prisma.employee.groupBy({
       by: ["trade"],
-      where: { ...branchScope, status: { not: "TERMINATED" } },
+      where: { ...branchScope, status: { notIn: ["TERMINATED", "ABSCONDING"] } },
       _count: { _all: true },
       orderBy: { _count: { trade: "desc" } },
       take: 8,
     }),
     prisma.employee.groupBy({
       by: ["nationality"],
-      where: { ...branchScope, status: { not: "TERMINATED" } },
+      where: { ...branchScope, status: { notIn: ["TERMINATED", "ABSCONDING"] } },
       _count: { _all: true },
       orderBy: { _count: { nationality: "desc" } },
       take: 8,

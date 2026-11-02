@@ -95,7 +95,7 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
     prisma.employee.findMany({
       where: {
         branchId: run.branchId,
-        status: { not: "TERMINATED" },
+        status: { notIn: ["TERMINATED", "ABSCONDING"] },
         ...payrollScopeWhere(run.companyId),
       },
       select: PAY_EMPLOYEE_SELECT,
@@ -316,7 +316,7 @@ export async function reverseLoanRepayments(runId: string) {
 export async function runSkipped(run: RunScope): Promise<SkippedEmployee[]> {
   const type = isPayType(run.payType) ? run.payType : null;
   const employees = await prisma.employee.findMany({
-    where: { branchId: run.branchId, status: { not: "TERMINATED" }, ...payrollScopeWhere(run.companyId) },
+    where: { branchId: run.branchId, status: { notIn: ["TERMINATED", "ABSCONDING"] }, ...payrollScopeWhere(run.companyId) },
     select: {
       id: true, name: true, active: true, joinDate: true, exitDate: true, supplierId: true, trade: true, position: true, payOverride: true, skills: { select: { rate: true, isActive: true, skill: { select: { name: true } } } }, payStructure: true, basicSalary: true, housingAllowance: true, foodAllowance: true,
       transportAllowance: true, otherAllowance: true, flatMonthlyRate: true, hourlyRate: true, dailyHours: true, paysOvertime: true, otMultiplier: true, restOtMultiplier: true,

@@ -19,7 +19,7 @@ export default async function VendorWorkersPage() {
   const vendor = (await getVendor())!;
   const [workers, subs, skills] = await Promise.all([
     prisma.employee.findMany({
-      where: { supplierId: vendor.id, status: { not: "TERMINATED" } },
+      where: { supplierId: vendor.id, status: { notIn: ["TERMINATED", "ABSCONDING"] } },
       orderBy: { name: "asc" },
       select: {
         id: true, name: true, employeeIdNo: true, trade: true, status: true,

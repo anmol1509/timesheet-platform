@@ -45,7 +45,7 @@ export async function getIdleWorkers(branchId: string | null, opts: { includeBlo
     where: {
       ...branchWhere(branchId),
       active: true,
-      status: { not: "TERMINATED" },
+      status: { notIn: ["TERMINATED", "ABSCONDING"] },
       projectId: null,
     },
     select: {
