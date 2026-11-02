@@ -11,7 +11,7 @@ export default async function NewClientTimesheetEntryPage() {
   const { branchId } = await requireUserWithBranch();
   const [suppliers, clients, projects, sites, roster, rateRows] = await Promise.all([
     prisma.supplier.findMany({ where: branchWhere(branchId), select: { name: true }, orderBy: { name: "asc" } }),
-    prisma.client.findMany({ where: branchWhere(branchId), select: { name: true }, orderBy: { name: "asc" } }),
+    prisma.client.findMany({ where: branchWhere(branchId), select: { name: true, hourlyRate: true }, orderBy: { name: "asc" } }),
     prisma.project.findMany({
       where: branchWhere(branchId),
       select: { id: true, code: true, name: true, client: { select: { name: true } } },
@@ -26,7 +26,7 @@ export default async function NewClientTimesheetEntryPage() {
     // Everyone who can still work, so a month can be started for a whole company in one go.
     prisma.employee.findMany({
       where: { ...branchWhere(branchId), active: true, status: { notIn: ["TERMINATED", "ABSCONDING"] } },
-      select: { employeeIdNo: true, name: true, trade: true, nationality: true, status: true, supplier: { select: { name: true, fullName: true } }, project: { select: { name: true, client: { select: { name: true } } } } },
+      select: { employeeIdNo: true, name: true, trade: true, nationality: true, status: true, supplier: { select: { name: true, fullName: true } }, project: { select: { id: true, name: true, client: { select: { name: true } } } } },
       orderBy: { name: "asc" },
       take: 3000,
     }),
@@ -46,9 +46,9 @@ export default async function NewClientTimesheetEntryPage() {
         supplierNames={suppliers.map((s) => s.name)}
         clientNames={clients.map((c) => c.name)}
         projects={projects.map((p) => ({ id: p.id, code: p.code, name: p.name, clientName: p.client?.name ?? "" }))}
-        rates={rateRows.map((r) => ({ client: r.client.name, projectId: r.projectId, trade: r.trade, rate: r.rate }))}
+        rates={[...rateRows.map((r) => ({ client: r.client.name, projectId: r.projectId, trade: r.trade, rate: r.rate })), ...clients.filter((c) => (c.hourlyRate ?? 0) > 0).map((c) => ({ client: c.name, projectId: null, trade: "", rate: c.hourlyRate as number }))]}
         sites={sites}
-        roster={roster.map((e) => ({ employeeIdNo: e.employeeIdNo, name: e.name, trade: e.trade ?? "", supplierName: e.supplier?.name ?? "", nationality: e.nationality ?? "", projectName: e.project?.name ?? "", clientName: e.project?.client?.name ?? "", onWork: ["UNDER_MOBILISATION", "ON_SITE", "ACTIVE"].includes(e.status) && !!e.project }))}
+        roster={roster.map((e) => ({ employeeIdNo: e.employeeIdNo, name: e.name, trade: e.trade ?? "", supplierName: e.supplier?.name ?? "", nationality: e.nationality ?? "", projectId: e.project?.id ?? "", projectName: e.project?.name ?? "", clientName: e.project?.client?.name ?? "", onWork: ["UNDER_MOBILISATION", "ON_SITE", "ACTIVE"].includes(e.status) && !!e.project }))}
       />
     </div>
   );
