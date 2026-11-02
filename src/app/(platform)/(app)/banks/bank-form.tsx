@@ -64,10 +64,10 @@ export function BankForm({ initial, companies, onDone }: { initial: BankValues; 
         <F t="Remarks"><input name="remarks" defaultValue={v.remarks} className="input w-full" /></F>
       </Group>
       {editing && <label className="flex items-center gap-2 text-sm text-secondary"><input type="hidden" name="enabled" value="0" /><input type="checkbox" name="enabled" value="1" defaultChecked={v.enabled} className="h-4 w-4" onChange={(e) => { const h = e.currentTarget.previousElementSibling as HTMLInputElement; h.disabled = e.currentTarget.checked; }} />Account is in use (untick to switch it off)</label>}
-      <div className="flex flex-wrap items-center gap-3">
+      {state.error && <Alert>{state.error}</Alert>}
+      <div data-actions className="flex flex-wrap items-center gap-3">
+        {editing && state.ok && !pending && <span className="mr-auto text-sm text-[var(--success)]">Saved.</span>}
         <Button size="btn" type="submit" disabled={pending} loading={pending}>{editing ? "Save changes" : "Add bank"}</Button>
-        {state.error && <Alert>{state.error}</Alert>}
-        {editing && state.ok && !pending && <span className="text-sm text-[var(--success)]">Saved.</span>}
       </div>
     </form>
   );

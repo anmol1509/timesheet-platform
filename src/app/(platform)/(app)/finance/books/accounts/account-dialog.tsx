@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Pencil, Plus } from "lucide-react";
+import { Pencil, Plus, Landmark } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Dialog, DialogContent, DialogFooter, DialogTrigger } from "@/components/ui/Dialog";
 import { Select } from "@/components/ui/Select";
@@ -26,7 +26,7 @@ export function AccountDialog({ account, defaultType }: { account?: Existing; de
       <DialogTrigger asChild>
         {account ? <button type="button" aria-label={`Edit ${account.name}`} className="rounded-md p-1.5 text-muted hover:bg-surface-hover hover:text-primary"><Pencil className="h-3.5 w-3.5" aria-hidden /></button> : <Button type="button" size="sm"><Plus className="h-4 w-4" aria-hidden />New account</Button>}
       </DialogTrigger>
-      <DialogContent title={account ? "Edit account" : "New account"}>
+      <DialogContent icon={<Landmark className="h-[18px] w-[18px]" />} title={account ? "Edit account" : "New account"}>
         <div className="space-y-3">
           <div className="grid grid-cols-[7rem_1fr] gap-3">
             <label className="text-sm font-medium text-primary">Code<Input className="mt-1" value={code} onChange={(e) => setCode(e.target.value)} placeholder="5800" /></label>

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { UserMinus } from "lucide-react";
+import { UserMinus, UserX } from "lucide-react";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/Dialog";
 import { useToastActions } from "@/components/ui/Toast";
 import { deactivateEmployeesAction } from "./actions";
@@ -55,7 +55,7 @@ export function DeactivateEmployeesButton({
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent
+        <DialogContent icon={<UserX className="h-[18px] w-[18px]" />}
           title={`Deactivate ${ids.length} employee${ids.length === 1 ? "" : "s"}?`}
           description="They come off the active roster but keep every record. Documents, timesheets and history are untouched. You can reactivate them from their profile."
         >

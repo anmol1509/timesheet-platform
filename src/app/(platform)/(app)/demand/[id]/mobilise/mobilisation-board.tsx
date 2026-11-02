@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRightLeft, Check, Search } from "lucide-react";
+import { ArrowRightLeft, Check, Search, Plane } from "lucide-react";
 import { Badge } from "@/components/Badge";
 import { Select } from "@/components/ui/Select";
 import { NumberInput } from "@/components/ui/NumberInput";
@@ -485,7 +485,7 @@ export function MobilisationBoard({
 function MobiliseOneModal({ worker, trade, pending, done, onClose, onConfirm }: { worker: Worker | null; trade: string; pending: boolean; done: boolean; onClose: () => void; onConfirm: (w: Worker, date: string) => void }) {
   return (
     <Dialog open={!!worker} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent title="Mobilise" description={worker ? `${worker.name} (${worker.employeeIdNo}) as ${trade}` : undefined}>
+      <DialogContent icon={<Plane className="h-[18px] w-[18px]" />} title="Mobilise" description={worker ? `${worker.name} (${worker.employeeIdNo}) as ${trade}` : undefined}>
         {worker && <MobiliseOneForm key={worker.id} worker={worker} pending={pending} done={done} onClose={onClose} onConfirm={onConfirm} />}
       </DialogContent>
     </Dialog>

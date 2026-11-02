@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Trash2 } from "lucide-react";
+import { Trash2, TriangleAlert } from "lucide-react";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/Dialog";
 import { Badge } from "@/components/Badge";
 import { Button } from "@/components/ui/Button";
@@ -117,7 +117,7 @@ function ResetDialog({
 
   return (
     <Dialog modal={false} open={open} onOpenChange={(o) => !o && handleClose()}>
-      <DialogContent
+      <DialogContent tone="danger" icon={<TriangleAlert className="h-[18px] w-[18px]" />}
         title={result ? `${label} reset` : `Reset ${label}?`}
         description={
           result

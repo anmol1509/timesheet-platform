@@ -36,7 +36,7 @@ export function PrintDialog({ open, onOpenChange, title, subject, options, count
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {open && (
-        <DialogContent title={title} description={`${subject} selected. Choose what to print.`}>
+        <DialogContent icon={<Printer className="h-[18px] w-[18px]" />} title={title} description={`${subject} selected. Choose what to print.`}>
           <Choices options={options} count={count} onCancel={() => onOpenChange(false)} onPrint={(keys) => { onPrint(keys); onOpenChange(false); }} />
         </DialogContent>
       )}

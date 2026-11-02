@@ -1,5 +1,6 @@
 "use client";
 
+import { FileWarning } from "lucide-react";
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { Dialog, DialogContent } from "@/components/ui/Dialog";
@@ -104,7 +105,7 @@ export function FixLetterDialog(p: Props) {
 
   return (
     <Dialog open={p.open} onOpenChange={p.onOpenChange}>
-      <DialogContent title="Fix missing details" description={`For ${p.employeeName} · ${p.templateName}. Details are saved to the employee's record, so the next letter has them too.`} className="max-w-xl">
+      <DialogContent icon={<FileWarning className="h-[18px] w-[18px]" />} title="Fix missing details" description={`For ${p.employeeName} · ${p.templateName}. Details are saved to the employee's record, so the next letter has them too.`} className="max-w-xl">
         <div className="mt-3 space-y-1">
           {fixable.length > 0 && (
             <div className="space-y-3">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { FilePlus2, Plus, Sparkles } from "lucide-react";
+import { FilePlus2, Plus, Sparkles, LayoutTemplate } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/Dialog";
 import { LETTER_PRESETS } from "@/lib/letterPresets";
 import { addMissingDefaultsAction, createFromPresetAction } from "./actions";
@@ -17,7 +17,7 @@ export function NewTemplateButton({ variant = "primary" }: { variant?: "primary"
         <Plus className="h-4 w-4" aria-hidden /> New template
       </button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent title="Start a new template" description="Pick a ready-made one and change the wording, or start blank." className="max-w-2xl!">
+        <DialogContent icon={<LayoutTemplate className="h-[18px] w-[18px]" />} title="Start a new template" description="Pick a ready-made one and change the wording, or start blank." className="max-w-2xl!">
           {(["SITE", "EMPLOYEE"] as const).map((aud) => (
             <section key={aud} className="mt-4">
               <h3 className="mb-2 text-xs font-semibold tracking-wide text-muted uppercase">{aud === "SITE" ? "Client letters (with a worker table)" : "Employee letters (about one person)"}</h3>

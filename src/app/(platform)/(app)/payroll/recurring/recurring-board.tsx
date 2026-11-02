@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Repeat } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/Dialog";
 import { Select } from "@/components/ui/Select";
 import { Badge } from "@/components/Badge";
@@ -114,7 +114,7 @@ export function RecurringBoard({ rows, employees, canCreate, canEdit }: { rows: 
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent title="New recurring item" description="Applies to every payroll run from the first month until the last (or until you pause it).">
+        <DialogContent icon={<Repeat className="h-[18px] w-[18px]" />} title="New recurring item" description="Applies to every payroll run from the first month until the last (or until you pause it).">
           <NewItemForm employees={employees} onDone={() => setOpen(false)} />
         </DialogContent>
       </Dialog>

@@ -285,7 +285,7 @@ export function CheckInTable({ rows, camps, suppliers, clients }: { rows: Employ
 function CheckInModal({ open, employees, camps, suppliers, clients, onChecked, onDone, onClose }: { open: boolean; employees: EmployeeRow[]; camps: CampOption[]; suppliers: Party[]; clients: Party[]; onChecked: () => void; onDone: () => void; onClose: () => void }) {
   return (
     <Dialog modal={false} open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent
+      <DialogContent icon={<LogIn className="h-[18px] w-[18px]" />}
         title={`Check in ${employees.length} worker${employees.length === 1 ? "" : "s"}`}
         description={employees.slice(0, 4).map((e) => e.name).join(", ") + (employees.length > 4 ? ` and ${employees.length - 4} more` : "")}
         className="max-w-xl"
@@ -568,7 +568,7 @@ function SwitchCampModal({
 }) {
   return (
     <Dialog modal={false} open={row !== null} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent
+      <DialogContent icon={<LogIn className="h-[18px] w-[18px]" />}
         title={`Switch Camp for ${row?.name ?? ""}`}
         description={`Currently checked into ${row?.campName ?? ""}. Pick a different camp.`}
       >

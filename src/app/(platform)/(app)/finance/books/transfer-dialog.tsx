@@ -1,5 +1,6 @@
 "use client";
 
+import { ArrowLeftRight } from "lucide-react";
 import { todayInUae } from "@/lib/today";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
@@ -27,7 +28,7 @@ export function TransferDialog({ accounts, minDate, foreign = {} }: { accounts: 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild><Button type="button" size="sm" variant="secondary">Transfer</Button></DialogTrigger>
-      <DialogContent title="Transfer between accounts" description="Moving your own money from one bank or cash account to another, such as cash deposited at the bank.">
+      <DialogContent icon={<ArrowLeftRight className="h-[18px] w-[18px]" />} title="Transfer between accounts" description="Moving your own money from one bank or cash account to another, such as cash deposited at the bank.">
         <div className="space-y-3">
           <label className="block text-sm font-medium text-primary">From<div className="mt-1"><Select value={from} onChange={setFrom} options={opts} placeholder="Choose account" /></div></label>
           <label className="block text-sm font-medium text-primary">To<div className="mt-1"><Select value={to} onChange={setTo} options={opts} placeholder="Choose account" /></div></label>

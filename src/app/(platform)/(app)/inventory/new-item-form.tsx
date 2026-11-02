@@ -40,9 +40,11 @@ export function NewItemForm({ bare }: { bare?: boolean } = {}) {
           {state.error}
         </Alert>
       )}
-      <Button size="btn" type="submit" disabled={pending} loading={pending}>
-        + Add Item
-      </Button>
+      <div data-actions className="w-full">
+        <Button size="btn" type="submit" disabled={pending} loading={pending}>
+          Add item
+        </Button>
+      </div>
     </form>
   );
 }

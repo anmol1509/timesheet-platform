@@ -2,7 +2,7 @@
 
 import { todayInUae } from "@/lib/today";
 import { useState, useTransition } from "react";
-import { Plus, X } from "lucide-react";
+import { Plus, X, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Dialog, DialogContent, DialogFooter, DialogTrigger } from "@/components/ui/Dialog";
 import { DatePicker } from "@/components/ui/DatePicker";
@@ -41,7 +41,7 @@ export function VoucherDialog({ accounts, minDate, label = "New voucher" }: { ac
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild><Button type="button" size="sm"><Plus className="h-4 w-4" aria-hidden />{label}</Button></DialogTrigger>
-      <DialogContent title="Journal voucher" description="Debits must equal credits." className="max-w-3xl!">
+      <DialogContent icon={<BookOpen className="h-[18px] w-[18px]" />} title="Journal voucher" description="Debits must equal credits." className="max-w-3xl!">
         <div className="grid gap-3 sm:grid-cols-[10rem_1fr]">
           <label className="text-sm font-medium text-primary">Date<div className="mt-1"><DatePicker value={date} onChange={setDate} ariaLabel="Voucher date" min={minDate} /></div></label>
           <label className="text-sm font-medium text-primary">What is it for<Input className="mt-1" value={narration} onChange={(e) => setNarration(e.target.value)} placeholder="e.g. Transfer from cash to bank" /></label>

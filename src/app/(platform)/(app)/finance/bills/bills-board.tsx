@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
-import { Layers, Plus } from "lucide-react";
+import { Layers, Plus, Receipt } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/Dialog";
 import { Select } from "@/components/ui/Select";
 import { RowMenu } from "@/components/ui/RowMenu";
@@ -298,16 +298,16 @@ export function BillsBoard({ rows, suppliers, banks = [], canCreate, canPay, can
         </div>
       )}
 
-      <Dialog open={adding} onOpenChange={setAdding}><DialogContent title="Add supplier bill"><BillForm suppliers={suppliers} onDone={() => setAdding(false)} /></DialogContent></Dialog>
+      <Dialog open={adding} onOpenChange={setAdding}><DialogContent icon={<Receipt className="h-[18px] w-[18px]" />} title="Add supplier bill"><BillForm suppliers={suppliers} onDone={() => setAdding(false)} /></DialogContent></Dialog>
       <Dialog open={paying !== null} onOpenChange={(o) => !o && setPaying(null)}>
-        {paying && <DialogContent title={`Pay ${paying.supplier}`} description={`Bill #${paying.billNo}: balance AED ${aed(paying.balance)}`}><PayForm bill={paying} banks={banks} onDone={() => setPaying(null)} /></DialogContent>}
+        {paying && <DialogContent icon={<Receipt className="h-[18px] w-[18px]" />} title={`Pay ${paying.supplier}`} description={`Bill #${paying.billNo}: balance AED ${aed(paying.balance)}`}><PayForm bill={paying} banks={banks} onDone={() => setPaying(null)} /></DialogContent>}
       </Dialog>
       <Dialog open={batching} onOpenChange={setBatching}>
-        <DialogContent title="Pay selected bills" description="One date, method and reference for the whole batch."><BatchForm bills={selectedRows} banks={banks} onDone={() => { setBatching(false); setSelected(new Set()); }} /></DialogContent>
+        <DialogContent icon={<Receipt className="h-[18px] w-[18px]" />} title="Pay selected bills" description="One date, method and reference for the whole batch."><BatchForm bills={selectedRows} banks={banks} onDone={() => { setBatching(false); setSelected(new Set()); }} /></DialogContent>
       </Dialog>
       <Dialog open={viewingRow !== null} onOpenChange={(o) => !o && setViewing(null)}>
         {viewingRow && (
-          <DialogContent className="max-w-xl!" title={`${viewingRow.supplier} · #${viewingRow.billNo}`} description={`Total AED ${aed(viewingRow.total)} · paid AED ${aed(viewingRow.paid)} · balance AED ${aed(viewingRow.balance)}`}>
+          <DialogContent icon={<Receipt className="h-[18px] w-[18px]" />} className="max-w-xl!" title={`${viewingRow.supplier} · #${viewingRow.billNo}`} description={`Total AED ${aed(viewingRow.total)} · paid AED ${aed(viewingRow.paid)} · balance AED ${aed(viewingRow.balance)}`}>
             <div className="mt-4 space-y-5">
               {viewingRow.variance ? (
                 <div className={`rounded-control border p-3 text-sm ${viewingRow.variance.state === "MATCH" ? "border-default bg-surface-subtle" : "border-[var(--warning-border)] bg-[var(--warning-soft)]"}`}>

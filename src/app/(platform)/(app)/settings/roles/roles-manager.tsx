@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Pencil, Plus } from "lucide-react";
+import { Pencil, Plus, ShieldCheck } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/Dialog";
 import { DeleteButton } from "@/components/DeleteButton";
 import { describeAccess } from "@/lib/permissions";
@@ -100,7 +100,7 @@ export function RolesManager({ roles, branches, isSuperAdmin }: { roles: Role[];
 
       <Dialog open={editing !== null} onOpenChange={(o) => !o && setEditing(null)}>
         {editing !== null && (
-          <DialogContent
+          <DialogContent icon={<ShieldCheck className="h-[18px] w-[18px]" />}
             className="max-w-3xl!"
             title={editing === "new" ? "New role" : `Edit ${editing.name}`}
             description="Choose which modules this role can open and what it can do in each."

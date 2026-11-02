@@ -1,5 +1,6 @@
 "use client";
 
+import { Receipt } from "lucide-react";
 import { useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/Dialog";
 import { EditWording } from "@/components/EditWording";
@@ -32,7 +33,7 @@ export function ReceiptButton({ id, label, icon, base, hint }: { id: string; lab
       <button type="button" className="inline-flex items-center gap-1 text-[var(--brand-primary)] hover:underline" onClick={() => setOpen(true)}>{icon} {label}</button>
       <EditWording target={targetOf(id, base)} label="Edit wording" className="ml-3 inline-flex items-center gap-1 text-muted hover:text-[var(--brand-primary)] hover:underline" />
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent title={label} description={hint ?? "Opens as a PDF to print and sign. The employee signs the acknowledgement at the bottom of the same page. The wording comes from your Advance letter templates (Letters › Templates)."}>
+        <DialogContent icon={<Receipt className="h-[18px] w-[18px]" />} title={label} description={hint ?? "Opens as a PDF to print and sign. The employee signs the acknowledgement at the bottom of the same page. The wording comes from your Advance letter templates (Letters › Templates)."}>
           <div className="mt-4 space-y-3 text-sm">
             <label className="flex items-center gap-2"><input type="checkbox" checked={letterhead} onChange={(e) => setLetterhead(e.target.checked)} /> On the company letterhead</label>
             <label className="flex items-center gap-2"><input type="checkbox" checked={signature} onChange={(e) => setSignature(e.target.checked)} /> Add the company signature (if on file)</label>

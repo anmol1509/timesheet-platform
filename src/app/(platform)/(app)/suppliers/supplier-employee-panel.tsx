@@ -73,7 +73,7 @@ export function SupplierEmployeePanel({
       </Tooltip>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent
+        <DialogContent icon={<Users className="h-[18px] w-[18px]" />}
           title={`${supplierName}: employees & insurance`}
           description="Who is on the books for this supplier, and who each workmen's compensation certificate covers."
           className="max-w-4xl"

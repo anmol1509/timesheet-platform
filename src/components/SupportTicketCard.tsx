@@ -79,7 +79,7 @@ export function SupportTicketCard({ compact = false }: { compact?: boolean } = {
         </button>
         )}
       </DialogTrigger>
-      <DialogContent title="Report an issue" description="Tell us what's not working. This goes straight to our support team.">
+      <DialogContent icon={<LifeBuoy className="h-[18px] w-[18px]" />} title="Report an issue" description="Tell us what's not working. This goes straight to our support team.">
         {sent ? (
           <div className="mt-4 flex flex-col items-center gap-2 py-6 text-center">
             <CheckCircle2 className="h-8 w-8 text-[var(--success)]" aria-hidden />

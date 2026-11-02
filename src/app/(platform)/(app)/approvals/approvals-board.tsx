@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 import { AnimatePresence, m } from "motion/react";
 import { useRouter } from "next/navigation";
-import { Banknote, CalendarCheck, Check, CheckCheck, ExternalLink, FileSpreadsheet, Inbox, ListChecks, Receipt, UserPlus, UserRoundPen, Wallet, Truck, X } from "lucide-react";
+import { Banknote, CalendarCheck, Check, CheckCheck, ExternalLink, FileSpreadsheet, Inbox, ListChecks, Receipt, UserPlus, UserRoundPen, Wallet, Truck, X, ShieldCheck, CircleX } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Dialog, DialogContent } from "@/components/ui/Dialog";
@@ -268,7 +268,7 @@ export function ApprovalsBoard({ items, tabs, filters, requesters, totalShown }:
 
       <Dialog open={rejecting !== null} onOpenChange={(o) => !o && setRejecting(null)}>
         {rejecting && (
-          <DialogContent title={rejecting.kind === "PAYROLL" ? "Send this back?" : "Reject this request?"} description={rejecting.title}>
+          <DialogContent tone="danger" icon={<CircleX className="h-[18px] w-[18px]" />} title={rejecting.kind === "PAYROLL" ? "Send this back?" : "Reject this request?"} description={rejecting.title}>
             <label className="mt-4 block">
               <span className="mb-1 block text-xs font-medium text-muted">{rejecting.rejectNeedsReason ? "Reason (the requester will see this) *" : "Reason (optional)"}</span>
               <input value={note} onChange={(e) => setNote(e.target.value)} className="input w-full" autoFocus />

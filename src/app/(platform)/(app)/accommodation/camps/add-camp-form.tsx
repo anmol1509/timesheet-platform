@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown, Plus } from "lucide-react";
+import { ChevronDown, Plus, Building2 } from "lucide-react";
 import { createCampWithRoomsAction } from "../actions";
 import { NumberInput } from "@/components/ui/NumberInput";
 import { Dialog, DialogContent, DialogFooter, DialogTrigger } from "@/components/ui/Dialog";
@@ -29,7 +29,7 @@ export function AddCampForm({ primary }: { primary?: boolean }) {
         </button>
       </DialogTrigger>
       {open && (
-        <DialogContent title="Add a camp" description="One of your own camps. Supplier and client camps are recorded when you check workers in." className="max-w-xl">
+        <DialogContent icon={<Building2 className="h-[18px] w-[18px]" />} title="Add a camp" description="One of your own camps. Supplier and client camps are recorded when you check workers in." className="max-w-xl">
           <AddCampBody />
         </DialogContent>
       )}

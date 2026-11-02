@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useActionState, useState, useTransition } from "react";
-import { Check, FileText, Plus, Upload, X } from "lucide-react";
+import { Check, FileText, Plus, Upload, X, Banknote } from "lucide-react";
 import { ExportButton } from "@/components/ExportButton";
 import { Dialog, DialogContent } from "@/components/ui/Dialog";
 import { Select } from "@/components/ui/Select";
@@ -300,22 +300,22 @@ export function LoansBoard({ rows, employees, canCreate, canEdit, canApprove, ca
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent title="New advance or loan" description="Request it, get it approved, record the day it is handed over, and it is deducted from payroll as planned.">
+        <DialogContent icon={<Banknote className="h-[18px] w-[18px]" />} title="New advance or loan" description="Request it, get it approved, record the day it is handed over, and it is deducted from payroll as planned.">
           <NewAdvanceForm employees={employees} onDone={() => setOpen(false)} />
         </DialogContent>
       </Dialog>
       <Dialog open={!!planning} onOpenChange={(v) => !v && setPlanning(null)}>
-        <DialogContent title="Which month(s) to deduct" description={planning ? `${planning.ref} · AED ${aed(planning.principal)} for ${planning.employee}` : undefined}>
+        <DialogContent icon={<Banknote className="h-[18px] w-[18px]" />} title="Which month(s) to deduct" description={planning ? `${planning.ref} · AED ${aed(planning.principal)} for ${planning.employee}` : undefined}>
           {planning && <SetPlanForm row={planning} onDone={() => setPlanning(null)} />}
         </DialogContent>
       </Dialog>
       <Dialog open={!!giving} onOpenChange={(v) => !v && setGiving(null)}>
-        <DialogContent title="Record as given" description={giving ? `${giving.ref} · AED ${aed(giving.principal)} to ${giving.employee}` : undefined}>
+        <DialogContent icon={<Banknote className="h-[18px] w-[18px]" />} title="Record as given" description={giving ? `${giving.ref} · AED ${aed(giving.principal)} to ${giving.employee}` : undefined}>
           {giving && <GivenForm row={giving} onDone={() => setGiving(null)} />}
         </DialogContent>
       </Dialog>
       <Dialog open={!!rejecting} onOpenChange={(v) => !v && setRejecting(null)}>
-        <DialogContent title="Reject this request?" description={rejecting ? `${rejecting.ref} · ${rejecting.employee}. The person who asked will be told why.` : undefined}>
+        <DialogContent icon={<Banknote className="h-[18px] w-[18px]" />} title="Reject this request?" description={rejecting ? `${rejecting.ref} · ${rejecting.employee}. The person who asked will be told why.` : undefined}>
           <div className="mt-4 space-y-3">
             <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} className="input w-full" placeholder="Why is it not approved?" aria-label="Reason" />
             <div className="flex justify-end gap-2">

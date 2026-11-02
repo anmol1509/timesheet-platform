@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Settings2, ChevronUp, ChevronDown } from "lucide-react";
+import { Settings2, ChevronUp, ChevronDown, LayoutDashboard } from "lucide-react";
 import { m } from "motion/react";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/Dialog";
 import { Switch } from "@/components/ui/Switch";
@@ -54,7 +54,7 @@ export function CustomizeDashboardButton({
       </button>
 
       <Dialog modal={false} open={open} onOpenChange={setOpen}>
-        <DialogContent
+        <DialogContent icon={<LayoutDashboard className="h-[18px] w-[18px]" />}
           title="Customize dashboard"
           className="max-w-2xl!"
           description="Switch sections on or off and reorder them. Saved to your account."

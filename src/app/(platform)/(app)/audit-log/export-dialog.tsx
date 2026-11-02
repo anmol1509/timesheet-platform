@@ -17,7 +17,7 @@ export function ExportDialog({ triggerClassName, query, total }: { triggerClassN
       <DialogTrigger asChild>
         <button type="button" className={triggerClassName ?? "btn btn-secondary gap-1.5"}><Download className="h-4 w-4" aria-hidden />Export</button>
       </DialogTrigger>
-      <DialogContent title="Export audit log" description="Everything the log is showing now, up to 50,000 entries, with dates in UAE time." className="max-w-lg">
+      <DialogContent icon={<Download className="h-[18px] w-[18px]" />} title="Export audit log" description="Everything the log is showing now, up to 50,000 entries, with dates in UAE time." className="max-w-lg">
         <form action="/api/audit-log/export" method="get" className="mt-4 space-y-4">
           {(["q", "user", "module", "action", "entityType", "entityId", "source", "batch"] as const).map((k) => query[k] ? <input key={k} type="hidden" name={k} value={query[k]} /> : null)}
           <input type="hidden" name="format" value={format === "xlsx" ? "xlsx" : "csv"} />

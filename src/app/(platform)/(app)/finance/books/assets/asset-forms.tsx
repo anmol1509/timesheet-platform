@@ -1,5 +1,6 @@
 "use client";
 
+import { Building2 } from "lucide-react";
 import { todayInUae } from "@/lib/today";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
@@ -23,7 +24,7 @@ export function AddAsset({ accounts, minDate }: { accounts: Opt[]; minDate: stri
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild><Button type="button" size="sm">Add asset</Button></DialogTrigger>
-      <DialogContent title="Add an asset" description="Something the company owns and uses for years, such as a vehicle, camp furniture or equipment. It is written off evenly over its life.">
+      <DialogContent icon={<Building2 className="h-[18px] w-[18px]" />} title="Add an asset" description="Something the company owns and uses for years, such as a vehicle, camp furniture or equipment. It is written off evenly over its life.">
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <label className="text-sm font-medium text-primary">Name<Input className="mt-1" value={f.name} onChange={(e) => set("name")(e.target.value)} placeholder="e.g. Toyota Hiace bus" /></label>
@@ -61,7 +62,7 @@ export function AssetRowActions({ id, name, moneyAccounts, sold = false }: { id:
     <div className="flex justify-end gap-1.5">
       {!sold && <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild><Button type="button" size="sm" variant="ghost">Sold / scrapped</Button></DialogTrigger>
-        <DialogContent title={`Sold or scrapped: ${name}`} description="Takes it off the books with its depreciation and shows any gain or loss. Enter 0 if it was scrapped.">
+        <DialogContent icon={<Building2 className="h-[18px] w-[18px]" />} title={`Sold or scrapped: ${name}`} description="Takes it off the books with its depreciation and shows any gain or loss. Enter 0 if it was scrapped.">
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <label className="text-sm font-medium text-primary">Date<div className="mt-1"><DatePicker value={date} onChange={setDate} ariaLabel="Date" /></div></label>

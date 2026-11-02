@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Settings2 } from "lucide-react";
+import { Settings2, LayoutDashboard } from "lucide-react";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/Dialog";
 import { Switch } from "@/components/ui/Switch";
 import { saveModuleSectionsAction } from "@/app/(platform)/(app)/dashboards/section-actions";
@@ -34,7 +34,7 @@ export function CustomizeSections({
         Customize
       </button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent title="Customize this dashboard" description="Switch sections on or off. The key numbers at the top always stay.">
+        <DialogContent icon={<LayoutDashboard className="h-[18px] w-[18px]" />} title="Customize this dashboard" description="Switch sections on or off. The key numbers at the top always stay.">
           <ul className="mt-2 space-y-2">
             {sections.map((s) => (
               <li key={s.id} className="flex items-center justify-between rounded-lg border border-default px-3 py-2.5">

@@ -1,5 +1,6 @@
 "use client";
 
+import { Landmark } from "lucide-react";
 import { todayInUae } from "@/lib/today";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
@@ -24,7 +25,7 @@ export function AddCheque({ clients, suppliers, banks, accounts }: { clients: Op
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild><Button type="button" size="sm">Add cheque</Button></DialogTrigger>
-      <DialogContent title="Add a cheque" description="Post-dated cheques wait here. They reach the books on the day you mark them cleared.">
+      <DialogContent icon={<Landmark className="h-[18px] w-[18px]" />} title="Add a cheque" description="Post-dated cheques wait here. They reach the books on the day you mark them cleared.">
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <label className="text-sm font-medium text-primary">Cheque is<div className="mt-1"><Select value={f.direction} onChange={set("direction")} searchable={false} options={[{ value: "RECEIVED", label: "Received (we deposit it)" }, { value: "ISSUED", label: "Issued (we paid with it)" }]} /></div></label>
@@ -68,7 +69,7 @@ export function ChequeActions({ id, number, status }: { id: string; number: stri
         <>
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild><Button type="button" size="sm" variant="secondary">Cleared</Button></DialogTrigger>
-            <DialogContent title={`Cheque ${number} cleared`} description="The day the bank paid it or took it. The books record the money on this day.">
+            <DialogContent icon={<Landmark className="h-[18px] w-[18px]" />} title={`Cheque ${number} cleared`} description="The day the bank paid it or took it. The books record the money on this day.">
               <label className="mt-4 block text-sm font-medium text-primary">Cleared on<div className="mt-1"><DatePicker value={date} onChange={setDate} ariaLabel="Cleared on" /></div></label>
               {error && <Alert className="mt-2">{error}</Alert>}
               <DialogFooter><Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Button type="button" disabled={pending} onClick={() => set("CLEARED", date)} loading={pending}>Mark cleared</Button></DialogFooter>

@@ -4,7 +4,7 @@ import { PhoneField } from "@/components/ui/PhoneField";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useState, useTransition } from "react";
-import { KeyRound, Pencil, Plus, UserCheck, UserX } from "lucide-react";
+import { KeyRound, Pencil, Plus, UserCheck, UserX, Users } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/Dialog";
 import { Select } from "@/components/ui/Select";
 import { DeleteButton } from "@/components/DeleteButton";
@@ -292,17 +292,17 @@ export function TeamManager({
 
       <Dialog open={dialog !== null} onOpenChange={(o) => !o && close()}>
         {dialog?.kind === "add" && (
-          <DialogContent title="Add team member" description="Set up their profile, then choose what they can open and do. Nothing is created until the last step." className="max-w-3xl">
+          <DialogContent icon={<Users className="h-[18px] w-[18px]" />} title="Add team member" description="Set up their profile, then choose what they can open and do. Nothing is created until the last step." className="max-w-3xl">
             <AddMemberWizard isSuperAdmin={isSuperAdmin} branches={branches} accessRoles={accessRoles} onDone={close} />
           </DialogContent>
         )}
         {dialog?.kind === "edit" && (
-          <DialogContent title={`Edit ${dialog.user.name}`}>
+          <DialogContent icon={<Users className="h-[18px] w-[18px]" />} title={`Edit ${dialog.user.name}`}>
             <UserForm key={dialog.user.id} user={dialog.user} isSuperAdmin={isSuperAdmin} branches={branches} accessRoles={accessRoles} onDone={close} />
           </DialogContent>
         )}
         {dialog?.kind === "password" && (
-          <DialogContent title={`Reset password for ${dialog.user.name}`} description="Set a new temporary password and share it with them.">
+          <DialogContent icon={<Users className="h-[18px] w-[18px]" />} title={`Reset password for ${dialog.user.name}`} description="Set a new temporary password and share it with them.">
             <ResetPasswordForm userId={dialog.user.id} onDone={close} />
           </DialogContent>
         )}

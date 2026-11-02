@@ -49,7 +49,7 @@ export function EditWording({ target, label = "Edit wording", className, onChang
     <>
       <button type="button" className={className ?? "inline-flex items-center gap-1 text-[var(--brand-primary)] hover:underline"} onClick={show}><Pencil className="h-3.5 w-3.5" aria-hidden /> {label}</button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent title={state ? `Edit wording · ${state.label}` : "Edit wording"} className="sm:max-w-4xl" description="Changes apply to this document only. The template is not changed, and the figures still come from the records each time it prints.">
+        <DialogContent icon={<Pencil className="h-[18px] w-[18px]" />} title={state ? `Edit wording · ${state.label}` : "Edit wording"} className="sm:max-w-4xl" description="Changes apply to this document only. The template is not changed, and the figures still come from the records each time it prints.">
           {error && !state ? <Alert className="mt-4">{error}</Alert> : !state ? <div className="mt-4 h-72 animate-pulse rounded-lg bg-surface-sunken" /> : (
             <div className="mt-4 space-y-3">
               {state.edited && <p className="rounded-lg border border-[var(--warning-border)] bg-[var(--warning-soft)] px-3 py-2 text-xs text-secondary">This document already has its own wording. <b>Reset to template</b> goes back to the template&apos;s.</p>}

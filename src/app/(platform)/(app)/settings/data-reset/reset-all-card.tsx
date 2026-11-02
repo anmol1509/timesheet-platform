@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { AlertOctagon } from "lucide-react";
+import { AlertOctagon, TriangleAlert } from "lucide-react";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
 import { resetAllAction } from "./actions";
@@ -78,7 +78,7 @@ function ResetAllDialog({
 
   return (
     <Dialog modal={false} open={open} onOpenChange={(o) => !o && handleClose()}>
-      <DialogContent
+      <DialogContent tone="danger" icon={<TriangleAlert className="h-[18px] w-[18px]" />}
         title={result ? "Everything reset" : `Reset all ${totalCount} records?`}
         description={
           result

@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { parseSpreadsheetFile, remapHeaders } from "@/lib/spreadsheet";
-import { AlertTriangle, CheckCircle2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2, FileSpreadsheet } from "lucide-react";
 import { ResultSection, Tile, type ImportRowResult } from "@/components/import/report";
 import { Dialog, DialogTrigger, DialogContent } from "@/components/ui/Dialog";
 
@@ -119,7 +119,7 @@ export function CsvImportDialog({
           Import Excel / CSV
         </button>
       </DialogTrigger>
-      <DialogContent title={`Import ${entityLabel}`} className="max-h-[85vh] max-w-2xl overflow-y-auto">
+      <DialogContent icon={<FileSpreadsheet className="h-[18px] w-[18px]" />} title={`Import ${entityLabel}`} className="max-h-[85vh] max-w-2xl overflow-y-auto">
         {!results && (
           <>
             <p className="mt-3 mb-3 text-sm text-muted">

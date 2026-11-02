@@ -106,7 +106,7 @@ export function ExpenseTools({
       </section>
 
       <Dialog open={budgetOpen} onOpenChange={setBudgetOpen}>
-        <DialogContent title="Category budget" description="A monthly cap for one category. Clear the amount to remove it.">
+        <DialogContent icon={<Wallet className="h-[18px] w-[18px]" />} title="Category budget" description="A monthly cap for one category. Clear the amount to remove it.">
           <form action={bAction} className="mt-4 space-y-3">
             <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Category</span>
               <Select name="category" defaultValue="" placeholder="Choose a category…" options={EXPENSE_CATEGORIES.map((c) => ({ value: c, label: c }))} />
@@ -122,7 +122,7 @@ export function ExpenseTools({
       </Dialog>
 
       <Dialog open={topUpOpen} onOpenChange={setTopUpOpen}>
-        <DialogContent title="Top up petty cash" description="Cash put into the float.">
+        <DialogContent icon={<Wallet className="h-[18px] w-[18px]" />} title="Top up petty cash" description="Cash put into the float.">
           <form action={tAction} className="mt-4 space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Amount (AED) *</span><NumberInput name="amount" required min={0} step={0.01} className="w-full" /></label>
