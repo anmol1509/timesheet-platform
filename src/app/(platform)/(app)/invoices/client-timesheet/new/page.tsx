@@ -9,12 +9,12 @@ export const metadata = { title: "New client timesheet" };
 
 export default async function NewClientTimesheetEntryPage() {
   const { branchId } = await requireUserWithBranch();
-  const [suppliers, clients, projects, sites, roster] = await Promise.all([
+  const [suppliers, clients, projects, sites, roster, rateRows] = await Promise.all([
     prisma.supplier.findMany({ where: branchWhere(branchId), select: { name: true }, orderBy: { name: "asc" } }),
     prisma.client.findMany({ where: branchWhere(branchId), select: { name: true }, orderBy: { name: "asc" } }),
     prisma.project.findMany({
       where: branchWhere(branchId),
-      select: { id: true, code: true, name: true },
+      select: { id: true, code: true, name: true, client: { select: { name: true } } },
       orderBy: { name: "asc" },
     }),
     // Site has no branch of its own — it inherits its project's.
@@ -30,6 +30,8 @@ export default async function NewClientTimesheetEntryPage() {
       orderBy: { name: "asc" },
       take: 3000,
     }),
+    // What each client is billed per hour for a trade: one rate for the whole client, or a project's own.
+    prisma.clientTradeRate.findMany({ where: { client: branchWhere(branchId) }, select: { trade: true, rate: true, projectId: true, client: { select: { name: true } } } }),
   ]);
 
   return (
@@ -43,7 +45,8 @@ export default async function NewClientTimesheetEntryPage() {
       <ManualEntryForm
         supplierNames={suppliers.map((s) => s.name)}
         clientNames={clients.map((c) => c.name)}
-        projects={projects}
+        projects={projects.map((p) => ({ id: p.id, code: p.code, name: p.name, clientName: p.client?.name ?? "" }))}
+        rates={rateRows.map((r) => ({ client: r.client.name, projectId: r.projectId, trade: r.trade, rate: r.rate }))}
         sites={sites}
         roster={roster.map((e) => ({ employeeIdNo: e.employeeIdNo, name: e.name, trade: e.trade ?? "", supplierName: e.supplier?.name ?? "" }))}
       />

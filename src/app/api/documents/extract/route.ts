@@ -108,12 +108,13 @@ const DOC_TYPE_CONFIG: Record<string, { schema: object; prompt: string }> = {
         name: { type: "string" as const, description: "Full name as printed" },
         visaNumber: { type: "string" as const, description: "Visa / residency file number, e.g. 301/2026/2/82612" },
         visaExpiry: { type: "string" as const, description: "Visa expiry as ISO 8601 (YYYY-MM-DD)" },
+        visaProfession: { type: "string" as const, description: "The profession / job title printed on the visa, in English, e.g. CARPENTER" },
       },
-      required: ["name", "visaNumber", "visaExpiry"],
+      required: ["name", "visaNumber", "visaExpiry", "visaProfession"],
       additionalProperties: false,
     },
     prompt:
-      "This is a residence visa, entry permit or residency page for a construction-industry worker in the UAE. Extract the holder's name, the visa or residency file number and the visa expiry date. Use an empty string for anything the document does not print. Never work an expiry out by adding a period to an issue date.",
+      "This is a residence visa, entry permit or residency page for a construction-industry worker in the UAE. Extract the holder's name, the visa or residency file number, the visa expiry date and the profession printed on the visa (the field labelled Profession / Occupation). Use an empty string for anything the document does not print. Never work an expiry out by adding a period to an issue date.",
   },
   MEDICAL: {
     schema: {
@@ -246,6 +247,7 @@ const COMBINED_SCHEMA = {
         "Residence file number — the visa's file number, or IDENTITY NUMBER on an ICP registration form",
     },
     visaExpiry: { type: "string" as const, description: "ISO 8601 residency/visa expiry date" },
+    visaProfession: { type: "string" as const, description: "The profession printed on the residence visa page itself (Profession / Occupation), in English. Empty unless a visa page shows one; never the labour card's profession" },
     sponsorName: {
       type: "string" as const,
       description: "Sponsor named on the visa or residency issuance page, in English",
@@ -281,6 +283,7 @@ const COMBINED_SCHEMA = {
     "establishment",
     "visaNumber",
     "visaExpiry",
+    "visaProfession",
     "sponsorName",
     "unifiedNo",
     "mobileNumber",
@@ -315,6 +318,8 @@ export type ExtractedDocumentFields = {
   photoPage?: string | null;
   visaNumber?: string | null;
   visaExpiry?: string | null;
+  /** The profession printed on the visa, kept apart from the trade the worker does. */
+  visaProfession?: string | null;
   medicalExpiry?: string | null;
   cicpaExpiry?: string | null;
   insuranceExpiry?: string | null;

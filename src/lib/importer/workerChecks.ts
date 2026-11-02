@@ -38,6 +38,7 @@ export function dateProblem(field: string, d: Date, now = new Date()): string | 
     if (age > 75) return "would make the worker over 75";
     return null;
   }
+  if (field === "abscondedAt") return t > n + 86_400_000 ? "is in the future" : null;
   if (field === "joinDate") {
     if (t > n + YEAR) return "is more than a year ahead";
     if (d.getUTCFullYear() < 1990) return "is before 1990";
