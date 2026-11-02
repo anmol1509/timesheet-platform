@@ -26,7 +26,7 @@ export default async function NewClientTimesheetEntryPage() {
     // Everyone who can still work, so a month can be started for a whole company in one go.
     prisma.employee.findMany({
       where: { ...branchWhere(branchId), active: true, status: { notIn: ["TERMINATED", "ABSCONDING"] } },
-      select: { employeeIdNo: true, name: true, trade: true, supplier: { select: { name: true, fullName: true } } },
+      select: { employeeIdNo: true, name: true, trade: true, nationality: true, status: true, supplier: { select: { name: true, fullName: true } }, project: { select: { name: true, client: { select: { name: true } } } } },
       orderBy: { name: "asc" },
       take: 3000,
     }),
@@ -48,7 +48,7 @@ export default async function NewClientTimesheetEntryPage() {
         projects={projects.map((p) => ({ id: p.id, code: p.code, name: p.name, clientName: p.client?.name ?? "" }))}
         rates={rateRows.map((r) => ({ client: r.client.name, projectId: r.projectId, trade: r.trade, rate: r.rate }))}
         sites={sites}
-        roster={roster.map((e) => ({ employeeIdNo: e.employeeIdNo, name: e.name, trade: e.trade ?? "", supplierName: e.supplier?.name ?? "" }))}
+        roster={roster.map((e) => ({ employeeIdNo: e.employeeIdNo, name: e.name, trade: e.trade ?? "", supplierName: e.supplier?.name ?? "", nationality: e.nationality ?? "", projectName: e.project?.name ?? "", clientName: e.project?.client?.name ?? "", onWork: ["UNDER_MOBILISATION", "ON_SITE", "ACTIVE"].includes(e.status) && !!e.project }))}
       />
     </div>
   );

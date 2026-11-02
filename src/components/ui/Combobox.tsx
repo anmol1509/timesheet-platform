@@ -78,7 +78,7 @@ export function Combobox({
           align="start"
           sideOffset={4}
           onOpenAutoFocus={(e) => e.preventDefault()}
-          className="rx-popover z-50 w-[var(--radix-popover-trigger-width)] overflow-hidden rounded-lg border border-default bg-surface shadow-lg"
+          className="rx-popover z-50 w-max min-w-[var(--radix-popover-trigger-width)] max-w-[min(28rem,calc(100vw-2rem))] overflow-hidden rounded-lg border border-default bg-surface shadow-lg"
         >
           <Command shouldFilter={false}>
             <CommandList className="max-h-56 overflow-y-auto p-1">

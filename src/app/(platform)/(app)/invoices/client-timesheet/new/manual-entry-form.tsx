@@ -54,6 +54,7 @@ function blankRow(dayCount: number): RowState {
 }
 
 type ProjectOption = { id: string; code: string; name: string; clientName: string };
+type RosterPerson = { employeeIdNo: string; name: string; trade: string; supplierName: string; nationality: string; projectName: string; clientName: string; onWork: boolean };
 type RateOption = { client: string; projectId: string | null; trade: string; rate: number };
 const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
 type SiteOption = { id: string; name: string; projectId: string };
@@ -70,7 +71,7 @@ export function ManualEntryForm({
   clientNames: string[];
   projects: ProjectOption[];
   sites: SiteOption[];
-  roster: { employeeIdNo: string; name: string; trade: string; supplierName: string }[];
+  roster: RosterPerson[];
   rates: RateOption[];
 }) {
   const [state, formAction, pending] = useActionState(submitManualEntryAction, {
@@ -121,16 +122,26 @@ export function ManualEntryForm({
   // ---- Bulk month entry: people from the roster, and a pattern for the days ----
   const [picking, setPicking] = useState(false);
   const [pickSearch, setPickSearch] = useState("");
-  const [pickSupplier, setPickSupplier] = useState("");
+  const [pf, setPf] = useState({ supplier: "", client: "", project: "", trade: "", nationality: "", work: "" });
+  const setFilter = (k: keyof typeof pf, v: string) => setPf((f) => ({ ...f, [k]: v }));
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [hoursPerDay, setHoursPerDay] = useState("10");
   const [dayOff, setDayOff] = useState("5"); // JS weekday: 5 = Friday, 0 = Sunday, "" = none
   const [onlyEmpty, setOnlyEmpty] = useState(true);
-  const rosterSuppliers = useMemo(() => [...new Set(roster.map((r) => r.supplierName).filter(Boolean))].sort(), [roster]);
+  const distinct = (get: (r: RosterPerson) => string) => [...new Set(roster.map(get).filter(Boolean))].sort((a, b) => a.localeCompare(b)).map((v) => ({ value: v, label: v }));
+  const filterOptions = useMemo(() => ({
+    supplier: distinct((r) => r.supplierName), client: distinct((r) => r.clientName), project: distinct((r) => r.projectName), trade: distinct((r) => r.trade), nationality: distinct((r) => r.nationality),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [roster]);
+  const filtersOn = Object.values(pf).filter(Boolean).length;
   const shown = useMemo(() => {
     const q = pickSearch.trim().toLowerCase();
-    return roster.filter((r) => (!pickSupplier || r.supplierName === pickSupplier) && (!q || r.name.toLowerCase().includes(q) || r.employeeIdNo.toLowerCase().includes(q) || r.trade.toLowerCase().includes(q)));
-  }, [roster, pickSearch, pickSupplier]);
+    return roster.filter((r) =>
+      (!pf.supplier || r.supplierName === pf.supplier) && (!pf.client || r.clientName === pf.client) && (!pf.project || r.projectName === pf.project) &&
+      (!pf.trade || r.trade === pf.trade) && (!pf.nationality || r.nationality === pf.nationality) &&
+      (!pf.work || (pf.work === "work" ? r.onWork : !r.onWork)) &&
+      (!q || r.name.toLowerCase().includes(q) || r.employeeIdNo.toLowerCase().includes(q) || r.trade.toLowerCase().includes(q)));
+  }, [roster, pickSearch, pf]);
   const taken = useMemo(() => new Set(rows.map((r) => r.employeeIdNo.trim().toLowerCase()).filter(Boolean)), [rows]);
   const offered = shown.filter((r) => !taken.has(r.employeeIdNo.toLowerCase()));
 
@@ -344,8 +355,16 @@ export function ManualEntryForm({
         <DialogContent icon={<UsersRound className="h-[18px] w-[18px]" />} title="Add people from the roster" description="Tick the workers to add. Their ID, name, trade and supplier are filled in for you." className="max-w-2xl">
           <div className="mt-5 flex flex-wrap gap-2">
             <input value={pickSearch} onChange={(e) => setPickSearch(e.target.value)} placeholder="Search name, ID or trade" className="input min-w-[12rem] flex-1" />
-            <div className="w-56"><Select value={pickSupplier} onChange={setPickSupplier} placeholder="All suppliers" options={[{ value: "", label: "All suppliers" }, ...rosterSuppliers.map((s) => ({ value: s, label: s }))]} /></div>
           </div>
+          <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <Select value={pf.supplier} onChange={(v) => setFilter("supplier", v)} placeholder="All suppliers" searchable options={[{ value: "", label: "All suppliers" }, ...filterOptions.supplier]} />
+            <Select value={pf.client} onChange={(v) => setFilter("client", v)} placeholder="All clients" searchable options={[{ value: "", label: "All clients" }, ...filterOptions.client]} />
+            <Select value={pf.project} onChange={(v) => setFilter("project", v)} placeholder="All projects" searchable options={[{ value: "", label: "All projects" }, ...filterOptions.project]} />
+            <Select value={pf.trade} onChange={(v) => setFilter("trade", v)} placeholder="All trades" searchable options={[{ value: "", label: "All trades" }, ...filterOptions.trade]} />
+            <Select value={pf.nationality} onChange={(v) => setFilter("nationality", v)} placeholder="All nationalities" searchable options={[{ value: "", label: "All nationalities" }, ...filterOptions.nationality]} />
+            <Select value={pf.work} onChange={(v) => setFilter("work", v)} searchable={false} placeholder="On work or bench" options={[{ value: "", label: "On work or bench" }, { value: "work", label: "On work (deployed)" }, { value: "bench", label: "On bench" }]} />
+          </div>
+          {filtersOn > 0 && <button type="button" className="mt-2 text-xs font-medium text-[var(--brand-primary)] hover:underline" onClick={() => setPf({ supplier: "", client: "", project: "", trade: "", nationality: "", work: "" })}>Clear {filtersOn} {filtersOn === 1 ? "filter" : "filters"}</button>}
           <div className="mt-3 flex items-center justify-between text-xs">
             <span className="text-muted">{offered.length} shown{shown.length !== offered.length ? `, ${shown.length - offered.length} already in the table` : ""} · {picked.size} ticked</span>
             <button type="button" className="font-medium text-[var(--brand-primary)] hover:underline" onClick={() => setPicked((p) => (offered.every((o) => p.has(o.employeeIdNo)) ? new Set([...p].filter((id) => !offered.some((o) => o.employeeIdNo === id))) : new Set([...p, ...offered.map((o) => o.employeeIdNo)])))}>
@@ -439,7 +458,7 @@ export function ManualEntryForm({
                     onChange={(v) => updateRow(row.id, { supplierName: v })}
                     options={supplierNames.map((n) => ({ value: n, label: n }))}
                     placeholder="Supplier"
-                    className="w-32 px-2 py-1.5"
+                    className="w-44 min-w-[11rem] px-2 py-1.5"
                   />
                 </td>
                 <td className="px-3 py-2">
@@ -448,7 +467,7 @@ export function ManualEntryForm({
                     onChange={(v) => updateRow(row.id, { clientName: v })}
                     options={clientNames.map((n) => ({ value: n, label: n }))}
                     placeholder="Client"
-                    className="w-32 px-2 py-1.5"
+                    className="w-40 min-w-[10rem] px-2 py-1.5"
                   />
                 </td>
                 {row.days.map((value, dayIndex) => (
