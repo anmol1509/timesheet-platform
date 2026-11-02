@@ -244,6 +244,7 @@ const SCAN_FIELDS: ScanSpec[] = [
   { key: "laborCardPersonalNo", label: "Labour card personal no.", kind: "text" },
   { key: "laborCardExpiry", label: "Labour card expiry", kind: "date", renewable: true },
   { key: "visaNumber", label: "Visa / residency file no.", kind: "text" },
+  { key: "visaProfession", label: "Visa profession", kind: "text" },
   { key: "visaExpiry", label: "Visa expiry", kind: "date", renewable: true },
   { key: "unifiedNo", label: "Unified number", kind: "text" },
   { key: "dateOfBirth", label: "Date of birth", kind: "date" },

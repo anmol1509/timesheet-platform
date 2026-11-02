@@ -63,6 +63,7 @@ const WORKERS: FieldDef[] = [
   { key: "employeeIdNo", label: "Employee code", required: true, aliases: ["id", "employee code", "emp code", "id no", "i d no", "emp id", "emp no", "employee id", "employee no", "employee code", "staff id", "worker id", "labour id", "badge", "badge no", "code"] },
   { key: "name", label: "Worker name", required: true, aliases: ["employee name", "worker name", "emp name", "name", "full name", "staff name", "labour name"] },
   { key: "trade", label: "Trade", aliases: ["trade", "designation", "job title", "position", "profession", "occupation", "skill"] },
+  { key: "visaProfession", label: "Visa profession", aliases: ["visa profession", "profession on visa", "visa occupation", "visa designation", "profession as per visa", "visa job title"], hint: "As printed on the UAE visa, if different from the trade" },
   { key: "supplier", label: "Supplier", aliases: ["supplier", "main supplier", "company", "employer", "agency", "manpower supplier", "supplier name"] },
   { key: "sponsor", label: "Sponsor", aliases: ["sponsor", "sponsor name", "sponsor company", "visa company", "visa sponsor"] },
   { key: "nationality", label: "Nationality", aliases: ["nationality", "country", "citizenship"] },
@@ -89,6 +90,9 @@ const WORKERS: FieldDef[] = [
   { key: "otMultiplier", label: "Overtime multiplier", aliases: ["overtime multiplier", "ot multiplier", "ot rate", "overtime rate"] },
   { key: "restOtMultiplier", label: "Rest-day overtime multiplier", aliases: ["rest day overtime multiplier", "rest day ot", "rest day multiplier", "friday ot"] },
   { key: "gasWaived", label: "Gas charge waived", aliases: ["gas charge waived", "gas waived", "no gas"] },
+  { key: "abscondedAt", label: "Absconding date", aliases: ["absconding date", "absconded date", "absconded on", "date absconded", "absconder date"] },
+  { key: "abscondCaseStatus", label: "Absconding case status", aliases: ["absconding case status", "absconding status", "absconder status", "case status"], hint: "Reported, Under investigation, Closed or Returned" },
+  { key: "abscondRemarks", label: "Absconding remarks", aliases: ["absconding remarks", "absconder remarks", "absconding notes", "case remarks"] },
 ];
 
 const CAMPS: FieldDef[] = [

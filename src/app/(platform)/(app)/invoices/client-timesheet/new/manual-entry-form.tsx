@@ -1,7 +1,10 @@
 "use client";
 
 import { useActionState, useMemo, useState } from "react";
-import { CalendarDays, Plus, Trash2, UsersRound, Wand2 } from "lucide-react";
+import { CalendarDays, Loader2, Plus, ScanLine, Trash2, UsersRound, Wand2 } from "lucide-react";
+import { matchRoster, type ReadTimesheetRow } from "@/lib/timesheetRead";
+import { shrinkImage } from "@/lib/compressImage";
+import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
 import { Dialog, DialogClose, DialogContent, DialogFooter } from "@/components/ui/Dialog";
 import { submitManualEntryAction } from "../actions";
 import { Select } from "@/components/ui/Select";
@@ -45,7 +48,9 @@ function blankRow(dayCount: number): RowState {
   };
 }
 
-type ProjectOption = { id: string; code: string; name: string };
+type ProjectOption = { id: string; code: string; name: string; clientName: string };
+type RateOption = { client: string; projectId: string | null; trade: string; rate: number };
+const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
 type SiteOption = { id: string; name: string; projectId: string };
 
 export function ManualEntryForm({
@@ -54,12 +59,14 @@ export function ManualEntryForm({
   projects,
   sites,
   roster,
+  rates,
 }: {
   supplierNames: string[];
   clientNames: string[];
   projects: ProjectOption[];
   sites: SiteOption[];
   roster: { employeeIdNo: string; name: string; trade: string; supplierName: string }[];
+  rates: RateOption[];
 }) {
   const [state, formAction, pending] = useActionState(submitManualEntryAction, {
     error: null,
@@ -122,11 +129,68 @@ export function ManualEntryForm({
   const taken = useMemo(() => new Set(rows.map((r) => r.employeeIdNo.trim().toLowerCase()).filter(Boolean)), [rows]);
   const offered = shown.filter((r) => !taken.has(r.employeeIdNo.toLowerCase()));
 
+  /** The client's rate for a trade: the project's own rate if it has one, else the client-wide one. */
+  function rateFor(clientName: string, trade: string, project: string): string {
+    const c = norm(clientName), t = norm(trade);
+    if (!c || !t) return "";
+    const mine = rates.filter((r) => norm(r.client) === c && norm(r.trade) === t);
+    const hit = (project && mine.find((r) => r.projectId === project)) || mine.find((r) => !r.projectId);
+    return hit ? String(hit.rate) : "";
+  }
+  const projectClient = projects.find((p) => p.id === projectId)?.clientName ?? "";
+
+  /** Fills the client and the rate where they are still empty, from the project (or the client on the row) and the row's trade. */
+  function fillRates() {
+    setRows((prev) => prev.map((r) => {
+      const clientName = r.clientName || projectClient;
+      return { ...r, clientName, rate: r.rate || rateFor(clientName, r.trade, projectId) };
+    }));
+  }
+
+  // ---- Read a scanned sheet into the grid ----
+  const [reading, setReading] = useState(false);
+  const [readNote, setReadNote] = useState<{ tone: "ok" | "warn"; text: string } | null>(null);
+
+  async function readScan(files: File[]) {
+    if (files.length === 0) return;
+    setReading(true);
+    setReadNote(null);
+    const added: RowState[] = [];
+    const unmatched: string[] = [];
+    let failed: string | null = null;
+    for (const raw of files) {
+      const file = await shrinkImage(raw);
+      if (file.size > MAX_UPLOAD_BYTES) { failed = `"${file.name}" is too large: max ${MAX_UPLOAD_LABEL}.`; continue; }
+      const body = new FormData();
+      body.append("file", file);
+      body.append("month", month);
+      const res = await fetch("/api/timesheets/read", { method: "POST", body }).catch(() => null);
+      const payload = res ? await res.json().catch(() => null) : null;
+      if (!res?.ok || !payload) { failed = (payload && typeof payload.error === "string" && payload.error) || `"${file.name}" couldn't be read.`; continue; }
+      for (const r of payload.rows as ReadTimesheetRow[]) {
+        const person = matchRoster(r, roster);
+        if (!person) unmatched.push(r.employeeName || r.employeeIdNo);
+        const trade = person?.trade || r.trade;
+        added.push({ ...blankRow(dayCount), employeeIdNo: person?.employeeIdNo ?? r.employeeIdNo, employeeName: person?.name ?? r.employeeName, trade, supplierName: person?.supplierName ?? "", clientName: projectClient, rate: rateFor(projectClient, trade, projectId), days: r.days });
+      }
+    }
+    if (added.length > 0) {
+      setRows((prev) => {
+        const have = new Set(prev.map((r) => r.employeeIdNo.trim().toLowerCase()).filter(Boolean));
+        const kept = prev.filter((r) => r.employeeIdNo.trim() || r.employeeName.trim() || r.days.some((d) => d.trim()));
+        return [...kept, ...added.filter((r) => !r.employeeIdNo || !have.has(r.employeeIdNo.trim().toLowerCase()))];
+      });
+    }
+    setReading(false);
+    const parts = [added.length > 0 ? `Read ${added.length} ${added.length === 1 ? "row" : "rows"} into the table. Check the hours before saving.` : "", unmatched.length > 0 ? `${unmatched.length} not found on your roster (${unmatched.slice(0, 4).join(", ")}${unmatched.length > 4 ? "…" : ""}): they are added as typed and will be created on save.` : "", failed ?? ""].filter(Boolean);
+    setReadNote({ tone: failed || unmatched.length > 0 ? "warn" : "ok", text: parts.join(" ") });
+  }
+
   function addPicked() {
     const chosen = roster.filter((r) => picked.has(r.employeeIdNo) && !taken.has(r.employeeIdNo.toLowerCase()));
     setRows((prev) => {
       const kept = prev.filter((r) => r.employeeIdNo.trim() || r.employeeName.trim() || r.days.some((d) => d.trim()));
-      return [...kept, ...chosen.map((e) => ({ ...blankRow(dayCount), employeeIdNo: e.employeeIdNo, employeeName: e.name, trade: e.trade, supplierName: e.supplierName }))];
+      return [...kept, ...chosen.map((e) => ({ ...blankRow(dayCount), employeeIdNo: e.employeeIdNo, employeeName: e.name, trade: e.trade, supplierName: e.supplierName, clientName: projectClient, rate: rateFor(projectClient, e.trade, projectId) }))];
     });
     setPicked(new Set());
     setPicking(false);
@@ -193,11 +257,17 @@ export function ManualEntryForm({
           <button type="button" onClick={() => setPicking(true)} className="btn btn-primary flex gap-1.5 px-3">
             <UsersRound className="h-4 w-4" /> Add from roster
           </button>
+          <label className={`btn btn-secondary flex cursor-pointer gap-1.5 px-3 ${reading ? "pointer-events-none opacity-60" : ""}`} title="Upload a photo, scan or PDF of the monthly sheet and its hours are filled in for you">
+            {reading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <ScanLine className="h-4 w-4" aria-hidden />} {reading ? "Reading…" : "Read from a scan"}
+            <input type="file" multiple accept="application/pdf,image/*" className="sr-only" aria-label="Choose a scanned timesheet" disabled={reading} onChange={(e) => { void readScan([...(e.target.files ?? [])]); e.target.value = ""; }} />
+          </label>
           <button type="button" onClick={addRow} className="btn btn-secondary flex gap-1.5 px-3">
             <Plus className="h-4 w-4" /> Add Row
           </button>
         </div>
       </div>
+
+      {readNote && <Alert tone={readNote.tone === "ok" ? "success" : "warning"}>{readNote.text}</Alert>}
 
       <div className="card flex flex-wrap items-end gap-3 p-4">
         <p className="flex w-full items-center gap-2 text-xs font-semibold tracking-wide text-muted uppercase"><Wand2 className="h-3.5 w-3.5" aria-hidden /> Fill the month</p>
@@ -213,6 +283,7 @@ export function ManualEntryForm({
           <input type="checkbox" checked={onlyEmpty} onChange={(e) => setOnlyEmpty(e.target.checked)} /> Only rows with no hours yet
         </label>
         <button type="button" onClick={fillDays} className="btn btn-secondary flex gap-1.5 px-3"><CalendarDays className="h-4 w-4" /> Fill the days</button>
+        <button type="button" onClick={fillRates} className="btn btn-secondary flex gap-1.5 px-3" title="Fills the client and the hourly rate from the project and each row's trade, where they are empty">Fill the rates</button>
         <p className="w-full text-xs text-subtle">Then change any day by hand: a different number of hours, A for absent, or OFF.</p>
       </div>
 

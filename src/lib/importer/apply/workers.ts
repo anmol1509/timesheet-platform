@@ -5,9 +5,10 @@ import { looseMatch } from "@/lib/looseName";
 import { WORKER_FIX_FIELDS, checkWorkerFix, dateProblem, workerProblems } from "../workerChecks";
 import type { ApplyCtx, ApplyResult, Fix, Fixable, ImportNote, MappedRow, NewSupplier, RowReport, SupplierDecision } from "../types";
 import { auditor, clean, parseLooseDate } from "./shared";
+import { ABSCOND_CASE_STATUSES } from "@/lib/absconding";
 import { parsePayCells, parseWorkTerms, payColumns, payFieldsFor } from "@/lib/payFields";
 
-const TEXT = ["mobileNumber", "passportNumber", "emiratesId", "laborCardNumber", "c3Id"] as const;
+const TEXT = ["mobileNumber", "passportNumber", "emiratesId", "laborCardNumber", "c3Id", "visaProfession"] as const;
 const DATES: [key: string, label: string][] = [
   ["dateOfBirth", "Date of birth"],
   ["joinDate", "Joining date"],
@@ -15,6 +16,7 @@ const DATES: [key: string, label: string][] = [
   ["emiratesIdExpiry", "Emirates ID expiry"],
   ["visaExpiry", "Visa expiry"],
   ["laborCardExpiry", "Labour card expiry"],
+  ["abscondedAt", "Absconding date"],
 ];
 
 const idKey = (s: string) => s.trim().toUpperCase();
@@ -196,6 +198,15 @@ export async function applyWorkers(ctx: ApplyCtx, input: MappedRow[], fixes: Fix
           else data[key] = d;
         }
       }
+      // An absconding case: a case status that is still open marks the worker as absconding; a date alone opens a "Reported" case.
+      const caseCell = clean(v.abscondCaseStatus);
+      const caseStatus = caseCell ? ABSCOND_CASE_STATUSES.find((s) => s.toLowerCase() === caseCell.toLowerCase()) : undefined;
+      if (caseCell && !caseStatus) notes.push({ tone: "warn", title: `Absconding case status "${caseCell}" not recognised`, detail: `Use ${ABSCOND_CASE_STATUSES.join(", ")}. That cell was skipped.` });
+      const openCase = caseStatus ? (caseStatus === "Reported" || caseStatus === "Under investigation") : !!data.abscondedAt && !caseCell;
+      if (caseStatus) data.abscondCaseStatus = caseStatus;
+      else if (data.abscondedAt && !caseCell) data.abscondCaseStatus = "Reported";
+      if (clean(v.abscondRemarks)) data.abscondRemarks = clean(v.abscondRemarks).slice(0, 1000);
+      if (openCase) data.status = "ABSCONDING";
       // Pay: a structure and its rate, both required together. Anyone without payroll access can't set it, so it is left out.
       const payCells = parsePayCells({ structure: v.payStructure, rate: v.payRate, housing: v.housing, food: v.food, transport: v.transport, other: v.otherAllowance });
       if (!("skip" in payCells)) {
