@@ -10,6 +10,8 @@ import { branchWhere } from "@/lib/branch";
 import { findDivergences } from "@/lib/attendanceTimesheetSync";
 import { AlertTriangle, FileSearch, Plus } from "lucide-react";
 import { ClientTimesheetGrid } from "./client-timesheet-grid";
+import { BulkSaves } from "./bulk-saves";
+import { loadBulkSaves } from "@/lib/bulkSaves";
 
 export const metadata = { title: "Client timesheets" };
 
@@ -18,11 +20,13 @@ const ALL_CLIENTS = "all";
 export default async function ClientTimesheetPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string; clientId?: string; project?: string; site?: string }>;
+  searchParams: Promise<{ month?: string; clientId?: string; project?: string; site?: string; saved?: string }>;
 }) {
   const params = await searchParams;
   const { user, branchId } = await requireUserWithBranch();
   const canImport = isAdminRole(user.role);
+  // Straight after a bulk save: say so, with the way back.
+  const justSaved = params.saved ? await loadBulkSaves(branchId, { only: params.saved }) : [];
 
   const monthRows = await prisma.timesheetEntry.findMany({
     where: { clientId: { not: null }, ...branchWhere(branchId) },
@@ -119,6 +123,7 @@ export default async function ClientTimesheetPage({
 
   return (
     <div className="space-y-5">
+      <BulkSaves saves={justSaved} heading="Saved. You can undo this save" highlight={params.saved} />
       {divergenceCount > 0 && (
         <Link
           href={`/invoices/client-timesheet/sync?month=${selectedMonth}`}
