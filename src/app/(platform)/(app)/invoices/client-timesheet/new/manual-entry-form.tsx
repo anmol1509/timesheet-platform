@@ -1,8 +1,13 @@
 "use client";
 
 import { useActionState, useMemo, useState } from "react";
-import { CalendarDays, Loader2, Plus, ScanLine, Trash2, UsersRound, Wand2 } from "lucide-react";
+import { CalendarDays, FileUp, Loader2, Plus, ScanLine, Trash2, UsersRound, Wand2 } from "lucide-react";
 import { matchRoster, type ReadTimesheetRow } from "@/lib/timesheetRead";
+import { ExportMenu, type ExportFormat } from "@/components/ExportMenu";
+import { downloadXlsx, parseSpreadsheetFile } from "@/lib/spreadsheet";
+import { downloadCsv } from "@/lib/csv";
+import { csvCell } from "@/lib/csvExport";
+import { gridHeaders, gridToCells, parseGridRecords } from "@/lib/timesheetGrid";
 import { shrinkImage } from "@/lib/compressImage";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
 import { Dialog, DialogClose, DialogContent, DialogFooter } from "@/components/ui/Dialog";
@@ -186,6 +191,49 @@ export function ManualEntryForm({
     setReadNote({ tone: failed || unmatched.length > 0 ? "warn" : "ok", text: parts.join(" ") });
   }
 
+  // ---- Export the table to a file, and import one back ----
+  async function exportGrid(format: ExportFormat) {
+    const headers = gridHeaders(dayCount);
+    const filled = rows.filter((r) => r.employeeIdNo.trim() || r.employeeName.trim() || r.days.some((d) => d.trim()));
+    const cells = gridToCells(filled, dayCount);
+    const name = `timesheet-${month}`;
+    if (format === "xlsx") await downloadXlsx(`${name}.xlsx`, month, headers, cells);
+    else downloadCsv(`${name}.csv`, [headers, ...cells].map((r) => r.map(csvCell).join(",")).join("\r\n") + "\r\n");
+  }
+
+  async function importFile(files: File[]) {
+    const file = files[0];
+    if (!file) return;
+    setReading(true);
+    setReadNote(null);
+    try {
+      const parsed = parseGridRecords(await parseSpreadsheetFile(file), dayCount);
+      if (parsed.rows.length === 0) {
+        setReadNote({ tone: "warn", text: parsed.missingColumns.length > 0 ? `Nothing was imported: the file needs ${parsed.missingColumns.join(" and ")}. Use Export to get the right layout.` : "Nothing was imported: the file has no rows." });
+        return;
+      }
+      const unmatched: string[] = [];
+      const added: RowState[] = parsed.rows.map((r) => {
+        const person = matchRoster({ employeeIdNo: r.employeeIdNo, employeeName: r.employeeName }, roster);
+        if (!person) unmatched.push(r.employeeName || r.employeeIdNo);
+        const trade = r.trade || person?.trade || "";
+        const clientName = r.clientName || projectClient;
+        return { ...blankRow(dayCount), employeeIdNo: person?.employeeIdNo ?? r.employeeIdNo, employeeName: person?.name ?? r.employeeName, trade, supplierName: r.supplierName || person?.supplierName || "", clientName, rate: r.rate || rateFor(clientName, trade, projectId), days: r.days };
+      });
+      setRows((prev) => {
+        const have = new Set(prev.map((r) => r.employeeIdNo.trim().toLowerCase()).filter(Boolean));
+        const kept = prev.filter((r) => r.employeeIdNo.trim() || r.employeeName.trim() || r.days.some((d) => d.trim()));
+        return [...kept, ...added.filter((r) => !r.employeeIdNo || !have.has(r.employeeIdNo.trim().toLowerCase()))];
+      });
+      const notes = [`Imported ${added.length} ${added.length === 1 ? "row" : "rows"} for ${month}.`, unmatched.length > 0 ? `${unmatched.length} not on your roster (${unmatched.slice(0, 4).join(", ")}${unmatched.length > 4 ? "…" : ""}): added as typed and created on save.` : "", parsed.ignoredDays > 0 ? `${parsed.ignoredDays} hours in days past the end of the month were ignored.` : "", parsed.missingColumns.length > 0 ? `No ${parsed.missingColumns.join(" or ")} found.` : ""].filter(Boolean);
+      setReadNote({ tone: unmatched.length > 0 || parsed.ignoredDays > 0 || parsed.missingColumns.length > 0 ? "warn" : "ok", text: notes.join(" ") });
+    } catch {
+      setReadNote({ tone: "warn", text: "That file couldn't be read. Use an .xlsx or .csv file from Export." });
+    } finally {
+      setReading(false);
+    }
+  }
+
   function addPicked() {
     const chosen = roster.filter((r) => picked.has(r.employeeIdNo) && !taken.has(r.employeeIdNo.toLowerCase()));
     setRows((prev) => {
@@ -257,6 +305,11 @@ export function ManualEntryForm({
           <button type="button" onClick={() => setPicking(true)} className="btn btn-primary flex gap-1.5 px-3">
             <UsersRound className="h-4 w-4" /> Add from roster
           </button>
+          <label className={`btn btn-secondary flex cursor-pointer gap-1.5 px-3 ${reading ? "pointer-events-none opacity-60" : ""}`} title="Import an Excel or CSV file with one row per worker and one column per day (Export gives you the layout)">
+            <FileUp className="h-4 w-4" aria-hidden /> Import file
+            <input type="file" accept=".xlsx,.csv,text/csv" className="sr-only" aria-label="Choose a timesheet Excel or CSV file" disabled={reading} onChange={(e) => { void importFile([...(e.target.files ?? [])]); e.target.value = ""; }} />
+          </label>
+          <ExportMenu onExport={exportGrid} onError={(m) => setReadNote({ tone: "warn", text: m })} className="btn btn-secondary flex gap-1.5 px-3" />
           <label className={`btn btn-secondary flex cursor-pointer gap-1.5 px-3 ${reading ? "pointer-events-none opacity-60" : ""}`} title="Upload a photo, scan or PDF of the monthly sheet and its hours are filled in for you">
             {reading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <ScanLine className="h-4 w-4" aria-hidden />} {reading ? "Reading…" : "Read from a scan"}
             <input type="file" multiple accept="application/pdf,image/*" className="sr-only" aria-label="Choose a scanned timesheet" disabled={reading} onChange={(e) => { void readScan([...(e.target.files ?? [])]); e.target.value = ""; }} />
