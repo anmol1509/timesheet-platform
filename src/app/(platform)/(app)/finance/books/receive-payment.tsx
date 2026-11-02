@@ -1,5 +1,6 @@
 "use client";
 
+import { HandCoins } from "lucide-react";
 import { todayInUae } from "@/lib/today";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
@@ -40,7 +41,7 @@ export function ReceivePayment({ clients, moneyAccounts, otherAccounts, minDate,
   return (
     <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setError(null); }}>
       <DialogTrigger asChild><Button type="button" size="sm" variant="secondary">Money in</Button></DialogTrigger>
-      <DialogContent title="Money in" description="Any money received. A client invoice marked paid posts its own receipt, so use this for part payments, advances and money from anyone else.">
+      <DialogContent icon={<HandCoins className="h-[18px] w-[18px]" />} title="Money in" description="Any money received. A client invoice marked paid posts its own receipt, so use this for part payments, advances and money from anyone else.">
         <div className="space-y-3">
           <label className="block text-sm font-medium text-primary">What kind of money<div className="mt-1"><Select value={kind} onChange={(v) => setKind(v as Kind)} options={KINDS.map((k) => ({ value: k.value, label: k.label }))} /></div></label>
           {kind === "CLIENT" ? (

@@ -1,5 +1,6 @@
 "use client";
 
+import { CircleX } from "lucide-react";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Dialog, DialogContent, DialogFooter, DialogTrigger } from "@/components/ui/Dialog";
@@ -35,7 +36,7 @@ export function LostButton({ entity, id, label = "Mark as lost" }: { entity: "qu
         <button type="button" className="rounded-lg border border-[var(--error-border)] px-4 py-2 text-sm font-medium text-[var(--error)] transition hover:bg-[var(--error-soft)]">{label}</button>
       </DialogTrigger>
       {open && (
-        <DialogContent title="Why was it lost?" description="Only you and your team see this. It helps you see patterns later.">
+        <DialogContent icon={<CircleX className="h-[18px] w-[18px]" />} title="Why was it lost?" description="Only you and your team see this. It helps you see patterns later.">
           <div className="mt-4 space-y-3">
             <Select value={reason} onChange={setReason} searchable={false} placeholder="Choose a reason" options={REASONS.map((r) => ({ value: r, label: r }))} />
             <textarea value={extra} onChange={(e) => setExtra(e.target.value)} rows={2} placeholder="Anything to add (optional)" className="input w-full" />

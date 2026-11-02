@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Search } from "lucide-react";
+import { Search, LogOut } from "lucide-react";
 import { Badge } from "@/components/Badge";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { Select } from "@/components/ui/Select";
@@ -430,7 +430,7 @@ export function DemobilisationBoard({
 function DemobiliseOneModal({ row, onClose, onDone }: { row: DeployedRow | null; onClose: () => void; onDone: (message: string) => void }) {
   return (
     <Dialog open={!!row} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent
+      <DialogContent icon={<LogOut className="h-[18px] w-[18px]" />}
         title="Demobilise"
         description={row ? `${row.name} (${row.employeeIdNo})${row.projectLabel ? `, ${row.projectLabel}` : ""}` : undefined}
       >

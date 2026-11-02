@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Hammer } from "lucide-react";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/Dialog";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { createSkillAction } from "./actions";
@@ -16,7 +16,7 @@ export function AddTrade({ triggerClassName }: { triggerClassName: string }) {
       <DialogTrigger asChild>
         <button type="button" className={triggerClassName}><Plus className="h-4 w-4" aria-hidden /> Add trade</button>
       </DialogTrigger>
-      <DialogContent title="Add a trade" description="A trade you add is yours; the standard catalogue stays as it is." className="max-w-md">
+      <DialogContent icon={<Hammer className="h-[18px] w-[18px]" />} title="Add a trade" description="A trade you add is yours; the standard catalogue stays as it is." className="max-w-md">
         <form
           className="mt-4 space-y-3"
           action={(fd) => start(async () => { await createSkillAction(fd); setOpen(false); })}
@@ -30,7 +30,7 @@ export function AddTrade({ triggerClassName }: { triggerClassName: string }) {
             <input name="category" placeholder="e.g. Technical" className="input w-full" />
           </label>
           <Checkbox name="trending" value="on" label="Trending" />
-          <div className="flex justify-end gap-2 pt-2">
+          <div data-actions>
             <button type="button" className="btn btn-secondary" onClick={() => setOpen(false)}>Cancel</button>
             <Button size="btn" type="submit" disabled={pending} loading={pending}>Add trade</Button>
           </div>

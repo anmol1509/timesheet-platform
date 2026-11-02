@@ -131,7 +131,7 @@ export function CompanyGrid({
       </div>
 
       <Dialog open={askGas} onOpenChange={setAskGas}>
-        <DialogContent title="Layout and gas" description="Choose the layout for these timesheets. Gas is charged on each one unless you waive it; tick the companies that do not pay gas.">
+        <DialogContent icon={<FileArchive className="h-[18px] w-[18px]" />} title="Layout and gas" description="Choose the layout for these timesheets. Gas is charged on each one unless you waive it; tick the companies that do not pay gas.">
           <div className="mt-4 space-y-3">
             <TemplatePicker value={template} onChange={setTemplate} compact />
             <IssuerPicker data={issuer} value={issuerId} onChange={setIssuerId} compact />
@@ -146,15 +146,13 @@ export function CompanyGrid({
                 </li>
               ))}
             </ul>
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex gap-3 text-xs">
+            <div className="flex gap-3 text-xs">
                 <button type="button" className="text-[var(--brand-primary)] hover:underline" onClick={() => setWaived(Object.fromEntries([...selected].map((id) => [id, true])))}>Waive for all</button>
                 <button type="button" className="text-[var(--brand-primary)] hover:underline" onClick={() => setWaived({})}>Charge all</button>
-              </div>
-              <div className="flex gap-2">
+            </div>
+            <div data-actions>
                 <button type="button" className="btn btn-secondary" onClick={() => setAskGas(false)}>Cancel</button>
                 <button type="button" className="btn btn-primary" onClick={() => void downloadPdfs(waived)}>Generate {selected.size} PDF{selected.size === 1 ? "" : "s"}</button>
-              </div>
             </div>
           </div>
         </DialogContent>

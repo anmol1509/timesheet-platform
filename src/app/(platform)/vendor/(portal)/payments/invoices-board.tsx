@@ -2,7 +2,7 @@
 
 import { keepInput } from "@/lib/vendor/keepInput";
 import { useActionState, useState } from "react";
-import { Paperclip, Plus } from "lucide-react";
+import { Paperclip, Plus, Receipt } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/Dialog";
 import { Badge, type BadgeColor } from "@/components/Badge";
 import { BILL_STATUS_LABELS, type BillStatus } from "@/lib/payables";
@@ -146,9 +146,9 @@ export function InvoicesBoard({ rows, summary, canSubmit, aedFormat }: { rows: I
         </ul>
       )}
 
-      <Dialog open={adding} onOpenChange={setAdding}><DialogContent title="Submit an invoice"><InvoiceForm onDone={() => setAdding(false)} /></DialogContent></Dialog>
+      <Dialog open={adding} onOpenChange={setAdding}><DialogContent icon={<Receipt className="h-[18px] w-[18px]" />} title="Submit an invoice"><InvoiceForm onDone={() => setAdding(false)} /></DialogContent></Dialog>
       <Dialog open={editing !== null} onOpenChange={(o) => !o && setEditing(null)}>
-        {editing && <DialogContent title={`Resubmit invoice ${editing.billNo}`} description={editing.approvalNote ? `Reason it was rejected: ${editing.approvalNote}` : undefined}><InvoiceForm row={editing} onDone={() => setEditing(null)} /></DialogContent>}
+        {editing && <DialogContent icon={<Receipt className="h-[18px] w-[18px]" />} title={`Resubmit invoice ${editing.billNo}`} description={editing.approvalNote ? `Reason it was rejected: ${editing.approvalNote}` : undefined}><InvoiceForm row={editing} onDone={() => setEditing(null)} /></DialogContent>}
       </Dialog>
     </>
   );

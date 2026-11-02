@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Mail, Phone } from "lucide-react";
+import { Mail, Phone, UserRound } from "lucide-react";
 import { Dialog, DialogClose, DialogContent, DialogFooter, DialogTrigger } from "@/components/ui/Dialog";
 import { PhoneInput } from "@/components/ui/PhoneInput";
 import { cn } from "@/lib/cn";
@@ -97,7 +97,7 @@ export function PersonField({
               )}
             </button>
           </DialogTrigger>
-          <DialogContent title={`${label}: contact`} description={person.trim() || undefined} className="max-w-sm">
+          <DialogContent icon={<UserRound className="h-[18px] w-[18px]" />} title={`${label}: contact`} description={person.trim() || undefined} className="max-w-sm">
             <div className="mt-4 space-y-4">
               <div>
                 <label className="field-label" htmlFor={`${name}-phone`}>

@@ -1,5 +1,6 @@
 "use client";
 
+import { Users } from "lucide-react";
 import { todayInUae } from "@/lib/today";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
@@ -36,7 +37,7 @@ export function PartyEntry({ type, partyId, moneyAccounts, minDate }: { type: "C
         {done && <span role="status" className="text-sm text-success">{done}</span>}
       </div>
       <Dialog open={!!kind} onOpenChange={(o) => !o && setKind(null)}>
-        <DialogContent title={kind ? names[kind] : ""} description={note ? (client ? "Reduces what the client owes and the sales and VAT you reported." : "Reduces what you owe and the cost and VAT you claimed.") : "For part payments and advances. Invoices marked paid, and bill payments, post by themselves."}>
+        <DialogContent icon={<Users className="h-[18px] w-[18px]" />} title={kind ? names[kind] : ""} description={note ? (client ? "Reduces what the client owes and the sales and VAT you reported." : "Reduces what you owe and the cost and VAT you claimed.") : "For part payments and advances. Invoices marked paid, and bill payments, post by themselves."}>
           <div className="space-y-3">
             <label className="block text-sm font-medium text-primary">Date<div className="mt-1"><DatePicker value={date} onChange={setDate} ariaLabel="Date" min={minDate} /></div></label>
             <div className="grid grid-cols-2 gap-3">

@@ -1,5 +1,6 @@
 "use client";
 
+import { Banknote } from "lucide-react";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/Dialog";
@@ -67,7 +68,7 @@ export function AdvancesButton({ runId, employeeId, name, count, owed, unschedul
           Advances ({count})
         </button>
       </DialogTrigger>
-      <DialogContent title={`${name}: advances and loans`} description={month ? `What to deduct in the ${month} payroll` : undefined}>
+      <DialogContent icon={<Banknote className="h-[18px] w-[18px]" />} title={`${name}: advances and loans`} description={month ? `What to deduct in the ${month} payroll` : undefined}>
         {!advances ? (
           <p className="mt-4 text-sm text-muted">{error ?? "Loading…"}</p>
         ) : advances.length === 0 ? (

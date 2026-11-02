@@ -1027,3 +1027,34 @@ html[data-app] input[type="radio"]:checked {
   .tile-chase { animation: none; stroke-dasharray: 100 0; opacity: 0.55; }
   .tile-settle, .tile-pop { animation: none; }
 }
+
+/* The action row of a form inside a popup (data-actions): the same divided footer as DialogFooter, so forms that carry their
+   own buttons look like the rest. Outside a popup it has no effect. */
+.rx-dialog [data-actions] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin: 1.5rem -1.5rem 0;
+  padding: 1.25rem 1.5rem 0;
+  border-top: 1px solid var(--border);
+  flex: 0 0 calc(100% + 3rem); /* full width of the popup when the form is itself a wrapping row */
+}
+@media (min-width: 40rem) {
+  .rx-dialog [data-actions] { margin-inline: -1.75rem; padding-inline: 1.75rem; flex-basis: calc(100% + 3.5rem); }
+}
+/* Same footer for a form whose last row is just its buttons (no fields), without tagging each one. */
+.rx-dialog form > div:last-child:has(button[type="submit"]):not(:has(input:not([type="hidden"]), textarea, select, [role="combobox"])) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin: 1.5rem -1.5rem 0;
+  padding: 1.25rem 1.5rem 0;
+  border-top: 1px solid var(--border);
+}
+@media (min-width: 40rem) {
+  .rx-dialog form > div:last-child:has(button[type="submit"]):not(:has(input:not([type="hidden"]), textarea, select, [role="combobox"])) { margin-inline: -1.75rem; padding-inline: 1.75rem; }
+}

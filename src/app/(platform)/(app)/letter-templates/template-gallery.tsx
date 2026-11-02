@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Copy, Eye, Search } from "lucide-react";
+import { Copy, Eye, Search, LayoutTemplate } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/Dialog";
 import { RowMenu } from "@/components/ui/RowMenu";
 import { duplicateTemplateAction, updateToLatestWordingAction } from "./actions";
@@ -102,7 +102,7 @@ export function TemplateGallery({ cards }: { cards: TemplateCard[] }) {
 
       <Dialog open={!!open} onOpenChange={(v) => !v && setOpen(null)}>
         {open && (
-          <DialogContent title={open.name} className="sm:max-w-3xl" description={open.audience === "EMPLOYEE" ? "Employee letter" : "Client letter"}>
+          <DialogContent icon={<LayoutTemplate className="h-[18px] w-[18px]" />} title={open.name} className="sm:max-w-3xl" description={open.audience === "EMPLOYEE" ? "Employee letter" : "Client letter"}>
             <div className="mt-4 flex flex-col gap-6 sm:flex-row">
               <div className="flex max-h-[70vh] justify-center overflow-y-auto rounded-lg bg-surface-sunken p-3"><PaperThumb title={open.title} html={open.html} width={340} employee={open.audience === "EMPLOYEE"} /></div>
               <div className="min-w-0 flex-1 space-y-4 text-sm">

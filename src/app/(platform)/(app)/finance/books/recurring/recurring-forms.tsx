@@ -1,5 +1,6 @@
 "use client";
 
+import { Repeat } from "lucide-react";
 import { todayInUae } from "@/lib/today";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
@@ -25,7 +26,7 @@ export function RecurringDialog({ accounts, row }: { accounts: Opt[]; row?: Recu
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{row ? <Button type="button" size="sm" variant="ghost">Change</Button> : <Button type="button" size="sm">New recurring entry</Button>}</DialogTrigger>
-      <DialogContent title={row ? "Change recurring entry" : "New recurring entry"} description={row ? "Posts itself on every due date. Changing the amount or accounts changes entries already posted, unless their month is locked. To change it from now on only, end this one and add a new one." : "Posts itself on every due date, from the first date until today. Rent, insurance, a loan instalment, a retainer."}>
+      <DialogContent icon={<Repeat className="h-[18px] w-[18px]" />} title={row ? "Change recurring entry" : "New recurring entry"} description={row ? "Posts itself on every due date. Changing the amount or accounts changes entries already posted, unless their month is locked. To change it from now on only, end this one and add a new one." : "Posts itself on every due date, from the first date until today. Rent, insurance, a loan instalment, a retainer."}>
         <div className="space-y-3">
           <label className="block text-sm font-medium text-primary">What is it for<Input className="mt-1" value={f.name} onChange={(e) => set("name")(e.target.value)} placeholder="e.g. Office rent" /></label>
           <div className="grid grid-cols-2 gap-3">

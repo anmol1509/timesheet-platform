@@ -2,7 +2,7 @@
 
 import { CopyButton } from "@/components/ui/CopyButton";
 import { useState, useTransition } from "react";
-import { Plus, RotateCw, ShieldAlert } from "lucide-react";
+import { Plus, RotateCw, ShieldAlert, Webhook } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/Dialog";
 import { Badge } from "@/components/Badge";
 import { WEBHOOK_EVENTS } from "@/lib/webhooks/events";
@@ -210,13 +210,13 @@ const ok = crypto.timingSafeEqual(Buffer.from(v1), Buffer.from(expected))
       </div>
 
       <Dialog open={adding} onOpenChange={setAdding}>
-        <DialogContent title="Add webhook endpoint" description="Choose where to send messages and which events you want.">{adding && <EndpointForm onClose={() => setAdding(false)} />}</DialogContent>
+        <DialogContent icon={<Webhook className="h-[18px] w-[18px]" />} title="Add webhook endpoint" description="Choose where to send messages and which events you want.">{adding && <EndpointForm onClose={() => setAdding(false)} />}</DialogContent>
       </Dialog>
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
-        <DialogContent title="Edit endpoint" description={editing?.url}>{editing && <EndpointForm endpoint={editing} onClose={() => setEditing(null)} />}</DialogContent>
+        <DialogContent icon={<Webhook className="h-[18px] w-[18px]" />} title="Edit endpoint" description={editing?.url}>{editing && <EndpointForm endpoint={editing} onClose={() => setEditing(null)} />}</DialogContent>
       </Dialog>
       <Dialog open={!!secret} onOpenChange={(o) => !o && setSecret(null)}>
-        <DialogContent title="New signing secret" description="The old secret no longer works.">{secret && <SecretView secret={secret.secret} url={secret.url} onClose={() => setSecret(null)} />}</DialogContent>
+        <DialogContent icon={<Webhook className="h-[18px] w-[18px]" />} title="New signing secret" description="The old secret no longer works.">{secret && <SecretView secret={secret.secret} url={secret.url} onClose={() => setSecret(null)} />}</DialogContent>
       </Dialog>
     </section>
   );

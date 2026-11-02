@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
-import { Plus, Search, TriangleAlert } from "lucide-react";
+import { Plus, Search, TriangleAlert, Banknote } from "lucide-react";
 import { Badge, type BadgeColor } from "@/components/Badge";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/Dialog";
 import { cn } from "@/lib/cn";
@@ -114,7 +114,7 @@ export function HeaderDialog({ label, title, description, primary, icon, childre
       <DialogTrigger asChild>
         <button type="button" className={cn("btn btn-sm gap-1.5", primary ? "btn-primary" : "btn-secondary")}>{icon && <Plus className="h-3.5 w-3.5" aria-hidden />}{label}</button>
       </DialogTrigger>
-      {open && <DialogContent title={title} description={description} className={wide ? "max-w-3xl" : "max-w-xl"}><div className="mt-4 max-h-[70vh] overflow-y-auto pr-1">{children}</div></DialogContent>}
+      {open && <DialogContent icon={<Banknote className="h-[18px] w-[18px]" />} title={title} description={description} className={wide ? "max-w-3xl" : "max-w-xl"}><div className="mt-4 max-h-[70vh] overflow-y-auto pr-1">{children}</div></DialogContent>}
     </Dialog>
   );
 }
@@ -131,7 +131,7 @@ export function SetupBanner({ remaining, summary, children }: { remaining: numbe
       </div>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild><button type="button" className="btn btn-secondary btn-sm">Finish setup</button></DialogTrigger>
-        {open && <DialogContent title="Set up payroll" description="Do these in order. Each takes a minute or two." className="max-w-3xl"><div className="mt-4 max-h-[70vh] overflow-y-auto pr-1">{children}</div></DialogContent>}
+        {open && <DialogContent icon={<Banknote className="h-[18px] w-[18px]" />} title="Set up payroll" description="Do these in order. Each takes a minute or two." className="max-w-3xl"><div className="mt-4 max-h-[70vh] overflow-y-auto pr-1">{children}</div></DialogContent>}
       </Dialog>
     </div>
   );

@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { X } from "lucide-react";
+import { X, Package } from "lucide-react";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/Dialog";
 import { Select } from "@/components/ui/Select";
 import { DatePicker } from "@/components/ui/DatePicker";
@@ -25,7 +25,7 @@ export function IssueDialog({ open, onClose, item, employees }: { open: boolean;
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       {open && item && (
-        <DialogContent title={`Issue ${item.name}`} description={`${item.variants.reduce((n, v) => n + v.available, 0)} available · pick who gets what`} className="max-w-xl">
+        <DialogContent icon={<Package className="h-[18px] w-[18px]" />} title={`Issue ${item.name}`} description={`${item.variants.reduce((n, v) => n + v.available, 0)} available · pick who gets what`} className="max-w-xl">
           <IssueBody item={item} employees={employees} onClose={onClose} />
         </DialogContent>
       )}
@@ -119,7 +119,7 @@ export function ReturnDialog({ open, onClose, item }: { open: boolean; onClose: 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       {open && item && (
-        <DialogContent title={`Return ${item.name}`} description="Tick what's been handed back today." className="max-w-xl">
+        <DialogContent icon={<Package className="h-[18px] w-[18px]" />} title={`Return ${item.name}`} description="Tick what's been handed back today." className="max-w-xl">
           <ReturnBody item={item} onClose={onClose} />
         </DialogContent>
       )}

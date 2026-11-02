@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { Check } from "lucide-react";
+import { Check, Coins } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/Dialog";
 import { cn } from "@/lib/cn";
 import { topUpPriceLabel } from "@/lib/aiCredits";
@@ -30,7 +30,7 @@ export function TopUpDialog({ open, onOpenChange, total }: { open: boolean; onOp
   const n = (v: number) => Math.round(v).toLocaleString("en-US");
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent title="Top up AI credits" description="Extra credits are added for this month only." className="max-w-md">
+      <DialogContent icon={<Coins className="h-[18px] w-[18px]" />} title="Top up AI credits" description="Extra credits are added for this month only." className="max-w-md">
         {state.ok ? (
           <div className="space-y-4 py-6 text-center">
             <span className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-[var(--success-soft)] text-[var(--success)]"><Check className="h-5 w-5" aria-hidden /></span>

@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Search } from "lucide-react";
+import { Search, MapPin } from "lucide-react";
 import { Badge } from "@/components/Badge";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { Select } from "@/components/ui/Select";
@@ -430,7 +430,7 @@ function DisapproveModal({
 }) {
   return (
     <Dialog modal={false} open={row !== null} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent
+      <DialogContent icon={<MapPin className="h-[18px] w-[18px]" />}
         title={`Disapprove ${row?.name ?? ""}`}
         description="They never actually reached site. This ends the placement (allocation removed, project cleared, back to Idle) and the reason is saved as a note on their profile."
       >
@@ -509,7 +509,7 @@ function ArrivalModal({
   const row = target?.row ?? null;
   return (
     <Dialog open={!!target} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent
+      <DialogContent icon={<MapPin className="h-[18px] w-[18px]" />}
         title={target?.mode === "record" ? "Record arrival" : "Confirm on site"}
         description={row ? `${row.name} (${row.employeeIdNo})${row.projectLabel ? `, ${row.projectLabel}` : ""}` : undefined}
       >

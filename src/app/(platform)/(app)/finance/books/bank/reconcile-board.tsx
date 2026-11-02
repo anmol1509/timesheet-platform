@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { Check, FileSpreadsheet, Loader2, Plus } from "lucide-react";
+import { Check, FileSpreadsheet, Loader2, Plus, Scale } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/Dialog";
 import { Select } from "@/components/ui/Select";
@@ -135,7 +135,7 @@ export function ReconcileBoard({ accountId, accountName, canWrite, ledgerBalance
       )}
 
       <Dialog open={!!adding} onOpenChange={(o) => !o && setAdding(null)}>
-        <DialogContent title="Add to the books" description={adding ? `${day(adding.date)} · ${adding.amount < 0 ? "paid out" : "received"} ${aed(Math.abs(adding.amount))}` : undefined}>
+        <DialogContent icon={<Scale className="h-[18px] w-[18px]" />} title="Add to the books" description={adding ? `${day(adding.date)} · ${adding.amount < 0 ? "paid out" : "received"} ${aed(Math.abs(adding.amount))}` : undefined}>
           <div className="space-y-3">
             <label className="block text-sm font-medium text-primary">{adding && adding.amount < 0 ? "What was it spent on" : "Where did it come from"}
               <div className="mt-1"><Select value={counter} onChange={setCounter} options={counterAccounts.map((a) => ({ value: a.id, label: a.label }))} placeholder="Choose account" searchable searchPlaceholder="Search accounts" /></div>

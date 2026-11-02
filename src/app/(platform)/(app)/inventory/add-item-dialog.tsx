@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Package } from "lucide-react";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/Dialog";
 import { NewItemForm } from "./new-item-form";
 
@@ -14,7 +14,7 @@ export function AddItemDialog() {
         <button type="button" className="btn btn-primary btn-sm gap-1.5"><Plus className="h-3.5 w-3.5" aria-hidden />Add item</button>
       </DialogTrigger>
       {open && (
-        <DialogContent title="Add an item" description="A quantity entered here becomes its first stock. You can split it into sizes later." className="max-w-xl">
+        <DialogContent icon={<Package className="h-[18px] w-[18px]" />} title="Add an item" description="A quantity entered here becomes its first stock. You can split it into sizes later." className="max-w-xl">
           <div className="mt-4"><NewItemForm bare /></div>
         </DialogContent>
       )}

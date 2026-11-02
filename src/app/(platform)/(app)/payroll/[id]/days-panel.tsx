@@ -90,7 +90,7 @@ export function DaysButton({ runId, employeeId, name }: { runId: string; employe
       <DialogTrigger asChild>
         <button type="button" className="inline-flex items-center gap-1 text-xs font-medium text-[var(--brand-primary)] hover:underline"><CalendarDays className="h-3 w-3" aria-hidden /> View days</button>
       </DialogTrigger>
-      <DialogContent title={`${name}: day by day`} description={view ? `Pay for ${view.month}, with the client timesheet beside it.` : undefined} className="max-w-5xl!">
+      <DialogContent icon={<CalendarDays className="h-[18px] w-[18px]" />} title={`${name}: day by day`} description={view ? `Pay for ${view.month}, with the client timesheet beside it.` : undefined} className="max-w-5xl!">
         {!view && !error && <p className="mt-6 text-sm text-muted">Loading…</p>}
         {error && <Alert className="mt-3">{error}</Alert>}
         {view && (

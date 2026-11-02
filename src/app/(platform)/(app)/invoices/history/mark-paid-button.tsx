@@ -1,5 +1,6 @@
 "use client";
 
+import { BadgeCheck } from "lucide-react";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
 import { DatePicker } from "@/components/ui/DatePicker";
@@ -31,7 +32,7 @@ export function MarkPaidButton({
     <>
       <button type="button" onClick={() => setOpen(true)} className="text-xs font-medium text-[var(--brand-primary)] hover:underline">Mark paid</button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent title="Mark invoice as paid" description={`When did the money for ${invoiceNumber} arrive, and in which account?`}>
+        <DialogContent icon={<BadgeCheck className="h-[18px] w-[18px]" />} title="Mark invoice as paid" description={`When did the money for ${invoiceNumber} arrive, and in which account?`}>
           <form
             onSubmit={(e) => {
               e.preventDefault();

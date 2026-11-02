@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useRef, useState, useTransition } from "react";
-import { Plus, ScanLine, Loader2 } from "lucide-react";
+import { Plus, ScanLine, Loader2, Wallet } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/Dialog";
 import { Select } from "@/components/ui/Select";
 import { Badge, type BadgeColor } from "@/components/Badge";
@@ -198,11 +198,11 @@ export function ExpensesBoard({ rows, projects, canCreate, canApprove, canDelete
         </div>
       )}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent title="New expense" description="Goes to an approver before it counts."><NewExpenseForm projects={projects} onDone={() => setOpen(false)} /></DialogContent>
+        <DialogContent icon={<Wallet className="h-[18px] w-[18px]" />} title="New expense" description="Goes to an approver before it counts."><NewExpenseForm projects={projects} onDone={() => setOpen(false)} /></DialogContent>
       </Dialog>
       <Dialog open={filing !== null} onOpenChange={(o) => !o && setFiling(null)}>
         {filing && (
-          <DialogContent title={`${filing.category}: AED ${aed(filing.total)}`} description={`${day(filing.date)} · ${filing.description}`}>
+          <DialogContent icon={<Wallet className="h-[18px] w-[18px]" />} title={`${filing.category}: AED ${aed(filing.total)}`} description={`${day(filing.date)} · ${filing.description}`}>
             <div className="mt-4 space-y-4">
               <p className="text-sm text-secondary">{[filing.method?.toLowerCase(), filing.paidTo && `paid to ${filing.paidTo}`, filing.project, `submitted by ${filing.by}`].filter(Boolean).join(" · ")}</p>
               <div>

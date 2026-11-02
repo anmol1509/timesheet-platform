@@ -41,7 +41,7 @@ export function QuoteSettingsDialog({ settings }: { settings: QuoteSettings }) {
         <button type="button" className="btn btn-secondary btn-sm gap-1.5"><Settings2 className="h-3.5 w-3.5" aria-hidden />Quotation settings</button>
       </DialogTrigger>
       {open && (
-        <DialogContent title="Quotation settings" description="Used to turn day and hour prices into a month, and to suggest costs. All optional." className="max-w-xl">
+        <DialogContent icon={<Settings2 className="h-[18px] w-[18px]" />} title="Quotation settings" description="Used to turn day and hour prices into a month, and to suggest costs. All optional." className="max-w-xl">
           <div className="mt-4 space-y-5">
             <div className="grid grid-cols-2 gap-3">
               <label className="block"><span className="mb-1 block text-xs text-muted">Working days a month</span><NumberInput value={String(s.daysPerMonth)} onChange={(v) => setS({ ...s, daysPerMonth: Number(v) || 0 })} min={1} max={31} /></label>

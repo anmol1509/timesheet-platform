@@ -4,7 +4,7 @@ import { CountrySelect } from "@/components/ui/CountrySelect";
 import { PhoneField } from "@/components/ui/PhoneField";
 import { keepInput } from "@/lib/vendor/keepInput";
 import { useActionState, useState, useTransition } from "react";
-import { Plus } from "lucide-react";
+import { Plus, UserPlus } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/Dialog";
 import { Badge } from "@/components/Badge";
 import { submitWorkerAction, withdrawWorkerAction } from "./actions";
@@ -101,7 +101,7 @@ export function AddWorker({ trades, enabled }: { trades: string[]; enabled: bool
     <>
       <button type="button" className="btn btn-primary gap-1.5" onClick={() => setOpen(true)}><Plus className="h-4 w-4" aria-hidden /> Add a worker</button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-2xl!" title="Add a worker" description="Enter what you have. Fields marked * are required."><WorkerForm trades={trades} onDone={() => setOpen(false)} /></DialogContent>
+        <DialogContent icon={<UserPlus className="h-[18px] w-[18px]" />} className="max-w-2xl!" title="Add a worker" description="Enter what you have. Fields marked * are required."><WorkerForm trades={trades} onDone={() => setOpen(false)} /></DialogContent>
       </Dialog>
     </>
   );

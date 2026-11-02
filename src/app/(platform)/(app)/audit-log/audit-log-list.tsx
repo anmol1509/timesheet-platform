@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { ArrowRight, ChevronDown, ExternalLink, Layers, Undo2, X } from "lucide-react";
+import { ArrowRight, ChevronDown, ExternalLink, Layers, Undo2, X, History } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { Pagination } from "@/components/Pagination";
 import { Button } from "@/components/ui/Button";
@@ -113,7 +113,7 @@ function RevertDialog({ entry, onClose }: { entry: Entry | null; onClose: () => 
 
   return (
     <Dialog open={!!entry} onOpenChange={(o) => !o && !pending && onClose()}>
-      <DialogContent title="Put this change back?" description={entry ? `${entry.userName} ${auditSentence(entry, entry.name, { canSeePay: true })}` : undefined} className="max-w-xl">
+      <DialogContent icon={<History className="h-[18px] w-[18px]" />} title="Put this change back?" description={entry ? `${entry.userName} ${auditSentence(entry, entry.name, { canSeePay: true })}` : undefined} className="max-w-xl">
         {!preview && <p className="mt-4 text-sm text-muted">Checking what the record holds now…</p>}
         {preview && "error" in preview && <Alert className="mt-4">{preview.error}</Alert>}
         {preview && "fields" in preview && (

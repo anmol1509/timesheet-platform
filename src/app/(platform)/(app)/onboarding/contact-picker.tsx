@@ -75,7 +75,7 @@ export function ContactPicker({
         >
           <UserPlus className="h-4 w-4" aria-hidden />
         </button>
-        <DialogContent title="Add agency contact" description="A reusable contact you can pick again for other candidates from this agency.">
+        <DialogContent icon={<UserPlus className="h-[18px] w-[18px]" />} title="Add agency contact" description="A reusable contact you can pick again for other candidates from this agency.">
           <form action={action} className="mt-4 space-y-3">
             <label className="block">
               <span className="mb-1 block text-xs font-medium text-muted">Name *</span>
@@ -89,11 +89,11 @@ export function ContactPicker({
               <span className="mb-1 block text-xs font-medium text-muted">Email</span>
               <input name="email" type="email" className="input w-full" />
             </label>
-            <div className="flex items-center gap-3 pt-1">
+            {state.error && <Alert>{state.error}</Alert>}
+            <div data-actions>
               <Button size="btn" type="submit" disabled={pending} loading={pending}>
                 <Plus className="h-4 w-4" aria-hidden /> Add contact
               </Button>
-              {state.error && <Alert>{state.error}</Alert>}
             </div>
           </form>
         </DialogContent>

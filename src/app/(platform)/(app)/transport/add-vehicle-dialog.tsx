@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Truck } from "lucide-react";
 import { Dialog, DialogClose, DialogContent, DialogFooter, DialogTrigger } from "@/components/ui/Dialog";
 import { createVehicleAction } from "./actions";
 import { ComboSelect } from "@/components/ui/ComboSelect";
@@ -15,7 +15,7 @@ export function AddVehicleDialog() {
       <DialogTrigger asChild>
         <button type="button" className="btn btn-primary gap-1.5"><Plus className="h-4 w-4" aria-hidden />Add vehicle</button>
       </DialogTrigger>
-      <DialogContent title="Add vehicle" description="Register it now; add the driver, capacity and document dates on its page." className="max-w-md">
+      <DialogContent icon={<Truck className="h-[18px] w-[18px]" />} title="Add vehicle" description="Register it now; add the driver, capacity and document dates on its page." className="max-w-md">
         <form action={async (fd) => { await createVehicleAction(fd); setOpen(false); }} className="mt-4 space-y-3">
           <label className="block">
             <span className="mb-1 block text-xs font-medium text-muted">Plate number <span className="text-[var(--error)]">*</span></span>

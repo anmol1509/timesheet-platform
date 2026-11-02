@@ -150,7 +150,7 @@ export function ExportDialog({ open, onOpenChange, choices, busy, error, onExpor
   const current = available.find((c) => c.key === picked)?.key ?? available[0]?.key ?? "";
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent title="Export for PRO" description="One Excel sheet for whoever processes the renewals: who, which document, its number and expiry, and what is already in hand." className="max-w-lg">
+      <DialogContent icon={<Download className="h-[18px] w-[18px]" />} title="Export for PRO" description="One Excel sheet for whoever processes the renewals: who, which document, its number and expiry, and what is already in hand." className="max-w-lg">
         <div className="mt-4 space-y-4">
           <div>
             <p className="mb-2 text-xs font-semibold tracking-wide text-muted uppercase">Which renewals</p>
@@ -173,7 +173,7 @@ export function ExportDialog({ open, onOpenChange, choices, busy, error, onExpor
           </ul>
           <p className="text-xs text-muted">Grouped by document type, soonest first. Salary is never included.</p>
           {error && <Alert>{error}</Alert>}
-          <div className="flex justify-end gap-2">
+          <div data-actions>
             <button type="button" className="btn btn-secondary" onClick={() => onOpenChange(false)}>Cancel</button>
             <Button size="btn" type="button" disabled={busy || !current} onClick={() => onExport(current)} loading={busy}><Download className="h-4 w-4" aria-hidden /> Download Excel</Button>
           </div>

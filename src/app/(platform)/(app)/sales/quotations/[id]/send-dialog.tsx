@@ -74,7 +74,7 @@ export function SendDialog({ quotationId, version, hasLetterhead, companyName, t
         <button type="button" className="btn btn-primary gap-1.5"><Send className="h-4 w-4" aria-hidden />{label}</button>
       </DialogTrigger>
       {open && (
-        <DialogContent title="Send quotation" description={`Version ${version}. Choose how it is printed, download the PDF, then record that it went out.`} className="max-w-5xl!">
+        <DialogContent icon={<Send className="h-[18px] w-[18px]" />} title="Send quotation" description={`Version ${version}. Choose how it is printed, download the PDF, then record that it went out.`} className="max-w-5xl!">
           <div className="mt-4 grid grid-cols-1 gap-5 lg:grid-cols-[1fr_340px]">
             <div className="space-y-4">
               <label className="block">

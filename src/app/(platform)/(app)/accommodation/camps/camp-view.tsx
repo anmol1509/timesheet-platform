@@ -352,7 +352,7 @@ export function CampView({
           const room = active.room;
           const occ = bed.employeeId ? employeeNames[bed.employeeId] : null;
           return (
-            <DialogContent title={`${bed.label} · ${room.name}`} description={occ ? "Occupied" : "Vacant bed"} className="max-w-md">
+            <DialogContent icon={<BedDouble className="h-[18px] w-[18px]" />} title={`${bed.label} · ${room.name}`} description={occ ? "Occupied" : "Vacant bed"} className="max-w-md">
               {modalError && <Alert className="mt-3">{modalError}</Alert>}
 
               {mode === "menu" && occ && (

@@ -67,7 +67,7 @@ export function AgencyPicker({
         >
           <Building2 className="h-4 w-4" aria-hidden />
         </button>
-        <DialogContent title="Add agency" description="Adds a recruitment agency. It also appears in Onboarding → Agencies.">
+        <DialogContent icon={<Building2 className="h-[18px] w-[18px]" />} title="Add agency" description="Adds a recruitment agency. It also appears in Onboarding → Agencies.">
           <form action={action} className="mt-4 space-y-3">
             <label className="block">
               <span className="mb-1 block text-xs font-medium text-muted">Agency name *</span>
@@ -89,11 +89,11 @@ export function AgencyPicker({
               <span className="mb-1 block text-xs font-medium text-muted">Contact email</span>
               <input name="email" type="email" className="input w-full" />
             </label>
-            <div className="flex items-center gap-3 pt-1">
+            {state.error && <Alert>{state.error}</Alert>}
+            <div data-actions>
               <Button size="btn" type="submit" disabled={pending} loading={pending}>
                 <Plus className="h-4 w-4" aria-hidden /> Add agency
               </Button>
-              {state.error && <Alert>{state.error}</Alert>}
             </div>
           </form>
         </DialogContent>

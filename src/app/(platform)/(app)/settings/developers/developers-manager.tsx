@@ -2,7 +2,7 @@
 
 import { CopyButton } from "@/components/ui/CopyButton";
 import { useState, useTransition } from "react";
-import { Plus, ShieldAlert } from "lucide-react";
+import { Plus, ShieldAlert, KeyRound } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/Dialog";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { Badge } from "@/components/Badge";
@@ -254,7 +254,7 @@ export function DevelopersManager({ keys, enabled, branchName, baseUrl, salesEma
       {children}
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent title="Create API key" description="Give it only the permissions the connection needs.">
+        <DialogContent icon={<KeyRound className="h-[18px] w-[18px]" />} title="Create API key" description="Give it only the permissions the connection needs.">
           {open && <CreateForm onClose={() => setOpen(false)} />}
         </DialogContent>
       </Dialog>
