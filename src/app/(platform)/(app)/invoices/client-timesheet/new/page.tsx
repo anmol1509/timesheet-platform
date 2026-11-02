@@ -4,11 +4,14 @@ import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { ManualEntryForm } from "./manual-entry-form";
+import { BulkSaves } from "../bulk-saves";
+import { loadBulkSaves } from "@/lib/bulkSaves";
 
 export const metadata = { title: "New client timesheet" };
 
 export default async function NewClientTimesheetEntryPage() {
   const { branchId } = await requireUserWithBranch();
+  const recentSaves = await loadBulkSaves(branchId);
   const [suppliers, clients, projects, sites, roster, rateRows] = await Promise.all([
     prisma.supplier.findMany({ where: branchWhere(branchId), select: { name: true }, orderBy: { name: "asc" } }),
     prisma.client.findMany({ where: branchWhere(branchId), select: { name: true, hourlyRate: true }, orderBy: { name: "asc" } }),
@@ -41,6 +44,8 @@ export default async function NewClientTimesheetEntryPage() {
         icon={FilePlus2}
         description={<>Enter a whole month for many workers without an Excel file: add people from your roster in one go, fill the days with a pattern, then adjust any day by hand.</>}
       />
+
+      <BulkSaves saves={recentSaves} heading="Recent saves you can undo" />
 
       <ManualEntryForm
         supplierNames={suppliers.map((s) => s.name)}

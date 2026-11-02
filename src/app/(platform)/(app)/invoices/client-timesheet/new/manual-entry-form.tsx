@@ -2,7 +2,7 @@
 
 import { useActionState, useMemo, useState } from "react";
 import { Bookmark, BookmarkCheck, CalendarDays, FileUp, Loader2, Plus, ScanLine, Split, Trash2, UsersRound, Wand2 } from "lucide-react";
-import { matchRoster, type ReadTimesheetRow } from "@/lib/timesheetRead";
+import { cleanDayValue, matchRoster, type ReadTimesheetRow } from "@/lib/timesheetRead";
 import { ExportMenu, type ExportFormat } from "@/components/ExportMenu";
 import { downloadXlsx, parseSpreadsheetFile } from "@/lib/spreadsheet";
 import { downloadCsv } from "@/lib/csv";
@@ -154,6 +154,49 @@ export function ManualEntryForm({
     }
     return out;
   }, [rows, dayCount]);
+
+  // ---- Keyboard: move around the days, type A or O for absent / off, copy from above or the left, paste a block from Excel ----
+  function focusCell(r: number, d: number) {
+    const el = document.querySelector<HTMLInputElement>(`[data-cell="${r}:${d}"]`);
+    if (el) { el.focus(); el.select(); }
+  }
+  function setCell(r: number, d: number, value: string) {
+    setAckNoRate(false);
+    setRows((prev) => prev.map((row, i) => (i === r ? { ...row, days: row.days.map((v, j) => (j === d ? value : v)) } : row)));
+  }
+  function onDayKeyDown(e: React.KeyboardEvent<HTMLInputElement>, r: number, d: number) {
+    const lastRow = rows.length - 1;
+    const go = (nr: number, nd: number) => { e.preventDefault(); focusCell(Math.max(0, Math.min(nr, lastRow)), Math.max(0, Math.min(nd, dayCount - 1))); };
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); e.currentTarget.form?.requestSubmit(); return; }
+    if ((e.ctrlKey || e.metaKey) && (e.key === "d" || e.key === "D")) { e.preventDefault(); if (r > 0) { setCell(r, d, rows[r - 1].days[d] ?? ""); focusCell(Math.min(r + 1, lastRow), d); } return; }
+    if ((e.ctrlKey || e.metaKey) && (e.key === "r" || e.key === "R")) { e.preventDefault(); if (d > 0) { setCell(r, d, rows[r].days[d - 1] ?? ""); focusCell(r, Math.min(d + 1, dayCount - 1)); } return; }
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    switch (e.key) {
+      case "ArrowDown": return go(r + 1, d);
+      case "ArrowUp": return go(r - 1, d);
+      case "ArrowRight": return go(r, d + 1);
+      case "ArrowLeft": return go(r, d - 1);
+      case "Enter": return go(e.shiftKey ? r - 1 : r + 1, d);
+      case "Home": return go(r, 0);
+      case "End": return go(r, dayCount - 1);
+    }
+    // A = absent, O = off: set and step to the next day.
+    if (e.key.length === 1 && /[aA]/.test(e.key)) { e.preventDefault(); setCell(r, d, "A"); focusCell(r, Math.min(d + 1, dayCount - 1)); }
+    else if (e.key.length === 1 && /[oO]/.test(e.key)) { e.preventDefault(); setCell(r, d, "OFF"); focusCell(r, Math.min(d + 1, dayCount - 1)); }
+  }
+  /** Pasting rows and columns copied from Excel fills a block starting at this cell; a single value pastes as usual. */
+  function onDayPaste(e: React.ClipboardEvent<HTMLInputElement>, r: number, d: number) {
+    const text = e.clipboardData.getData("text");
+    if (!/[\t\n]/.test(text.trim())) return;
+    e.preventDefault();
+    const grid = text.replace(/\r/g, "").replace(/\n+$/, "").split("\n").map((line) => line.split("\t"));
+    setAckNoRate(false);
+    setRows((prev) => prev.map((row, i) => {
+      const line = grid[i - r];
+      if (!line || i < r) return row;
+      return { ...row, days: row.days.map((v, j) => (j >= d && j - d < line.length ? cleanDayValue(line[j - d]) : v)) };
+    }));
+  }
 
   function removeRow(id: string) {
     setRows((prev) => (prev.length > 1 ? prev.filter((r) => r.id !== id) : prev));
@@ -336,6 +379,14 @@ export function ManualEntryForm({
           return stop(`${noRate.length} ${noRate.length === 1 ? "row has" : "rows have"} no rate (${noRate.slice(0, 3).map((r) => r.employeeName || r.employeeIdNo).join(", ")}${noRate.length > 3 ? "…" : ""}), so their invoice value will be 0. Fill the rates, or press Save again to save them as they are.`);
         }
       }}
+      onKeyDown={(e) => {
+        // Enter in a box must not save the whole month by accident; Ctrl+Enter does.
+        const t = e.target as HTMLElement;
+        if (e.key === "Enter" && t.tagName === "INPUT" && !t.closest("[role=dialog]") && !(t as HTMLInputElement).dataset.cell) {
+          e.preventDefault();
+          if (e.ctrlKey || e.metaKey) e.currentTarget.requestSubmit();
+        }
+      }}
       className="space-y-4"
     >
       <input type="hidden" name="month" value={month} />
@@ -489,7 +540,7 @@ export function ManualEntryForm({
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--border)]">
-            {rows.map((row) => (
+            {rows.map((row, rowIdx) => (
               <tr key={row.id}>
                 <td className="sticky left-0 z-10 bg-white px-3 py-2">
                   <input
@@ -579,7 +630,11 @@ export function ManualEntryForm({
                     <td key={dayIndex} className={`px-1 py-2 ${holidays.has(dayIndex + 1) ? "bg-[var(--warning-soft)]" : wd === 5 || wd === 0 ? "bg-[var(--brand-soft)]" : ""}`}>
                       <input
                         value={value}
+                        data-cell={`${rowIdx}:${dayIndex}`}
                         onChange={(e) => updateDay(row.id, dayIndex, e.target.value)}
+                        onFocus={(e) => e.currentTarget.select()}
+                        onKeyDown={(e) => onDayKeyDown(e, rowIdx, dayIndex)}
+                        onPaste={(e) => onDayPaste(e, rowIdx, dayIndex)}
                         placeholder="—"
                         title={clash ? "This worker has hours on this day in another trade row too" : "Hours worked, or A for absent, or OFF"}
                         className={`input w-12 px-1 py-1.5 text-center text-xs ${clash ? "border-[var(--error)] bg-[var(--error-soft)]" : ""}`}
@@ -588,11 +643,12 @@ export function ManualEntryForm({
                   );
                 })}
                 <td className="whitespace-nowrap px-2 py-2">
-                  <button type="button" onClick={() => splitRow(row.id)} className="rounded-lg p-1.5 text-subtle hover:bg-surface-hover hover:text-primary" title="The same worker on another trade for some days: adds a second row for them" aria-label="Add another trade for this worker">
+                  <button type="button" tabIndex={-1} onClick={() => splitRow(row.id)} className="rounded-lg p-1.5 text-subtle hover:bg-surface-hover hover:text-primary" title="The same worker on another trade for some days: adds a second row for them" aria-label="Add another trade for this worker">
                     <Split className="h-4 w-4" />
                   </button>
                   <button
                     type="button"
+                    tabIndex={-1}
                     onClick={() => removeRow(row.id)}
                     disabled={rows.length === 1}
                     className="rounded-lg p-1.5 text-subtle hover:bg-[var(--error-soft)] hover:text-[var(--error)] disabled:cursor-not-allowed disabled:opacity-30"
@@ -610,6 +666,9 @@ export function ManualEntryForm({
       {rows.some((r) => Number(r.rate) > 0 && r.clientName.trim() && r.trade.trim() && Number(rateFor(r.clientName, r.trade, projectId || r.projectId)) !== Number(r.rate)) && (
         <p className="flex items-center gap-1.5 text-xs text-muted"><Bookmark className="h-3.5 w-3.5" aria-hidden /> Click the bookmark beside a rate to keep it as that client&rsquo;s rate for the trade, so it is filled in next time.</p>
       )}
+      <p className="text-xs text-subtle">
+        <span className="font-medium text-muted">Keyboard:</span> Tab or → next day · ↓ or Enter next worker (Shift+Enter up) · type <kbd className="rounded border border-default px-1">A</kbd> for absent, <kbd className="rounded border border-default px-1">O</kbd> for off · Ctrl+D copies the day above, Ctrl+R the day to the left · paste a block copied from Excel · Ctrl+Enter saves.
+      </p>
       <p className="text-xs text-subtle">
         Enter hours worked per day, &ldquo;A&rdquo; for absent, or leave blank
         / &ldquo;OFF&rdquo; for a day off. Employees, suppliers, and clients

@@ -186,7 +186,33 @@ export async function submitManualEntryAction(
     branchId,
   });
 
+  // What this save is about to replace, so it can be undone: the entries it will overwrite (as they were) and, afterwards,
+  // the ones it created. Attendance it adds is found again by who, when and which days.
+  const startedAt = new Date();
+  const keys = entries.map((e) => ({ employeeIdNo: e.employeeIdNo, trade: e.trade }));
+  const SNAP = { id: true, employeeIdNo: true, trade: true, status: true, dailyHours: true, totalHours: true, absentCount: true, absentDeduction: true, invoiceValue: true, rate: true } as const;
+  const previous = await prisma.timesheetEntry.findMany({ where: { month, branchId, OR: keys }, select: SNAP });
+
   await importParsedMonths([parsedMonth], upload.id, branchId, projectId, { userId: user.id });
+
+  const afterSave = await prisma.timesheetEntry.findMany({ where: { month, branchId, OR: keys }, select: { id: true } });
+  const hadBefore = new Set(previous.map((p) => p.id));
+  const saveId = await logAudit({
+    entityType: "BULK_TIMESHEET",
+    entityId: upload.id,
+    action: "CREATE",
+    after: {
+      month,
+      startedAt: startedAt.toISOString(),
+      rows: entries.length,
+      workers: [...new Set(entries.map((e) => e.employeeIdNo))],
+      created: afterSave.filter((a) => !hadBefore.has(a.id)).map((a) => a.id),
+      replaced: previous.filter((p) => p.status !== "LOCKED"),
+    },
+    userId: user.id,
+    userName: user.name,
+    branchId,
+  });
 
   // Kept as the client's own rate for the trade (the same one the client's page shows). The latest one typed for a trade wins.
   if (remembered.length > 0) {
@@ -208,7 +234,7 @@ export async function submitManualEntryAction(
   revalidatePath("/history");
   revalidatePath("/employees");
   revalidatePath("/invoices/client-timesheet");
-  redirect(`/invoices/client-timesheet?month=${month}`);
+  redirect(`/invoices/client-timesheet?month=${month}${saveId ? `&saved=${saveId}` : ""}`);
 }
 
 type DailyRow = { employeeId: string; rate: string; value: string };
