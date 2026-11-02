@@ -90,6 +90,9 @@ export const WORKFLOWS = `
 - Accommodation: Facilities › Create Check-In puts a worker in a camp bed; Bed Allocation shows and moves beds; Camps shows rooms and occupancy.
 - Attendance → timesheets: mark hours in Timesheets › Daily Attendance (monthly grid per project). Attendance Sync in Timesheets pushes attendance into client timesheets and never overwrites hand-entered values. A worker's first attendance also fills a blank site-arrival date and promotes them to Active.
 - Timesheet approval pipeline: Draft → Submitted → Under review → Client approved → Locked (invoiced). Client-approved timesheets are what Billing › Invoices generates invoices from; past invoices are in Invoice History.
+- Finding workers by status: Workforce › Employees › Filters › Status offers On vacation, Absconding and Terminated; the On work / Bench tabs next to the search box split deployed and bench workers. Choosing a status also puts it in the address, so the view can be shared.
+- Absconding: open the worker (full profile or the side panel) and use Mark as absconding: date, remarks and case status (Reported, Under investigation, Closed, Returned). While the case is open the worker is left out of payroll, camps and demand lists; Closed or Returned puts them back on the bench.
+- A month of timesheets for many workers without Excel: Timesheets › Client Timesheet › New entry. Add from roster (filter by supplier, client, project, trade, nationality), Fill the month (hours per day, weekly day off, per-worker week off, click a day for a public holiday), Import file / Export (Excel or CSV), Read from a scan. A worker on two trades gets a second row with the split button. Rates come from the client's trade rates; the Remember bookmark beside a typed rate keeps it as the client's rate.
 - Compliance: visa, Emirates ID, passport, labour card, medical and similar expiries show on the dashboard's Compliance runway and on Workforce › Renewals.
 `.trim();
 

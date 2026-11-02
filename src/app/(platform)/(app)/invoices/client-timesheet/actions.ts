@@ -3,11 +3,12 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch, requirePermission, requireWrite } from "@/lib/auth";
+import { requireUserWithBranch, requirePermission, requireWrite, subjectOf } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { isOutsideBranch } from "@/lib/branch";
 import { refsBelongToBranch } from "@/lib/refScope";
 import { isAdminRole } from "@/lib/roles";
-import { logAudit } from "@/lib/audit";
+import { logAudit, logChildChange } from "@/lib/audit";
 import { importParsedMonths } from "@/lib/importTimesheet";
 import { nameKey } from "@/lib/partyCode";
 import { looseMatch } from "@/lib/looseName";
@@ -28,6 +29,8 @@ type ManualRow = {
   supplierName: string;
   clientName: string;
   days: string[];
+  /** Keep this rate as the client's rate for the trade, so it is prefilled next time. */
+  remember?: boolean;
 };
 
 export async function submitManualEntryAction(
@@ -79,6 +82,12 @@ export async function submitManualEntryAction(
 
   const [year, monthNum] = month.split("-").map(Number);
   const daysInMonth = new Date(year, monthNum, 0).getDate();
+
+  // Rates the person asked to remember for the client: checked first, so nothing is saved if they are not allowed to.
+  const remembered = rows.filter((r) => r?.remember === true && (r.clientName || "").trim() && (r.trade || "").trim() && Number(r.rate) > 0);
+  if (remembered.length > 0 && !can(subjectOf(user), "partners.clients", "edit")) {
+    return { error: "You don't have permission to change a client's rates. Untick \"Remember\" on the rows, or ask someone who can." };
+  }
 
   const entries: ParsedEntry[] = [];
   for (const [i, row] of rows.entries()) {
@@ -166,6 +175,7 @@ export async function submitManualEntryAction(
   };
   const upload = await prisma.upload.create({ data: uploadData });
 
+
   await logAudit({
     entityType: "UPLOAD",
     entityId: upload.id,
@@ -177,6 +187,22 @@ export async function submitManualEntryAction(
   });
 
   await importParsedMonths([parsedMonth], upload.id, branchId, projectId, { userId: user.id });
+
+  // Kept as the client's own rate for the trade (the same one the client's page shows). The latest one typed for a trade wins.
+  if (remembered.length > 0) {
+    const clients = await prisma.client.findMany({ where: { branchId }, select: { id: true, name: true } });
+    for (const r of remembered) {
+      const name = (r.clientName || "").trim();
+      const client = clients.find((c) => nameKey(c.name) === nameKey(name)) ?? looseMatch(name, clients);
+      if (!client) continue;
+      const trade = (r.trade || "").trim();
+      const existing = await prisma.clientTradeRate.findFirst({ where: { clientId: client.id, projectId: null, trade: { equals: trade, mode: "insensitive" } } });
+      if (existing) await prisma.clientTradeRate.update({ where: { id: existing.id }, data: { rate: Number(r.rate) } });
+      else await prisma.clientTradeRate.create({ data: { clientId: client.id, trade, rate: Number(r.rate) } });
+      await logChildChange({ parentType: "CLIENT", parentId: client.id, field: `rate_${trade}`, from: existing ? Number(existing.rate) : null, to: Number(r.rate), user, branchId });
+    }
+    revalidatePath("/clients");
+  }
 
   revalidatePath("/upload");
   revalidatePath("/history");
