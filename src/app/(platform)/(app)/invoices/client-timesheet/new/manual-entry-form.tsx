@@ -29,6 +29,8 @@ type RowState = {
   days: string[];
   /** This worker's weekly day off (JS weekday "0"-"6", "none"), or "" to use the default above the table. */
   weekOff: string;
+  /** Keep this rate as the client's rate for this trade (saved with the timesheet). */
+  remember: boolean;
   /** The project the worker is on now, used for their rate when no project is chosen for the whole sheet. */
   projectId: string;
 };
@@ -55,6 +57,7 @@ function blankRow(dayCount: number): RowState {
     clientName: "",
     days: Array(dayCount).fill(""),
     weekOff: "",
+    remember: false,
     projectId: "",
   };
 }
@@ -519,13 +522,19 @@ export function ManualEntryForm({
                 <td className="px-3 py-2">
                   <input
                     value={row.rate}
-                    onChange={(e) => updateRow(row.id, { rate: e.target.value })}
+                    onChange={(e) => updateRow(row.id, { rate: e.target.value, remember: false })}
                     type="number"
                     min={0}
                     step="0.01"
                     placeholder="Rate"
                     className="input w-20 px-2 py-1.5"
                   />
+                  {/* Offered only for a rate the client doesn't already have for this trade. */}
+                  {Number(row.rate) > 0 && row.clientName.trim() && row.trade.trim() && Number(rateFor(row.clientName, row.trade, projectId || row.projectId)) !== Number(row.rate) && (
+                    <label className="mt-1 flex cursor-pointer items-center gap-1 text-[10px] leading-tight text-muted" title={`Save ${row.rate} as ${row.clientName}'s rate for ${row.trade}, so it is filled in next time`}>
+                      <input type="checkbox" checked={row.remember} onChange={(e) => updateRow(row.id, { remember: e.target.checked })} /> Remember
+                    </label>
+                  )}
                 </td>
                 <td className="px-3 py-2">
                   <Combobox
