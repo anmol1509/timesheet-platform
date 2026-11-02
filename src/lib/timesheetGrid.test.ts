@@ -4,7 +4,7 @@ import { gridHeaders, gridToCells, parseGridRecords } from "./timesheetGrid";
 
 test("headers and cells line up: details, then one column per day", () => {
   const h = gridHeaders(5);
-  assert.deepEqual(h, ["ID No", "Employee Name", "Trade", "Rate", "Supplier", "Client", "1", "2", "3", "4", "5"]);
+  assert.deepEqual(h, ["ID No", "Employee Name", "Trade", "Cost Rate", "Supplier", "Client", "1", "2", "3", "4", "5"]);
   const cells = gridToCells([{ employeeIdNo: "D1", employeeName: "A", trade: "Mason", rate: "21", supplierName: "S", clientName: "C", days: ["10", "A"] }], 5);
   assert.equal(cells[0].length, h.length);
   assert.deepEqual(cells[0].slice(6), ["10", "A", "", "", ""]);

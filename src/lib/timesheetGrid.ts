@@ -1,7 +1,7 @@
 import { cleanDayValue } from "@/lib/timesheetRead";
 
 /** The bulk timesheet as a file: one row per worker, the details first and then one column per day of the month. */
-export const GRID_DETAIL_HEADERS = ["ID No", "Employee Name", "Trade", "Rate", "Supplier", "Client"] as const;
+export const GRID_DETAIL_HEADERS = ["ID No", "Employee Name", "Trade", "Cost Rate", "Supplier", "Client"] as const;
 
 export type GridRow = { employeeIdNo: string; employeeName: string; trade: string; rate: string; supplierName: string; clientName: string; days: string[] };
 
@@ -18,7 +18,7 @@ const ALIASES: Record<(typeof GRID_DETAIL_HEADERS)[number], string[]> = {
   "ID No": ["id no", "id", "employee id", "employee code", "emp id", "emp code", "code", "worker id", "staff id"],
   "Employee Name": ["employee name", "name", "worker name", "emp name", "full name"],
   Trade: ["trade", "designation", "position", "profession"],
-  Rate: ["rate", "hourly rate", "rate per hour", "billing rate"],
+  "Cost Rate": ["cost rate", "rate", "hourly rate", "rate per hour"],
   Supplier: ["supplier", "supplier name", "company", "employer"],
   Client: ["client", "client name"],
 };
@@ -54,7 +54,7 @@ export function parseGridRecords(records: Record<string, string>[], dayCount: nu
     const employeeIdNo = byDetail["ID No"] ?? "";
     const employeeName = byDetail["Employee Name"] ?? "";
     if (!employeeIdNo && !employeeName) continue;
-    out.push({ employeeIdNo, employeeName, trade: byDetail.Trade ?? "", rate: byDetail.Rate ?? "", supplierName: byDetail.Supplier ?? "", clientName: byDetail.Client ?? "", days });
+    out.push({ employeeIdNo, employeeName, trade: byDetail.Trade ?? "", rate: byDetail["Cost Rate"] ?? "", supplierName: byDetail.Supplier ?? "", clientName: byDetail.Client ?? "", days });
   }
   const missingColumns: string[] = [];
   if (records.length > 0) {
