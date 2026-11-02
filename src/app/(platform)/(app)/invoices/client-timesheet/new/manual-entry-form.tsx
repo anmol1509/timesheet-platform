@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useMemo, useState } from "react";
-import { CalendarDays, FileUp, Loader2, Plus, ScanLine, Split, Trash2, UsersRound, Wand2 } from "lucide-react";
+import { Bookmark, BookmarkCheck, CalendarDays, FileUp, Loader2, Plus, ScanLine, Split, Trash2, UsersRound, Wand2 } from "lucide-react";
 import { cleanDayValue, matchRoster, type ReadTimesheetRow } from "@/lib/timesheetRead";
 import { ExportMenu, type ExportFormat } from "@/components/ExportMenu";
 import { downloadXlsx, parseSpreadsheetFile } from "@/lib/spreadsheet";
@@ -29,6 +29,8 @@ type RowState = {
   days: string[];
   /** This worker's weekly day off (JS weekday "0"-"6", "none"), or "" to use the default above the table. */
   weekOff: string;
+  /** Keep this cost rate as what the supplier is paid for the trade (saved with the timesheet). */
+  remember: boolean;
   /** The project the worker is on now, used for their rate when no project is chosen for the whole sheet. */
   projectId: string;
 };
@@ -55,6 +57,7 @@ function blankRow(dayCount: number): RowState {
     clientName: "",
     days: Array(dayCount).fill(""),
     weekOff: "",
+    remember: false,
     projectId: "",
   };
 }
@@ -71,6 +74,7 @@ type SiteOption = { id: string; name: string; projectId: string };
 
 export function ManualEntryForm({
   supplierNames,
+  ownSupplierNames,
   clientNames,
   projects,
   sites,
@@ -79,6 +83,8 @@ export function ManualEntryForm({
   supplierPay,
 }: {
   supplierNames: string[];
+  /** Your own companies: what is paid for their workers is the workers' own pay, so nothing is remembered for them here. */
+  ownSupplierNames: string[];
   clientNames: string[];
   projects: ProjectOption[];
   sites: SiteOption[];
@@ -259,6 +265,14 @@ export function ManualEntryForm({
     return person && person.usualRate > 0 ? String(person.usualRate) : "";
   }
   const personOf = (idNo: string) => roster.find((p) => p.employeeIdNo === idNo);
+  /** A typed cost rate for a supplier that isn't one of ours, different from what is kept for it: it can be remembered. */
+  const canRemember = (r: RowState) => {
+    const sup = norm(r.supplierName), t = norm(r.trade);
+    if (!(Number(r.rate) > 0) || !sup || !t) return false;
+    if (ownSupplierNames.some((n) => norm(n) === sup) || !supplierNames.some((n) => norm(n) === sup)) return false;
+    const kept = supplierPay.find((p) => norm(p.supplier) === sup && norm(p.trade) === t);
+    return !kept || kept.rate !== Number(r.rate);
+  };
 
   /** Fills the client (for the "Bills at" hint) and the cost rate where they are still empty. */
   function fillRates() {
@@ -587,16 +601,32 @@ export function ManualEntryForm({
                   />
                 </td>
                 <td className="px-3 py-2">
-                  <input
-                    value={row.rate}
-                    onChange={(e) => updateRow(row.id, { rate: e.target.value })}
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    placeholder="Cost"
-                    title="Cost rate: what is paid per hour for this trade (not what the client is billed)"
-                    className="input w-20 px-2 py-1.5"
-                  />
+                  <div className="flex items-center gap-1">
+                    <input
+                      value={row.rate}
+                      onChange={(e) => updateRow(row.id, { rate: e.target.value, remember: false })}
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      placeholder="Cost"
+                      title="Cost rate: what is paid per hour for this trade (not what the client is billed)"
+                      className="input w-20 px-2 py-1.5"
+                    />
+                    {canRemember(row) ? (
+                      <button
+                        type="button"
+                        onClick={() => updateRow(row.id, { remember: !row.remember })}
+                        aria-pressed={row.remember}
+                        aria-label={`Remember ${row.rate} as what ${row.supplierName} is paid for ${row.trade}`}
+                        title={row.remember ? `Will be kept as what ${row.supplierName} is paid for ${row.trade}. Click to undo.` : `Remember ${row.rate} as what ${row.supplierName} is paid for ${row.trade}, so it is filled in next time`}
+                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition ${row.remember ? "border-[var(--brand-primary)] bg-brand-soft text-[var(--brand-primary)]" : "border-default text-subtle hover:bg-surface-hover hover:text-primary"}`}
+                      >
+                        {row.remember ? <BookmarkCheck className="h-4 w-4" /> : <Bookmark className="h-4 w-4" />}
+                      </button>
+                    ) : (
+                      <span className="w-8 shrink-0" aria-hidden />
+                    )}
+                  </div>
                 </td>
                 <td className="whitespace-nowrap px-3 py-2 text-xs">
                   {(() => {
@@ -671,6 +701,9 @@ export function ManualEntryForm({
         </table>
       </div>
 
+      {rows.some(canRemember) && (
+        <p className="flex items-center gap-1.5 text-xs text-muted"><Bookmark className="h-3.5 w-3.5" aria-hidden /> Click the bookmark beside a cost rate to keep it as what that supplier is paid for the trade (shown on the supplier&rsquo;s Rates we pay tab), so it is filled in next time.</p>
+      )}
       <p className="text-xs text-subtle">
         <span className="font-medium text-muted">Keyboard:</span> Tab or → next day · ↓ or Enter next worker (Shift+Enter up) · type <kbd className="rounded border border-default px-1">A</kbd> for absent, <kbd className="rounded border border-default px-1">O</kbd> for off · Ctrl+D copies the day above, Ctrl+R the day to the left · paste a block copied from Excel · Ctrl+Enter saves.
       </p>

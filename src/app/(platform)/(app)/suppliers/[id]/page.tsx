@@ -30,6 +30,7 @@ import { headerGaps } from "@/lib/issuerHeader";
 import { HeaderFix } from "./company-fixes";
 import { buildChecklist, resolveDocTypes } from "@/lib/documentTypes";
 import { Alert } from "@/components/Alert";
+import { SupplierTradeRates } from "./supplier-trade-rates";
 
 export const metadata = { title: "Supplier" };
 
@@ -65,6 +66,7 @@ export default async function SupplierDetailPage({
   });
   if (!supplier || isOutsideBranch(supplier.branchId, branchId, isSuperAdmin)) notFound();
 
+  const tradePayRows = supplier.isOwnCompany ? [] : await prisma.tradePay.findMany({ where: { supplierId: supplier.id, hourlyRate: { not: null } }, orderBy: { trade: "asc" }, select: { id: true, trade: true, hourlyRate: true } });
   const root = supplier.parent ?? { id: supplier.id, name: supplier.name };
   const siblings = supplier.parent ? supplier.parent.subsidiaries : supplier.subsidiaries;
 
@@ -393,6 +395,13 @@ export default async function SupplierDetailPage({
               />
             ),
           }]),
+          ...(!supplier.isOwnCompany
+            ? [{
+                id: "rates",
+                label: "Rates we pay",
+                content: <SupplierTradeRates supplierId={supplier.id} canEdit={can(subjectOf(user), "partners.suppliers", "edit")} rates={tradePayRows.map((t) => ({ id: t.id, trade: t.trade, rate: Number(t.hourlyRate) }))} />,
+              }]
+            : []),
           ...(showStatement && !restricted ? [{ id: "statement", label: "Statement", content: <PartyStatement type="SUPPLIER" id={supplier.id} /> }] : []),
         ]}
       />

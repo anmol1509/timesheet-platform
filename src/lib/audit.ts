@@ -82,7 +82,7 @@ export async function logAudit(params: {
  * record, so the record's own history shows it: "changed project X's contact from empty to Ahmed (Site engineer)".
  */
 export async function logChildChange(p: {
-  parentType: "PROJECT" | "CLIENT";
+  parentType: "PROJECT" | "CLIENT" | "SUPPLIER";
   parentId: string;
   /** A short word for what changed, such as "contact", "holiday" or "rate_welder". */
   field: string;

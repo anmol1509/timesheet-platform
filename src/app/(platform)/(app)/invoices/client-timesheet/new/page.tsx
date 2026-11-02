@@ -13,7 +13,7 @@ export default async function NewClientTimesheetEntryPage() {
   const { branchId } = await requireUserWithBranch();
   const recentSaves = await loadBulkSaves(branchId);
   const [suppliers, clients, projects, sites, roster, rateRows, tradePay] = await Promise.all([
-    prisma.supplier.findMany({ where: branchWhere(branchId), select: { name: true }, orderBy: { name: "asc" } }),
+    prisma.supplier.findMany({ where: branchWhere(branchId), select: { name: true, isOwnCompany: true }, orderBy: { name: "asc" } }),
     prisma.client.findMany({ where: branchWhere(branchId), select: { name: true, hourlyRate: true }, orderBy: { name: "asc" } }),
     prisma.project.findMany({
       where: branchWhere(branchId),
@@ -51,6 +51,7 @@ export default async function NewClientTimesheetEntryPage() {
 
       <ManualEntryForm
         supplierNames={suppliers.map((s) => s.name)}
+        ownSupplierNames={suppliers.filter((s) => s.isOwnCompany).map((s) => s.name)}
         clientNames={clients.map((c) => c.name)}
         projects={projects.map((p) => ({ id: p.id, code: p.code, name: p.name, clientName: p.client?.name ?? "" }))}
         rates={[...rateRows.map((r) => ({ client: r.client.name, projectId: r.projectId, trade: r.trade, rate: r.rate })), ...clients.filter((c) => (c.hourlyRate ?? 0) > 0).map((c) => ({ client: c.name, projectId: null, trade: "", rate: c.hourlyRate as number }))]}
