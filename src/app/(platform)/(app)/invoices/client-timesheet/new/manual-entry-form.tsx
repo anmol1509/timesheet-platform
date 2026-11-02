@@ -96,6 +96,7 @@ export function ManualEntryForm({
 
   function updateMonth(next: string) {
     setMonth(next);
+    setHolidays(new Set()); // holidays are days of one month
     const nextDayCount = daysInMonth(next);
     setRows((prev) =>
       prev.map((r) => ({
@@ -106,10 +107,12 @@ export function ManualEntryForm({
   }
 
   function updateRow(id: string, patch: Partial<RowState>) {
+    setAckNoRate(false);
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
   }
 
   function updateDay(id: string, dayIndex: number, value: string) {
+    setAckNoRate(false);
     setRows((prev) =>
       prev.map((r) =>
         r.id === id
@@ -207,6 +210,8 @@ export function ManualEntryForm({
   // ---- Read a scanned sheet into the grid ----
   const [reading, setReading] = useState(false);
   const [readNote, setReadNote] = useState<{ tone: "ok" | "warn"; text: string } | null>(null);
+  // Set after the missing-rate warning, so the next Save goes through; any edit asks again.
+  const [ackNoRate, setAckNoRate] = useState(false);
 
   async function readScan(files: File[]) {
     if (files.length === 0) return;
@@ -311,9 +316,21 @@ export function ManualEntryForm({
     <form
       action={formAction}
       onSubmit={(e) => {
-        if (doubleBooked.size > 0) {
-          e.preventDefault();
-          setReadNote({ tone: "warn", text: "A worker has hours on the same day in two rows (marked red). Move those hours to one row, or clear one of the days, then save." });
+        const stop = (text: string) => { e.preventDefault(); setReadNote({ tone: "warn", text }); };
+        const used = rows.filter((r) => r.employeeIdNo.trim() || r.employeeName.trim() || r.days.some((d) => d.trim()));
+        const incomplete = used.findIndex((r) => !r.employeeIdNo.trim() || !r.employeeName.trim() || !r.trade.trim() || !r.supplierName.trim());
+        if (incomplete >= 0) return stop(`Row ${incomplete + 1}: ID, name, trade and supplier are all needed.`);
+        const seen = new Map<string, number>();
+        for (const [i, r] of used.entries()) {
+          const k = `${r.employeeIdNo.trim().toLowerCase()}|${r.supplierName.trim().toLowerCase()}|${r.trade.trim().toLowerCase()}`;
+          if (seen.has(k)) return stop(`Rows ${(seen.get(k) ?? 0) + 1} and ${i + 1} are the same worker on the same trade, so one would replace the other. Put all that trade's days in one row, or give the second row another trade.`);
+          seen.set(k, i);
+        }
+        if (doubleBooked.size > 0) return stop("A worker has hours on the same day in two rows (marked red). Move those hours to one row, or clear one of the days, then save.");
+        const noRate = used.filter((r) => !(Number(r.rate) > 0));
+        if (noRate.length > 0 && !ackNoRate) {
+          setAckNoRate(true);
+          return stop(`${noRate.length} ${noRate.length === 1 ? "row has" : "rows have"} no rate (${noRate.slice(0, 3).map((r) => r.employeeName || r.employeeIdNo).join(", ")}${noRate.length > 3 ? "…" : ""}), so their invoice value will be 0. Fill the rates, or press Save again to save them as they are.`);
         }
       }}
       className="space-y-4"
@@ -494,7 +511,7 @@ export function ManualEntryForm({
                 <td className="px-3 py-2">
                   <input
                     value={row.trade}
-                    onChange={(e) => updateRow(row.id, { trade: e.target.value })}
+                    onChange={(e) => updateRow(row.id, { trade: e.target.value, rate: row.rate || rateFor(row.clientName || projectClient, e.target.value, projectId || row.projectId) })}
                     placeholder="Trade"
                     className="input w-28 px-2 py-1.5"
                   />
