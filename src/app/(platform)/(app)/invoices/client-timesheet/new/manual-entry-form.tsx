@@ -73,6 +73,7 @@ type SiteOption = { id: string; name: string; projectId: string };
 
 export function ManualEntryForm({
   supplierNames,
+  ownSupplierNames,
   clientNames,
   projects,
   sites,
@@ -82,6 +83,8 @@ export function ManualEntryForm({
   lastRates,
 }: {
   supplierNames: string[];
+  /** Our own companies: their workers are costed at the rate on their profile, not a past timesheet row. */
+  ownSupplierNames: string[];
   clientNames: string[];
   projects: ProjectOption[];
   sites: SiteOption[];
@@ -254,11 +257,16 @@ export function ManualEntryForm({
   /**
    * The cost rate for a row, which is what the company charges for this worker on this trade: the rate on their most recent
    * timesheet row (same trade and supplier, on the chosen project when there is a match), because rates repeat month to month.
+   * For our own companies' workers the profile rate comes first, since it is also what payroll pays.
    * Then the supplier's rate for the trade, then the worker's own rate for it, then their usual hourly rate. The client's
    * billing rate is never used here.
    */
   function costFor(person: RosterPerson | undefined, supplierName: string, trade: string, idNo = person?.employeeIdNo ?? ""): string {
     const t = norm(trade);
+    if (ownSupplierNames.some((n) => norm(n) === norm(supplierName))) {
+      const prof = (t && person?.tradeRates.find((k) => norm(k.trade) === t && k.rate > 0)?.rate) || (person && person.usualRate > 0 ? person.usualRate : 0);
+      if (prof) return String(prof);
+    }
     const mine = idNo && t ? lastRates.filter((l) => l.idNo === idNo && norm(l.trade) === t && norm(l.supplier) === norm(supplierName)) : [];
     const last = (projectId && mine.find((l) => l.projectId === projectId)) || mine[0];
     if (last && last.rate > 0) return String(last.rate);
