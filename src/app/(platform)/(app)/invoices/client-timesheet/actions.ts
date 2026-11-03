@@ -3,12 +3,11 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch, requirePermission, requireWrite, subjectOf } from "@/lib/auth";
-import { can } from "@/lib/permissions";
+import { requireUserWithBranch, requirePermission, requireWrite } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { refsBelongToBranch } from "@/lib/refScope";
 import { isAdminRole } from "@/lib/roles";
-import { logAudit, logChildChange } from "@/lib/audit";
+import { logAudit } from "@/lib/audit";
 import { importParsedMonths } from "@/lib/importTimesheet";
 import { nameKey } from "@/lib/partyCode";
 import { looseMatch } from "@/lib/looseName";
@@ -29,8 +28,6 @@ type ManualRow = {
   supplierName: string;
   clientName: string;
   days: string[];
-  /** Keep this cost rate as what the supplier is paid for the trade. */
-  remember?: boolean;
 };
 
 export async function submitManualEntryAction(
@@ -82,12 +79,6 @@ export async function submitManualEntryAction(
 
   const [year, monthNum] = month.split("-").map(Number);
   const daysInMonth = new Date(year, monthNum, 0).getDate();
-
-  // Cost rates the person asked to keep for a supplier: checked first, so nothing is saved if they are not allowed to.
-  const remembered = rows.filter((r) => r?.remember === true && (r.supplierName || "").trim() && (r.trade || "").trim() && Number(r.rate) > 0);
-  if (remembered.length > 0 && !can(subjectOf(user), "partners.suppliers", "edit")) {
-    return { error: "You don't have permission to change a supplier's rates. Untick the bookmark on those rows, or ask someone who can." };
-  }
 
   const entries: ParsedEntry[] = [];
   for (const [i, row] of rows.entries()) {
@@ -194,23 +185,6 @@ export async function submitManualEntryAction(
   const previous = await prisma.timesheetEntry.findMany({ where: { month, branchId, OR: keys }, select: SNAP });
 
   await importParsedMonths([parsedMonth], upload.id, branchId, projectId, { userId: user.id });
-
-  // Kept as what the supplier is paid for the trade (the supplier's "Rates we pay" tab). Never for one of your own companies.
-  if (remembered.length > 0) {
-    const suppliers = await prisma.supplier.findMany({ where: { branchId }, select: { id: true, name: true, isOwnCompany: true } });
-    for (const r of remembered) {
-      const name = (r.supplierName || "").trim();
-      const supplier = suppliers.find((s) => nameKey(s.name) === nameKey(name)) ?? looseMatch(name, suppliers);
-      if (!supplier || supplier.isOwnCompany) continue;
-      const trade = (r.trade || "").trim();
-      const rate = Number(r.rate);
-      const existing = await prisma.tradePay.findFirst({ where: { supplierId: supplier.id, trade: { equals: trade, mode: "insensitive" } } });
-      if (existing) await prisma.tradePay.update({ where: { id: existing.id }, data: { hourlyRate: rate, payStructure: "HOURLY" } });
-      else await prisma.tradePay.create({ data: { supplierId: supplier.id, trade, branchId, payStructure: "HOURLY", hourlyRate: rate } });
-      await logChildChange({ parentType: "SUPPLIER", parentId: supplier.id, field: `cost_rate_${trade}`, from: existing?.hourlyRate != null ? Number(existing.hourlyRate) : null, to: rate, user, branchId });
-    }
-    revalidatePath("/suppliers");
-  }
 
   const afterSave = await prisma.timesheetEntry.findMany({ where: { month, branchId, OR: keys }, select: { id: true } });
   const hadBefore = new Set(previous.map((p) => p.id));

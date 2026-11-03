@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useMemo, useState } from "react";
-import { Bookmark, BookmarkCheck, CalendarDays, FileUp, Loader2, Plus, ScanLine, Split, Trash2, UsersRound, Wand2 } from "lucide-react";
+import { CalendarDays, FileUp, Loader2, Plus, ScanLine, Split, Trash2, UsersRound, Wand2 } from "lucide-react";
 import { cleanDayValue, matchRoster, type ReadTimesheetRow } from "@/lib/timesheetRead";
 import { ExportMenu, type ExportFormat } from "@/components/ExportMenu";
 import { downloadXlsx, parseSpreadsheetFile } from "@/lib/spreadsheet";
@@ -29,8 +29,6 @@ type RowState = {
   days: string[];
   /** This worker's weekly day off (JS weekday "0"-"6", "none"), or "" to use the default above the table. */
   weekOff: string;
-  /** Keep this cost rate as what the supplier is paid for the trade (saved with the timesheet). */
-  remember: boolean;
   /** The project the worker is on now, used for their rate when no project is chosen for the whole sheet. */
   projectId: string;
 };
@@ -57,7 +55,6 @@ function blankRow(dayCount: number): RowState {
     clientName: "",
     days: Array(dayCount).fill(""),
     weekOff: "",
-    remember: false,
     projectId: "",
   };
 }
@@ -66,6 +63,8 @@ type ProjectOption = { id: string; code: string; name: string; clientName: strin
 type RosterPerson = { usualRate: number; tradeRates: { trade: string; rate: number }[]; projectId: string; employeeIdNo: string; name: string; trade: string; supplierName: string; nationality: string; projectName: string; clientName: string; onWork: boolean };
 /** What a supplier is paid per hour for a trade (its trade pay). */
 type SupplierPay = { supplier: string; trade: string; rate: number };
+/** A rate from an earlier timesheet row. */
+type LastRate = { idNo: string; trade: string; supplier: string; projectId: string; rate: number };
 type RateOption = { client: string; projectId: string | null; trade: string; rate: number };
 const WEEKDAYS = [["0", "Sunday"], ["1", "Monday"], ["2", "Tuesday"], ["3", "Wednesday"], ["4", "Thursday"], ["5", "Friday"], ["6", "Saturday"]] as const;
 const WD_SHORT = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
@@ -74,23 +73,23 @@ type SiteOption = { id: string; name: string; projectId: string };
 
 export function ManualEntryForm({
   supplierNames,
-  ownSupplierNames,
   clientNames,
   projects,
   sites,
   roster,
   rates,
   supplierPay,
+  lastRates,
 }: {
   supplierNames: string[];
-  /** Your own companies: what is paid for their workers is the workers' own pay, so nothing is remembered for them here. */
-  ownSupplierNames: string[];
   clientNames: string[];
   projects: ProjectOption[];
   sites: SiteOption[];
   roster: RosterPerson[];
   rates: RateOption[];
   supplierPay: SupplierPay[];
+  /** The rate on each worker's most recent timesheet row, per trade and supplier (and the project it was on). */
+  lastRates: LastRate[];
 }) {
   const [state, formAction, pending] = useActionState(submitManualEntryAction, {
     error: null,
@@ -253,11 +252,16 @@ export function ManualEntryForm({
   const projectClient = projects.find((p) => p.id === projectId)?.clientName ?? "";
 
   /**
-   * The cost rate for a row: what is paid for this trade, not what the client is billed. The supplier's trade pay first, then the
-   * worker's own rate for the trade, then their usual hourly rate. The client's billing rate is never used here.
+   * The cost rate for a row, which is what the company charges for this worker on this trade: the rate on their most recent
+   * timesheet row (same trade and supplier, on the chosen project when there is a match), because rates repeat month to month.
+   * Then the supplier's rate for the trade, then the worker's own rate for it, then their usual hourly rate. The client's
+   * billing rate is never used here.
    */
-  function costFor(person: RosterPerson | undefined, supplierName: string, trade: string): string {
+  function costFor(person: RosterPerson | undefined, supplierName: string, trade: string, idNo = person?.employeeIdNo ?? ""): string {
     const t = norm(trade);
+    const mine = idNo && t ? lastRates.filter((l) => l.idNo === idNo && norm(l.trade) === t && norm(l.supplier) === norm(supplierName)) : [];
+    const last = (projectId && mine.find((l) => l.projectId === projectId)) || mine[0];
+    if (last && last.rate > 0) return String(last.rate);
     const sup = t && supplierPay.find((p) => norm(p.supplier) === norm(supplierName) && norm(p.trade) === t);
     if (sup && sup.rate > 0) return String(sup.rate);
     const own = t && person?.tradeRates.find((k) => norm(k.trade) === t && k.rate > 0);
@@ -265,20 +269,12 @@ export function ManualEntryForm({
     return person && person.usualRate > 0 ? String(person.usualRate) : "";
   }
   const personOf = (idNo: string) => roster.find((p) => p.employeeIdNo === idNo);
-  /** A typed cost rate for a supplier that isn't one of ours, different from what is kept for it: it can be remembered. */
-  const canRemember = (r: RowState) => {
-    const sup = norm(r.supplierName), t = norm(r.trade);
-    if (!(Number(r.rate) > 0) || !sup || !t) return false;
-    if (ownSupplierNames.some((n) => norm(n) === sup) || !supplierNames.some((n) => norm(n) === sup)) return false;
-    const kept = supplierPay.find((p) => norm(p.supplier) === sup && norm(p.trade) === t);
-    return !kept || kept.rate !== Number(r.rate);
-  };
 
   /** Fills the client (for the "Bills at" hint) and the cost rate where they are still empty. */
   function fillRates() {
     setRows((prev) => prev.map((r) => {
       const clientName = r.clientName || projectClient || personOf(r.employeeIdNo)?.clientName || "";
-      return { ...r, clientName, rate: r.rate || costFor(personOf(r.employeeIdNo), r.supplierName, r.trade) };
+      return { ...r, clientName, rate: r.rate || costFor(personOf(r.employeeIdNo), r.supplierName, r.trade, r.employeeIdNo) };
     }));
   }
 
@@ -308,7 +304,7 @@ export function ManualEntryForm({
         const person = matchRoster(r, roster);
         if (!person) unmatched.push(r.employeeName || r.employeeIdNo);
         const trade = person?.trade || r.trade;
-        added.push({ ...blankRow(dayCount), employeeIdNo: person?.employeeIdNo ?? r.employeeIdNo, employeeName: person?.name ?? r.employeeName, trade, supplierName: person?.supplierName ?? "", clientName: projectClient, rate: costFor(person ?? undefined, person?.supplierName ?? "", trade), days: r.days });
+        added.push({ ...blankRow(dayCount), employeeIdNo: person?.employeeIdNo ?? r.employeeIdNo, employeeName: person?.name ?? r.employeeName, trade, supplierName: person?.supplierName ?? "", clientName: projectClient, rate: costFor(person ?? undefined, person?.supplierName ?? "", trade, person?.employeeIdNo ?? r.employeeIdNo), days: r.days });
       }
     }
     if (added.length > 0) {
@@ -350,7 +346,7 @@ export function ManualEntryForm({
         if (!person) unmatched.push(r.employeeName || r.employeeIdNo);
         const trade = r.trade || person?.trade || "";
         const clientName = r.clientName || projectClient;
-        return { ...blankRow(dayCount), employeeIdNo: person?.employeeIdNo ?? r.employeeIdNo, employeeName: person?.name ?? r.employeeName, trade, supplierName: r.supplierName || person?.supplierName || "", clientName, rate: r.rate || costFor(person ?? undefined, r.supplierName || person?.supplierName || "", trade), days: r.days };
+        return { ...blankRow(dayCount), employeeIdNo: person?.employeeIdNo ?? r.employeeIdNo, employeeName: person?.name ?? r.employeeName, trade, supplierName: r.supplierName || person?.supplierName || "", clientName, rate: r.rate || costFor(person ?? undefined, r.supplierName || person?.supplierName || "", trade, person?.employeeIdNo ?? r.employeeIdNo), days: r.days };
       });
       setRows((prev) => {
         const have = new Set(prev.map((r) => r.employeeIdNo.trim().toLowerCase()).filter(Boolean));
@@ -497,7 +493,7 @@ export function ManualEntryForm({
           <input type="checkbox" checked={onlyEmpty} onChange={(e) => setOnlyEmpty(e.target.checked)} /> Only rows with no hours yet
         </label>
         <button type="button" onClick={fillDays} className="btn btn-secondary flex gap-1.5 px-3"><CalendarDays className="h-4 w-4" /> Fill the days</button>
-        <button type="button" onClick={fillRates} className="btn btn-secondary flex gap-1.5 px-3" title="Fills the cost rate from the supplier's trade pay, then the worker's own rate, where it is empty. The client's billing rate is never used here.">Fill the cost rates</button>
+        <button type="button" onClick={fillRates} className="btn btn-secondary flex gap-1.5 px-3" title="Fills the cost rate where it is empty: from the worker's last timesheet row, then the supplier's rate for the trade, then the worker's own rate. The client's billing rate is never used here.">Fill the cost rates</button>
         <p className="w-full text-xs text-subtle">The weekly day off here is the default; pick another for a worker in their row. Click a day number above the grid to mark a public holiday for everyone ({holidays.size === 0 ? "none marked" : `${holidays.size} marked`}). Then change any day by hand: a different number of hours, A for absent, or OFF.</p>
       </div>
 
@@ -595,7 +591,7 @@ export function ManualEntryForm({
                 <td className="px-3 py-2">
                   <input
                     value={row.trade}
-                    onChange={(e) => updateRow(row.id, { trade: e.target.value, rate: row.rate || costFor(personOf(row.employeeIdNo), row.supplierName, e.target.value) })}
+                    onChange={(e) => updateRow(row.id, { trade: e.target.value, rate: row.rate || costFor(personOf(row.employeeIdNo), row.supplierName, e.target.value, row.employeeIdNo) })}
                     placeholder="Trade"
                     className="input w-28 px-2 py-1.5"
                   />
@@ -604,7 +600,7 @@ export function ManualEntryForm({
                   <div className="flex items-center gap-1">
                     <input
                       value={row.rate}
-                      onChange={(e) => updateRow(row.id, { rate: e.target.value, remember: false })}
+                      onChange={(e) => updateRow(row.id, { rate: e.target.value })}
                       type="number"
                       min={0}
                       step="0.01"
@@ -612,20 +608,6 @@ export function ManualEntryForm({
                       title="Cost rate: what is paid per hour for this trade (not what the client is billed)"
                       className="input w-20 px-2 py-1.5"
                     />
-                    {canRemember(row) ? (
-                      <button
-                        type="button"
-                        onClick={() => updateRow(row.id, { remember: !row.remember })}
-                        aria-pressed={row.remember}
-                        aria-label={`Remember ${row.rate} as what ${row.supplierName} is paid for ${row.trade}`}
-                        title={row.remember ? `Will be kept as what ${row.supplierName} is paid for ${row.trade}. Click to undo.` : `Remember ${row.rate} as what ${row.supplierName} is paid for ${row.trade}, so it is filled in next time`}
-                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition ${row.remember ? "border-[var(--brand-primary)] bg-brand-soft text-[var(--brand-primary)]" : "border-default text-subtle hover:bg-surface-hover hover:text-primary"}`}
-                      >
-                        {row.remember ? <BookmarkCheck className="h-4 w-4" /> : <Bookmark className="h-4 w-4" />}
-                      </button>
-                    ) : (
-                      <span className="w-8 shrink-0" aria-hidden />
-                    )}
                   </div>
                 </td>
                 <td className="whitespace-nowrap px-3 py-2 text-xs">
@@ -701,9 +683,6 @@ export function ManualEntryForm({
         </table>
       </div>
 
-      {rows.some(canRemember) && (
-        <p className="flex items-center gap-1.5 text-xs text-muted"><Bookmark className="h-3.5 w-3.5" aria-hidden /> Click the bookmark beside a cost rate to keep it as what that supplier is paid for the trade (shown on the supplier&rsquo;s Rates we pay tab), so it is filled in next time.</p>
-      )}
       <p className="text-xs text-subtle">
         <span className="font-medium text-muted">Keyboard:</span> Tab or → next day · ↓ or Enter next worker (Shift+Enter up) · type <kbd className="rounded border border-default px-1">A</kbd> for absent, <kbd className="rounded border border-default px-1">O</kbd> for off · Ctrl+D copies the day above, Ctrl+R the day to the left · paste a block copied from Excel · Ctrl+Enter saves.
       </p>

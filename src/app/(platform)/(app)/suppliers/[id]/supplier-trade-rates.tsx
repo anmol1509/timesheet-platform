@@ -34,7 +34,7 @@ export function SupplierTradeRates({ supplierId, rates, canEdit }: { supplierId:
     <section>
       <h2 className="mb-1 text-sm font-semibold text-primary">Rates we pay this supplier, by trade ({rates.length})</h2>
       <p className="mb-3 text-sm text-muted">
-        What this supplier is paid per hour for each trade. The bulk timesheet fills its Cost rate from here. It is the cost side: what the client is billed is set on the client or project.
+        A fallback for the bulk timesheet: used for a worker who has no earlier timesheet row with this supplier and trade (a worker with one gets their last rate). It is the cost side: what the client is billed is set on the client or project.
       </p>
       {error && <Alert className="mb-3">{error}</Alert>}
       <div className="card overflow-hidden">
@@ -68,7 +68,7 @@ export function SupplierTradeRates({ supplierId, rates, canEdit }: { supplierId:
             </tbody>
           </table>
         )}
-        {rates.length === 0 && <p className="px-4 py-5 text-sm text-muted">No rates yet. Add one below, or tick Remember beside a cost rate in the bulk timesheet.</p>}
+        {rates.length === 0 && <p className="px-4 py-5 text-sm text-muted">No rates yet. These are optional: the bulk timesheet already fills each worker\u2019s Cost rate from their last timesheet.</p>}
         {canEdit && (
           <div className="flex flex-wrap items-end gap-3 border-t border-default p-4">
             <label className="block min-w-[160px] flex-1">
