@@ -204,8 +204,8 @@ export function CompanyGrid({
             }`}
           >
             {/* Wrapped, because the checkbox is already `relative`: positioning it directly pulled it out of place. */}
-            <div className="absolute top-4 right-4 flex h-5 w-5 items-center justify-center">
-              <Checkbox checked={selected.has(c.id)} onCheckedChange={() => toggle(c.id)} ariaLabel={`Select ${c.name}`} />
+            <div className="absolute top-4 right-4 flex h-6 w-6 items-center justify-center">
+              <Checkbox size="lg" checked={selected.has(c.id)} onCheckedChange={() => toggle(c.id)} ariaLabel={`Select ${c.name}`} />
             </div>
             <h2 className="pr-8 text-base font-semibold text-primary">{c.name}</h2>
             {c.own && (
