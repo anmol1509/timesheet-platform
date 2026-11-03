@@ -16,6 +16,7 @@ type EmployeeOption = {
   supplierId: string;
   projectId: string;
   projectName: string;
+  suggestedRate: number;
 };
 
 function todayValue() {
@@ -40,6 +41,7 @@ export function DailyTimesheetForm({
   const [rates, setRates] = useState<Record<string, string>>({});
   const [values, setValues] = useState<Record<string, string>>({});
   const [result, setResult] = useState<string | null>(null);
+  const [everyone, setEveryone] = useState("");
 
   const projectOptions = [
     ...new Map(
@@ -68,7 +70,7 @@ export function DailyTimesheetForm({
     const rowsJson = JSON.stringify(
       rows
         .filter((e) => (values[e.id] || "").trim())
-        .map((e) => ({ employeeId: e.id, rate: rates[e.id] || "", value: values[e.id] }))
+        .map((e) => ({ employeeId: e.id, rate: rates[e.id] ?? (e.suggestedRate > 0 ? String(e.suggestedRate) : ""), value: values[e.id] }))
     );
     const formData = new FormData();
     formData.append("date", date);
@@ -81,7 +83,12 @@ export function DailyTimesheetForm({
       if (res.error) {
         setResult(res.error);
       } else {
-        setResult(`Saved ${res.saved} of ${res.requested} entered rows.`);
+        const noRate = rowsJson && (JSON.parse(rowsJson) as { rate: string }[]).filter((r) => !(Number(r.rate) > 0)).length;
+        setResult(
+          `Saved ${res.saved} of ${res.requested} entered rows.` +
+            (res.saved < res.requested ? " Skipped rows are workers with no trade set, or a month that is already locked." : "") +
+            (noRate ? ` ${noRate} ${noRate === 1 ? "row has" : "rows have"} no cost rate, so it saved at 0. Set the rate on the worker's profile or type it here and save again.` : "")
+        );
         setValues({});
       }
     });
@@ -126,7 +133,16 @@ export function DailyTimesheetForm({
       </div>
 
       <div className="card p-5">
-        <h2 className="mb-3 text-sm font-semibold text-primary">Employees</h2>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold text-primary">Employees</h2>
+          {rows.length > 0 && (
+            <div className="flex items-center gap-2 text-xs text-muted">
+              <span>Same hours for everyone</span>
+              <input value={everyone} onChange={(ev) => setEveryone(ev.target.value)} placeholder="8" className="input w-20 px-2 py-1.5" aria-label="Hours for everyone" />
+              <Button size="btn" type="button" variant="secondary" onClick={() => setValues(Object.fromEntries(rows.map((e) => [e.id, everyone])))} disabled={!everyone.trim()}>Fill all</Button>
+            </div>
+          )}
+        </div>
         {!supplierId || !projectId ? (
           <p className="text-sm text-muted">Select a supplier and a project first.</p>
         ) : rows.length === 0 ? (
@@ -151,7 +167,7 @@ export function DailyTimesheetForm({
                     <td className="px-2 py-2 text-secondary">{e.trade || "—"}</td>
                     <td className="px-2 py-2">
                       <input
-                        value={rates[e.id] || ""}
+                        value={rates[e.id] ?? (e.suggestedRate > 0 ? String(e.suggestedRate) : "")}
                         onChange={(ev) => setRates((prev) => ({ ...prev, [e.id]: ev.target.value }))}
                         type="number"
                         min={0}
@@ -164,8 +180,8 @@ export function DailyTimesheetForm({
                       <input
                         value={values[e.id] || ""}
                         onChange={(ev) => setValues((prev) => ({ ...prev, [e.id]: ev.target.value }))}
-                        placeholder="e.g. 8, A, OFF"
-                        className="input w-24 px-2 py-1.5"
+                        placeholder="8, A, OFF"
+                        className="input w-28 px-2 py-1.5"
                       />
                     </td>
                   </tr>
