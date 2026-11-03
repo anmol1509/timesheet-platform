@@ -43,6 +43,11 @@ export default async function CompaniesPage({
         orderBy: { name: "asc" },
       })
     : [];
+  // Which projects each company's hours are on, for the project filter.
+  const projectIds = [...new Set(suppliers.flatMap((s) => s.entries.map((e) => e.projectId).filter((id): id is string => !!id)))];
+  const projectNames = new Map(
+    (projectIds.length ? await prisma.project.findMany({ where: { id: { in: projectIds } }, select: { id: true, name: true } }) : []).map((pr) => [pr.id, pr.name])
+  );
 
   return (
     <div className="space-y-5">
@@ -90,6 +95,9 @@ export default async function CompaniesPage({
             totalHours: s.entries.reduce((sum, e) => sum + e.totalHours, 0),
             totalAmount: s.entries.reduce((sum, e) => sum + e.invoiceValue, 0),
             invoiceApproved: s.invoiceApprovalStatus === "Approved",
+            own: s.isOwnCompany,
+            projects: [...new Set(s.entries.map((e) => (e.projectId ? projectNames.get(e.projectId) : null)).filter((n): n is string => !!n))],
+            trades: [...new Set(s.entries.map((e) => e.trade).filter(Boolean))],
           }))}
         />
       )}
