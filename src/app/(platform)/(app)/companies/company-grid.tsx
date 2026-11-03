@@ -4,7 +4,8 @@ import { TemplatePicker } from "@/components/TimesheetTemplatePicker";
 import { IssuerPicker, type IssuerPickerData } from "@/components/IssuerPicker";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Download, FileArchive, Loader2 } from "lucide-react";
+import { BadgeCheck, Download, FileArchive, Loader2 } from "lucide-react";
+import { FilterPanel, type FilterField } from "@/components/data-table/FilterPanel";
 import { toCsv, downloadCsv } from "@/lib/csv";
 import { useRowSelection } from "@/lib/useRowSelection";
 import { Checkbox } from "@/components/ui/Checkbox";
@@ -18,6 +19,10 @@ type CompanyRow = {
   totalHours: number;
   totalAmount: number;
   invoiceApproved: boolean;
+  /** One of your own companies (as opposed to a supplier or sub-contractor). */
+  own: boolean;
+  projects: string[];
+  trades: string[];
 };
 
 export function CompanyGrid({
@@ -30,6 +35,7 @@ export function CompanyGrid({
   issuer: IssuerPickerData;
 }) {
   const [query, setQuery] = useState("");
+  const [filters, setFilters] = useState<Record<string, string>>({ type: "", project: "", trade: "", letterhead: "", invoice: "" });
   const [zipping, setZipping] = useState(false);
   const [zipError, setZipError] = useState<string | null>(null);
   const [askGas, setAskGas] = useState(false);
@@ -39,13 +45,29 @@ export function CompanyGrid({
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return companies;
     return companies.filter(
       (c) =>
-        c.name.toLowerCase().includes(q) ||
-        (c.fullName || "").toLowerCase().includes(q)
+        (!q || c.name.toLowerCase().includes(q) || (c.fullName || "").toLowerCase().includes(q)) &&
+        (!filters.type || (filters.type === "own" ? c.own : !c.own)) &&
+        (!filters.project || c.projects.includes(filters.project)) &&
+        (!filters.trade || c.trades.includes(filters.trade)) &&
+        (!filters.letterhead || (filters.letterhead === "set" ? !!c.fullName : !c.fullName)) &&
+        (!filters.invoice || (filters.invoice === "approved" ? c.invoiceApproved : !c.invoiceApproved))
     );
-  }, [companies, query]);
+  }, [companies, query, filters]);
+
+  const fields: FilterField[] = useMemo(() => {
+    const distinct = (get: (c: CompanyRow) => string[]) =>
+      [...new Set(companies.flatMap(get))].sort((a, b) => a.localeCompare(b)).map((v) => ({ value: v, label: `${v} (${companies.filter((c) => get(c).includes(v)).length})` }));
+    const count = (f: (c: CompanyRow) => boolean) => companies.filter(f).length;
+    return [
+      { key: "type", label: "Type", all: "All companies", options: [{ value: "own", label: `Our companies (${count((c) => c.own)})` }, { value: "supplier", label: `Suppliers and sub-contractors (${count((c) => !c.own)})` }] },
+      { key: "project", label: "Project", all: "All projects", options: distinct((c) => c.projects) },
+      { key: "trade", label: "Trade", all: "All trades", options: distinct((c) => c.trades) },
+      { key: "letterhead", label: "Letterhead name", all: "Set or not set", options: [{ value: "set", label: `Set (${count((c) => !!c.fullName)})` }, { value: "missing", label: `Not set (${count((c) => !c.fullName)})` }] },
+      { key: "invoice", label: "Invoice approval", all: "Approved or not", options: [{ value: "approved", label: `Approved (${count((c) => c.invoiceApproved)})` }, { value: "pending", label: `Not approved (${count((c) => !c.invoiceApproved)})` }] },
+    ];
+  }, [companies]);
 
   const { selected, toggle, toggleAll, allSelected, clear } = useRowSelection(
     filtered.map((c) => c.id)
@@ -97,12 +119,15 @@ export function CompanyGrid({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search companies…"
-          className="input w-full max-w-xs"
-        />
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search companies…"
+            className="input w-full max-w-xs"
+          />
+          <FilterPanel fields={fields} values={filters} onChange={(k, v) => setFilters((f) => ({ ...f, [k]: v }))} />
+        </div>
         <div className="flex shrink-0 items-center gap-2">
           <Checkbox
             checked={allSelected}
@@ -165,7 +190,7 @@ export function CompanyGrid({
       )}
 
       {filtered.length === 0 && (
-        <p className="text-sm text-muted">No companies match &ldquo;{query}&rdquo;.</p>
+        <p className="text-sm text-muted">No companies match{query ? <> &ldquo;{query}&rdquo;</> : " these filters"}.</p>
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -178,12 +203,16 @@ export function CompanyGrid({
                 : "border-default hover:border-strong"
             }`}
           >
-            <Checkbox
-              checked={selected.has(c.id)}
-              onCheckedChange={() => toggle(c.id)}
-              className="absolute top-4 right-4"
-            />
+            {/* Wrapped, because the checkbox is already `relative`: positioning it directly pulled it out of place. */}
+            <div className="absolute top-4 right-4 flex h-6 w-6 items-center justify-center">
+              <Checkbox size="lg" checked={selected.has(c.id)} onCheckedChange={() => toggle(c.id)} ariaLabel={`Select ${c.name}`} />
+            </div>
             <h2 className="pr-8 text-base font-semibold text-primary">{c.name}</h2>
+            {c.own && (
+              <span className="mt-1.5 inline-flex w-fit items-center gap-1 rounded-full bg-brand-soft px-2 py-0.5 text-[11px] font-medium text-[var(--brand-primary)]" title="One of your own companies">
+                <BadgeCheck className="h-3.5 w-3.5" aria-hidden /> Our company
+              </span>
+            )}
             <p className="mt-1 text-xs text-subtle">
               {c.fullName || "No letterhead name set"}
             </p>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useMemo, useState } from "react";
-import { Bookmark, BookmarkCheck, CalendarDays, FileUp, Loader2, Plus, ScanLine, Split, Trash2, UsersRound, Wand2 } from "lucide-react";
+import { CalendarDays, FileUp, Loader2, Plus, ScanLine, Split, Trash2, UsersRound, Wand2 } from "lucide-react";
 import { cleanDayValue, matchRoster, type ReadTimesheetRow } from "@/lib/timesheetRead";
 import { ExportMenu, type ExportFormat } from "@/components/ExportMenu";
 import { downloadXlsx, parseSpreadsheetFile } from "@/lib/spreadsheet";
@@ -29,8 +29,6 @@ type RowState = {
   days: string[];
   /** This worker's weekly day off (JS weekday "0"-"6", "none"), or "" to use the default above the table. */
   weekOff: string;
-  /** Keep this rate as the client's rate for this trade (saved with the timesheet). */
-  remember: boolean;
   /** The project the worker is on now, used for their rate when no project is chosen for the whole sheet. */
   projectId: string;
 };
@@ -57,13 +55,16 @@ function blankRow(dayCount: number): RowState {
     clientName: "",
     days: Array(dayCount).fill(""),
     weekOff: "",
-    remember: false,
     projectId: "",
   };
 }
 
 type ProjectOption = { id: string; code: string; name: string; clientName: string };
-type RosterPerson = { projectId: string; employeeIdNo: string; name: string; trade: string; supplierName: string; nationality: string; projectName: string; clientName: string; onWork: boolean };
+type RosterPerson = { usualRate: number; tradeRates: { trade: string; rate: number }[]; projectId: string; employeeIdNo: string; name: string; trade: string; supplierName: string; nationality: string; projectName: string; clientName: string; onWork: boolean };
+/** What a supplier is paid per hour for a trade (its trade pay). */
+type SupplierPay = { supplier: string; trade: string; rate: number };
+/** A rate from an earlier timesheet row. */
+type LastRate = { idNo: string; trade: string; supplier: string; projectId: string; rate: number };
 type RateOption = { client: string; projectId: string | null; trade: string; rate: number };
 const WEEKDAYS = [["0", "Sunday"], ["1", "Monday"], ["2", "Tuesday"], ["3", "Wednesday"], ["4", "Thursday"], ["5", "Friday"], ["6", "Saturday"]] as const;
 const WD_SHORT = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
@@ -77,6 +78,8 @@ export function ManualEntryForm({
   sites,
   roster,
   rates,
+  supplierPay,
+  lastRates,
 }: {
   supplierNames: string[];
   clientNames: string[];
@@ -84,6 +87,9 @@ export function ManualEntryForm({
   sites: SiteOption[];
   roster: RosterPerson[];
   rates: RateOption[];
+  supplierPay: SupplierPay[];
+  /** The rate on each worker's most recent timesheet row, per trade and supplier (and the project it was on). */
+  lastRates: LastRate[];
 }) {
   const [state, formAction, pending] = useActionState(submitManualEntryAction, {
     error: null,
@@ -245,11 +251,30 @@ export function ManualEntryForm({
   }
   const projectClient = projects.find((p) => p.id === projectId)?.clientName ?? "";
 
-  /** Fills the client and the rate where they are still empty, from the project (or the client on the row) and the row's trade. */
+  /**
+   * The cost rate for a row, which is what the company charges for this worker on this trade: the rate on their most recent
+   * timesheet row (same trade and supplier, on the chosen project when there is a match), because rates repeat month to month.
+   * Then the supplier's rate for the trade, then the worker's own rate for it, then their usual hourly rate. The client's
+   * billing rate is never used here.
+   */
+  function costFor(person: RosterPerson | undefined, supplierName: string, trade: string, idNo = person?.employeeIdNo ?? ""): string {
+    const t = norm(trade);
+    const mine = idNo && t ? lastRates.filter((l) => l.idNo === idNo && norm(l.trade) === t && norm(l.supplier) === norm(supplierName)) : [];
+    const last = (projectId && mine.find((l) => l.projectId === projectId)) || mine[0];
+    if (last && last.rate > 0) return String(last.rate);
+    const sup = t && supplierPay.find((p) => norm(p.supplier) === norm(supplierName) && norm(p.trade) === t);
+    if (sup && sup.rate > 0) return String(sup.rate);
+    const own = t && person?.tradeRates.find((k) => norm(k.trade) === t && k.rate > 0);
+    if (own) return String(own.rate);
+    return person && person.usualRate > 0 ? String(person.usualRate) : "";
+  }
+  const personOf = (idNo: string) => roster.find((p) => p.employeeIdNo === idNo);
+
+  /** Fills the client (for the "Bills at" hint) and the cost rate where they are still empty. */
   function fillRates() {
     setRows((prev) => prev.map((r) => {
-      const clientName = r.clientName || projectClient || roster.find((p) => p.employeeIdNo === r.employeeIdNo)?.clientName || "";
-      return { ...r, clientName, rate: r.rate || rateFor(clientName, r.trade, projectId || r.projectId) };
+      const clientName = r.clientName || projectClient || personOf(r.employeeIdNo)?.clientName || "";
+      return { ...r, clientName, rate: r.rate || costFor(personOf(r.employeeIdNo), r.supplierName, r.trade, r.employeeIdNo) };
     }));
   }
 
@@ -279,7 +304,7 @@ export function ManualEntryForm({
         const person = matchRoster(r, roster);
         if (!person) unmatched.push(r.employeeName || r.employeeIdNo);
         const trade = person?.trade || r.trade;
-        added.push({ ...blankRow(dayCount), employeeIdNo: person?.employeeIdNo ?? r.employeeIdNo, employeeName: person?.name ?? r.employeeName, trade, supplierName: person?.supplierName ?? "", clientName: projectClient, rate: rateFor(projectClient, trade, projectId), days: r.days });
+        added.push({ ...blankRow(dayCount), employeeIdNo: person?.employeeIdNo ?? r.employeeIdNo, employeeName: person?.name ?? r.employeeName, trade, supplierName: person?.supplierName ?? "", clientName: projectClient, rate: costFor(person ?? undefined, person?.supplierName ?? "", trade, person?.employeeIdNo ?? r.employeeIdNo), days: r.days });
       }
     }
     if (added.length > 0) {
@@ -321,7 +346,7 @@ export function ManualEntryForm({
         if (!person) unmatched.push(r.employeeName || r.employeeIdNo);
         const trade = r.trade || person?.trade || "";
         const clientName = r.clientName || projectClient;
-        return { ...blankRow(dayCount), employeeIdNo: person?.employeeIdNo ?? r.employeeIdNo, employeeName: person?.name ?? r.employeeName, trade, supplierName: r.supplierName || person?.supplierName || "", clientName, rate: r.rate || rateFor(clientName, trade, projectId), days: r.days };
+        return { ...blankRow(dayCount), employeeIdNo: person?.employeeIdNo ?? r.employeeIdNo, employeeName: person?.name ?? r.employeeName, trade, supplierName: r.supplierName || person?.supplierName || "", clientName, rate: r.rate || costFor(person ?? undefined, r.supplierName || person?.supplierName || "", trade, person?.employeeIdNo ?? r.employeeIdNo), days: r.days };
       });
       setRows((prev) => {
         const have = new Set(prev.map((r) => r.employeeIdNo.trim().toLowerCase()).filter(Boolean));
@@ -341,7 +366,7 @@ export function ManualEntryForm({
     const chosen = roster.filter((r) => picked.has(r.employeeIdNo) && !taken.has(r.employeeIdNo.toLowerCase()));
     setRows((prev) => {
       const kept = prev.filter((r) => r.employeeIdNo.trim() || r.employeeName.trim() || r.days.some((d) => d.trim()));
-      return [...kept, ...chosen.map((e) => ({ ...blankRow(dayCount), employeeIdNo: e.employeeIdNo, employeeName: e.name, trade: e.trade, supplierName: e.supplierName, projectId: e.projectId, clientName: projectClient || e.clientName, rate: rateFor(projectClient || e.clientName, e.trade, projectId || e.projectId) }))];
+      return [...kept, ...chosen.map((e) => ({ ...blankRow(dayCount), employeeIdNo: e.employeeIdNo, employeeName: e.name, trade: e.trade, supplierName: e.supplierName, projectId: e.projectId, clientName: projectClient || e.clientName, rate: costFor(e, e.supplierName, e.trade) }))];
     });
     setPicked(new Set());
     setPicking(false);
@@ -376,7 +401,7 @@ export function ManualEntryForm({
         const noRate = used.filter((r) => !(Number(r.rate) > 0));
         if (noRate.length > 0 && !ackNoRate) {
           setAckNoRate(true);
-          return stop(`${noRate.length} ${noRate.length === 1 ? "row has" : "rows have"} no rate (${noRate.slice(0, 3).map((r) => r.employeeName || r.employeeIdNo).join(", ")}${noRate.length > 3 ? "…" : ""}), so their invoice value will be 0. Fill the rates, or press Save again to save them as they are.`);
+          return stop(`${noRate.length} ${noRate.length === 1 ? "row has" : "rows have"} no cost rate (${noRate.slice(0, 3).map((r) => r.employeeName || r.employeeIdNo).join(", ")}${noRate.length > 3 ? "…" : ""}), so their cost and margin will show as 0. Fill the cost rates, or press Save again to save them as they are.`);
         }
       }}
       onKeyDown={(e) => {
@@ -468,7 +493,7 @@ export function ManualEntryForm({
           <input type="checkbox" checked={onlyEmpty} onChange={(e) => setOnlyEmpty(e.target.checked)} /> Only rows with no hours yet
         </label>
         <button type="button" onClick={fillDays} className="btn btn-secondary flex gap-1.5 px-3"><CalendarDays className="h-4 w-4" /> Fill the days</button>
-        <button type="button" onClick={fillRates} className="btn btn-secondary flex gap-1.5 px-3" title="Fills the client and the hourly rate from the project and each row's trade, where they are empty">Fill the rates</button>
+        <button type="button" onClick={fillRates} className="btn btn-secondary flex gap-1.5 px-3" title="Fills the cost rate where it is empty: from the worker's last timesheet row, then the supplier's rate for the trade, then the worker's own rate. The client's billing rate is never used here.">Fill the cost rates</button>
         <p className="w-full text-xs text-subtle">The weekly day off here is the default; pick another for a worker in their row. Click a day number above the grid to mark a public holiday for everyone ({holidays.size === 0 ? "none marked" : `${holidays.size} marked`}). Then change any day by hand: a different number of hours, A for absent, or OFF.</p>
       </div>
 
@@ -520,7 +545,8 @@ export function ManualEntryForm({
               <th className="sticky left-0 z-10 bg-surface-subtle px-3 py-3">ID No</th>
               <th className="px-3 py-3">Employee Name</th>
               <th className="px-3 py-3">Trade</th>
-              <th className="px-3 py-3">Rate</th>
+              <th className="px-3 py-3" title="What is paid per hour for the trade">Cost rate</th>
+              <th className="px-3 py-3" title="What the client or project rate will bill per hour (read only)">Bills at</th>
               <th className="px-3 py-3">Supplier</th>
               <th className="px-3 py-3">Client</th>
               <th className="px-3 py-3">Week off</th>
@@ -565,7 +591,7 @@ export function ManualEntryForm({
                 <td className="px-3 py-2">
                   <input
                     value={row.trade}
-                    onChange={(e) => updateRow(row.id, { trade: e.target.value, rate: row.rate || rateFor(row.clientName || projectClient, e.target.value, projectId || row.projectId) })}
+                    onChange={(e) => updateRow(row.id, { trade: e.target.value, rate: row.rate || costFor(personOf(row.employeeIdNo), row.supplierName, e.target.value, row.employeeIdNo) })}
                     placeholder="Trade"
                     className="input w-28 px-2 py-1.5"
                   />
@@ -574,29 +600,23 @@ export function ManualEntryForm({
                   <div className="flex items-center gap-1">
                     <input
                       value={row.rate}
-                      onChange={(e) => updateRow(row.id, { rate: e.target.value, remember: false })}
+                      onChange={(e) => updateRow(row.id, { rate: e.target.value })}
                       type="number"
                       min={0}
                       step="0.01"
-                      placeholder="Rate"
+                      placeholder="Cost"
+                      title="Cost rate: what is paid per hour for this trade (not what the client is billed)"
                       className="input w-20 px-2 py-1.5"
                     />
-                    {/* Offered only for a rate the client doesn't already have for this trade. */}
-                    {Number(row.rate) > 0 && row.clientName.trim() && row.trade.trim() && Number(rateFor(row.clientName, row.trade, projectId || row.projectId)) !== Number(row.rate) ? (
-                      <button
-                        type="button"
-                        onClick={() => updateRow(row.id, { remember: !row.remember })}
-                        aria-pressed={row.remember}
-                        aria-label={`Remember ${row.rate} as ${row.clientName}'s rate for ${row.trade}`}
-                        title={row.remember ? `Will be saved as ${row.clientName}'s rate for ${row.trade}. Click to undo.` : `Remember ${row.rate} as ${row.clientName}'s rate for ${row.trade}, so it is filled in next time`}
-                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition ${row.remember ? "border-[var(--brand-primary)] bg-brand-soft text-[var(--brand-primary)]" : "border-default text-subtle hover:bg-surface-hover hover:text-primary"}`}
-                      >
-                        {row.remember ? <BookmarkCheck className="h-4 w-4" /> : <Bookmark className="h-4 w-4" />}
-                      </button>
-                    ) : (
-                      <span className="w-8 shrink-0" aria-hidden />
-                    )}
                   </div>
+                </td>
+                <td className="whitespace-nowrap px-3 py-2 text-xs">
+                  {(() => {
+                    const bill = Number(rateFor(row.clientName, row.trade, projectId || row.projectId));
+                    const cost = Number(row.rate);
+                    if (!(bill > 0)) return <span className="text-subtle" title="No billing rate found for this client and trade. Set one on the client or project.">—</span>;
+                    return <span className={cost > bill ? "font-medium text-[var(--error)]" : "text-secondary"} title={cost > bill ? "The cost rate is higher than the billing rate" : "What the client or project rate will bill per hour"}>{bill}</span>;
+                  })()}
                 </td>
                 <td className="px-3 py-2">
                   <Combobox
@@ -663,9 +683,6 @@ export function ManualEntryForm({
         </table>
       </div>
 
-      {rows.some((r) => Number(r.rate) > 0 && r.clientName.trim() && r.trade.trim() && Number(rateFor(r.clientName, r.trade, projectId || r.projectId)) !== Number(r.rate)) && (
-        <p className="flex items-center gap-1.5 text-xs text-muted"><Bookmark className="h-3.5 w-3.5" aria-hidden /> Click the bookmark beside a rate to keep it as that client&rsquo;s rate for the trade, so it is filled in next time.</p>
-      )}
       <p className="text-xs text-subtle">
         <span className="font-medium text-muted">Keyboard:</span> Tab or → next day · ↓ or Enter next worker (Shift+Enter up) · type <kbd className="rounded border border-default px-1">A</kbd> for absent, <kbd className="rounded border border-default px-1">O</kbd> for off · Ctrl+D copies the day above, Ctrl+R the day to the left · paste a block copied from Excel · Ctrl+Enter saves.
       </p>
