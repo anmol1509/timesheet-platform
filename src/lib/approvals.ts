@@ -119,7 +119,7 @@ export async function loadApprovals(scope: ApprovalScope, only?: ApprovalKind[])
     const nameOf = new Map(users.map((u) => [u.id, u.name]));
     for (const r of rows) {
       out.push({
-        key: `PAYROLL:${r.id}`, kind: "PAYROLL", id: r.id, title: `Payroll: ${r.company?.name ?? "Own companies"} · ${r.month}`, subtitle: `${r.lines.length} employee${r.lines.length === 1 ? "" : "s"} · ${r.payType === "HOURLY" ? "hourly, from timesheet" : "basic, from attendance"}`,
+        key: `PAYROLL:${r.id}`, kind: "PAYROLL", id: r.id, title: `Payroll: ${r.company?.name ?? "Own companies"} · ${r.month}`, subtitle: `${r.lines.length} employee${r.lines.length === 1 ? "" : "s"} · ${r.payType === "HOURLY" ? "hourly, from timesheet" : r.payType === "BASIC" ? "basic, from attendance" : "hourly from timesheets, monthly from attendance"}`,
         requester: r.submittedById ? nameOf.get(r.submittedById) ?? null : null, at: r.submittedAt!, amount: r.lines.reduce((s, l) => s + num(l.net), 0), branch: branchTag(r.branch.code), href: `/payroll/${r.id}`,
         chips: [], inline: true, rejectNeedsReason: true, confirmApprove: true,
       });

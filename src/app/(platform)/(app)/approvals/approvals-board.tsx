@@ -8,6 +8,7 @@ import { Banknote, CalendarCheck, Check, CheckCheck, ExternalLink, FileSpreadshe
 import { Avatar } from "@/components/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Dialog, DialogContent } from "@/components/ui/Dialog";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Badge, type BadgeColor } from "@/components/Badge";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { cn } from "@/lib/cn";
@@ -254,10 +255,33 @@ export function ApprovalsBoard({ items, tabs, filters, requesters, totalShown }:
                     <X className="h-4 w-4" aria-hidden />{active.kind === "PAYROLL" ? "Send back" : "Reject"}
                   </Button>
                   <Link href={active.href} className="btn btn-secondary gap-1.5"><ExternalLink className="h-3.5 w-3.5" aria-hidden />Open full record</Link>
+                  {active.confirmApprove ? (
+                    <div className="ml-auto">
+                      <ConfirmDialog
+                        danger={false}
+                        title={active.kind === "PAYROLL" ? "Approve this payroll?" : "Approve?"}
+                        confirmLabel="Approve"
+                        description={(() => { const i = active; return i.kind === "CHANGE" ? "Bank details decide where payments go. Have you confirmed this change with the supplier?" : i.kind === "PAYROLL" ? `Approve this payroll of AED ${aed(i.amount ?? 0)}? It then goes to payment.` : `Approve all ${i.ids?.length ?? 1} timesheet rows?`; })()}
+                        onConfirm={async () => {
+                          const i = active;
+                          const r = await decideApprovalAction({ kind: i.kind, id: i.id, ids: i.ids, field: i.field, decision: "APPROVE" });
+                          if (r.error) return { error: r.error };
+                          setDone((d) => new Set(d).add(i.key));
+                          router.refresh();
+                        }}
+                        trigger={(open) => (
+                          <Button size="btn" className="gap-1.5" disabled={pending} onClick={open}>
+                            <Check className="h-4 w-4" aria-hidden />Approve
+                          </Button>
+                        )}
+                      />
+                    </div>
+                  ) : (
                   <Button size="btn" className="ml-auto gap-1.5" disabled={pending} loading={pending && flash === null} success={flash?.key === active.key && flash.decision === "APPROVE"} successLabel="Approved"
-                    onClick={() => { const i = active; if (i.confirmApprove && !confirm(i.kind === "CHANGE" ? "Bank details decide where payments go. Have you confirmed this change with the supplier?" : i.kind === "PAYROLL" ? `Approve this payroll of AED ${aed(i.amount ?? 0)}?` : `Approve all ${i.ids?.length ?? 1} timesheet rows?`)) return; decide(i, "APPROVE"); }}>
+                    onClick={() => { decide(active, "APPROVE"); }}>
                     <Check className="h-4 w-4" aria-hidden />Approve
                   </Button>
+                  )}
                 </div>
               </div>
               <p className="mt-3 text-[11px] text-subtle">Tip: press J / K to move through the queue.</p>
