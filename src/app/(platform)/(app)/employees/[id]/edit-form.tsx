@@ -22,7 +22,7 @@ import { NumberInput } from "@/components/ui/NumberInput";
 import { MaskedInput } from "@/components/ui/MaskedInput";
 import { Hint } from "@/components/Hint";
 import type { GlossaryKey } from "@/lib/payrollGlossary";
-import { MAX_OT_MULTIPLIER } from "@/lib/payFields";
+import { OvertimeMultiplierField } from "./overtime-multiplier-field";
 
 import { Button } from "@/components/ui/Button";
 type Doc = { id: string; type: string; filename: string; expiryDate: Date | null; uploadedAt: Date };
@@ -773,8 +773,8 @@ export function EditForm({
                   <Field label="Standard hours per day">
                     <NumberInput name="dailyHours" defaultValue={pay.dailyHours} min={1} max={16} step={0.25} className="w-full" />
                   </Field>
-                  <Field label="Overtime multiplier">
-                    <NumberInput name="otMultiplier" defaultValue={pay.otMultiplier} min={1} max={MAX_OT_MULTIPLIER} step={0.01} className="w-full" />
+                  <Field label="Overtime pays this many times the normal hourly rate">
+                    <OvertimeMultiplierField defaultValue={pay.otMultiplier} payStructure={payStructure} />
                   </Field>
                   <p className="text-xs text-muted sm:col-span-2">Contract terms the books can set aside each month. Leave a box blank to use the company default (Accounting › Settings), or enter 0 for none.</p>
                   <Field label="Paid leave (days a year)">

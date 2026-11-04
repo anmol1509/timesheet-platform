@@ -118,7 +118,7 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
     if (structure === "ITEMISED" && !parsed.basicSalary) return { error: "Enter a basic salary for an itemised pay structure." };
     if (structure === "FLAT" && !parsed.flatMonthlyRate) return { error: "Enter the monthly rate for a flat pay structure." };
     const mult = numberOrNull(formData.get("otMultiplier")) ?? 1.25;
-    if (mult < 1 || mult > MAX_OT_MULTIPLIER) return { error: `Overtime multiplier must be between 1 and ${MAX_OT_MULTIPLIER}.` };
+    if (mult < 1 || mult > MAX_OT_MULTIPLIER) return { error: `Overtime multiplier must be between 1 and ${MAX_OT_MULTIPLIER}. It is how many times the hourly rate overtime pays (1.25 is usual), not an hourly rate.` };
     const whole = (k: string, max: number) => {
       const v = numberOrNull(formData.get(k));
       return v === null ? null : v >= 0 && v <= max && Number.isInteger(v) ? v : "bad";

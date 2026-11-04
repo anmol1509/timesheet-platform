@@ -338,7 +338,7 @@ export type ReadinessIssue = {
   text: string;
   href?: string;
   /** What kind of thing it is, so the screen can offer the right fix. */
-  kind?: "skipped" | "pending-timesheets" | "no-hours" | "no-attendance" | "zero-pay" | "swing";
+  kind?: "skipped" | "pending-timesheets" | "no-hours" | "no-attendance" | "zero-pay" | "swing" | "high-overtime";
   /** The workers it is about, each of whom can be opened and corrected where the issue is shown. */
   workers?: { id: string; name: string }[];
 };
@@ -353,7 +353,7 @@ export async function runReadiness(run: RunScope): Promise<ReadinessIssue[]> {
   if (!bounds) return [];
   const nextMonth = new Date(Date.UTC(bounds.start.getUTCFullYear(), bounds.start.getUTCMonth() + 1, 1));
   const [lines, skipped, prevRun] = await Promise.all([
-    prisma.payrollLine.findMany({ where: { runId: run.id }, select: { employeeId: true, net: true, payStructure: true, timesheetHours: true, employee: { select: { name: true, employeeIdNo: true } } } }),
+    prisma.payrollLine.findMany({ where: { runId: run.id }, select: { employeeId: true, net: true, payStructure: true, timesheetHours: true, basic: true, allowances: true, overtimePay: true, employee: { select: { name: true, employeeIdNo: true } } } }),
     runSkipped(run),
     prisma.payrollRun.findFirst({ where: { branchId: run.branchId, companyId: run.companyId, month: { lt: run.month } }, orderBy: { month: "desc" }, include: { lines: { select: { net: true } } } }),
   ]);
@@ -382,6 +382,9 @@ export async function runReadiness(run: RunScope): Promise<ReadinessIssue[]> {
     if (attended.size === 0) issues.push({ level: "warn", text: `No attendance has been recorded for ${run.month}. Everyone is paid in full with no overtime.`, href: "/attendance", kind: "no-attendance", workers: basicLines.map((l) => ({ id: l.employeeId, name: l.employee.name })) });
   }
 
+  // Overtime worth more than half of someone's monthly pay is most often a multiplier typed as a rate (4.17 instead of 1.25).
+  const highOt = lines.filter((l) => l.payStructure !== "HOURLY" && num(l.overtimePay) > 0 && num(l.overtimePay) > 0.5 * (num(l.basic) + num(l.allowances)));
+  if (highOt.length > 0) issues.push({ level: "warn", text: `${highOt.length} employee${highOt.length === 1 ? " has" : "s have"} overtime pay of more than half their monthly pay: ${names(highOt.map((l) => l.employee))}. Check their overtime multiplier (1.25 is usual).`, kind: "high-overtime", workers: highOt.map((l) => ({ id: l.employeeId, name: l.employee.name })) });
   const zero = lines.filter((l) => num(l.net) <= 0);
   if (zero.length > 0) issues.push({ level: "warn", text: `${zero.length} employee${zero.length === 1 ? " has" : "s have"} zero net pay: ${names(zero.map((l) => l.employee))}.`, kind: "zero-pay", workers: zero.map((l) => ({ id: l.employeeId, name: l.employee.name })) });
   if (prevRun && prevRun.lines.length > 0) {
