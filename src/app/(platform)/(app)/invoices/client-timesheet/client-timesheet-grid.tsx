@@ -29,6 +29,8 @@ type Entry = {
   status: string;
   /** Set when the sheet shows every client at once. */
   clientName?: string;
+  /** The worker's pay for this month is already approved or paid in payroll, so a locked row cannot change. */
+  payrollFrozen?: boolean;
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -50,6 +52,7 @@ function badgeClass(value: string) {
 
 export function ClientTimesheetGrid({ month, entries, showClient = false }: { month: string; entries: Entry[]; showClient?: boolean }) {
   const canDelete = useCanHere("delete");
+  const canEditLocked = useCanHere("approve");
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -166,7 +169,7 @@ export function ClientTimesheetGrid({ month, entries, showClient = false }: { mo
     lines.forEach((cells, dr) =>
       cells.forEach((v, dc) => {
         const target = entries[row + dr];
-        if (target && target.status !== "LOCKED" && col + dc < dayCount) editCell(target.id, col + dc, v.trim());
+        if (target && !(target.status === "LOCKED" && (!canEditLocked || target.payrollFrozen)) && col + dc < dayCount) editCell(target.id, col + dc, v.trim());
       })
     );
   }
@@ -280,7 +283,7 @@ export function ClientTimesheetGrid({ month, entries, showClient = false }: { mo
           <tbody className="divide-y divide-[var(--border)]">
             {entries.map((e, rowIndex) => {
               const hasEdits = !!edited[e.id];
-              const locked = e.status === "LOCKED";
+              const locked = e.status === "LOCKED" && (!canEditLocked || !!e.payrollFrozen);
               return (
                 <tr key={e.id}>
                   <td className="px-2 py-1.5">

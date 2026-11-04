@@ -7,6 +7,9 @@ import { requireUserWithBranch, requirePermission, requireWrite } from "@/lib/au
 import { isOutsideBranch } from "@/lib/branch";
 import { refsBelongToBranch } from "@/lib/refScope";
 import { isAdminRole } from "@/lib/roles";
+import { can } from "@/lib/permissions";
+import { subjectOf } from "@/lib/auth";
+import { payrollLockedEmployees } from "@/lib/payrollControls";
 import { logAudit } from "@/lib/audit";
 import { importParsedMonths } from "@/lib/importTimesheet";
 import { nameKey } from "@/lib/partyCode";
@@ -218,6 +221,26 @@ type DailyRow = { employeeId: string; rate: string; value: string };
 // touching any other day already recorded that month. Deliberately does
 // NOT reuse importParsedMonths — that pipeline replaces `dailyHours`
 // wholesale on update, which would silently wipe out other days.
+/**
+ * Whether the person may change a locked row. Admins and anyone with the approve right on Client Timesheet may, so a small
+ * correction after locking does not wait on an admin; the change is recorded in the audit log. A month whose pay is already
+ * approved or paid in payroll stays frozen for everyone: reopen that payroll run first. Returns the reason when not allowed.
+ */
+async function lockedChangeBlock(
+  user: Parameters<typeof subjectOf>[0],
+  entry: { status: string; employeeIdNo: string; month: string; branchId: string }
+): Promise<string | null> {
+  if (entry.status !== "LOCKED") return null;
+  if (!isAdminRole(user.role) && !can(subjectOf(user), "timesheets.client-timesheet", "approve")) {
+    return "That row is locked: only someone who can approve timesheets, or an admin, can change it.";
+  }
+  const worker = await prisma.employee.findFirst({ where: { employeeIdNo: entry.employeeIdNo, branchId: entry.branchId }, select: { id: true } });
+  if (worker && (await payrollLockedEmployees([worker.id], entry.month)).has(worker.id)) {
+    return "This month's pay is already approved or paid in payroll, so these hours can't change. Reopen the payroll run first.";
+  }
+  return null;
+}
+
 export async function submitDailyTimesheetAction(
   formData: FormData
 ): Promise<{ saved: number; requested: number; error?: string }> {
@@ -288,7 +311,7 @@ export async function submitDailyTimesheetAction(
     });
 
     if (existing) {
-      if (existing.status === "LOCKED" && !isAdminRole(user.role)) continue;
+      if (await lockedChangeBlock(user, existing)) continue;
       let days: DailyHourCell[];
       try {
         days = JSON.parse(existing.dailyHours);
@@ -492,7 +515,7 @@ export async function updateDailyHoursAction(formData: FormData) {
 
   const before = await prisma.timesheetEntry.findUnique({ where: { id: entryId } });
   if (!before || isOutsideBranch(before.branchId, branchId, isSuperAdmin)) return;
-  if (before.status === "LOCKED" && !isAdminRole(user.role)) return;
+  if (await lockedChangeBlock(user, before)) return;
 
   let days: DailyHourCell[];
   try {
@@ -514,7 +537,7 @@ export async function updateDailyHoursAction(formData: FormData) {
     entityId: entryId,
     action: "UPDATE",
     before: { totalHours: before.totalHours, absentCount: before.absentCount },
-    after: { totalHours, absentCount },
+    after: { totalHours, absentCount, ...(before.status === "LOCKED" ? { changedWhileLocked: true } : {}) },
     userId: user.id,
     userName: user.name,
     branchId,
@@ -547,7 +570,7 @@ export async function batchUpdateHoursAction(formData: FormData) {
   for (const entryId of entryIds) {
     const entry = await prisma.timesheetEntry.findUnique({ where: { id: entryId } });
     if (!entry || isOutsideBranch(entry.branchId, branchId, isSuperAdmin)) continue;
-    if (entry.status === "LOCKED" && !isAdminRole(user.role)) continue;
+    if (await lockedChangeBlock(user, entry)) continue;
 
     let days: DailyHourCell[];
     try {
@@ -610,9 +633,8 @@ export async function deleteTimesheetEntryAction(
   if (!before || isOutsideBranch(before.branchId, branchId, isSuperAdmin)) {
     return { deleted: 0 };
   }
-  if (before.status === "LOCKED" && !isAdminRole(user.role)) {
-    return { deleted: 0, error: "That row is locked: only an admin can remove it." };
-  }
+  const blocked = await lockedChangeBlock(user, before);
+  if (blocked) return { deleted: 0, error: blocked };
 
   await prisma.timesheetEntry.delete({ where: { id: entryId } });
 
