@@ -66,6 +66,10 @@ model Branch {
   // Full-page letterhead artwork (A4) used when printing letters "on letterhead".
   letterheadImage    StoredImage? @relation("BranchLetterhead", fields: [letterheadImageId], references: [id], onDelete: SetNull)
   letterheadImageId  String?
+  // The time card: the uploaded artwork of the pre-printed card, and the editable template (texts, colours, printer offset).
+  timeCardImage      StoredImage? @relation("BranchTimeCard", fields: [timeCardImageId], references: [id], onDelete: SetNull)
+  timeCardImageId    String?
+  timeCardSpec       Json?
   // Clear space (mm) kept free at the top and bottom of the page when a letter is printed on this letterhead.
   letterheadTopMm    Int          @default(65)
   letterheadBottomMm Int          @default(35)
@@ -275,6 +279,7 @@ model StoredImage {
   branchSignatures   Branch[]   @relation("BranchSignature")
   branchStamps       Branch[]   @relation("BranchStamp")
   branchLetterheads  Branch[]   @relation("BranchLetterhead")
+  branchTimeCards    Branch[]   @relation("BranchTimeCard")
   supplierSignatures Supplier[] @relation("SupplierSignature")
   supplierStamps     Supplier[] @relation("SupplierStamp")
   supplierLogos      Supplier[] @relation("SupplierLogo")
@@ -414,7 +419,8 @@ model Supplier {
   // Pay rules for this company's own workers. Absences up to absentFreeDays a
   // month cost nothing; every day after that deducts absentDeductionPerDay.
   // Gas is charged per day from the worker's check-in date, up to a monthly cap.
-  absentFreeDays        Int          @default(2)
+  absentFreeDays        Int          @default(2) // for workers on a monthly salary
+  absentFreeDaysHourly  Int          @default(2) // for workers paid by the hour
   absentDeductionPerDay Decimal      @default(30) @db.Decimal(10, 2)
   gasPerDay             Decimal      @default(1) @db.Decimal(6, 2)
   gasMonthlyCap         Decimal      @default(30) @db.Decimal(8, 2)

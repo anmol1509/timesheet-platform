@@ -57,7 +57,7 @@ export async function loadPayOf(_branchId: string, _employees: PayEmployee[]) {
 
 /** What is read about an employee to work out their pay; shared with the day-by-day view. */
 export const PAY_EMPLOYEE_SELECT = {
-    id: true, name: true, employeeIdNo: true, active: true, joinDate: true, exitDate: true, projectId: true, supplierId: true, trade: true, position: true, payOverride: true, project: { select: { weeklyOffDays: true } }, supplier: { select: { absentFreeDays: true, absentDeductionPerDay: true, gasPerDay: true, gasMonthlyCap: true, shortfallMode: true, shortfallHalfDayUnder: true } }, gasWaived: true, siteArrivalDate: true, skills: { select: { rate: true, isActive: true, skill: { select: { name: true } } } }, payStructure: true, basicSalary: true, housingAllowance: true, foodAllowance: true, transportAllowance: true,
+    id: true, name: true, employeeIdNo: true, active: true, joinDate: true, exitDate: true, projectId: true, supplierId: true, trade: true, position: true, payOverride: true, project: { select: { weeklyOffDays: true } }, supplier: { select: { absentFreeDays: true, absentFreeDaysHourly: true, absentDeductionPerDay: true, gasPerDay: true, gasMonthlyCap: true, shortfallMode: true, shortfallHalfDayUnder: true } }, gasWaived: true, siteArrivalDate: true, skills: { select: { rate: true, isActive: true, skill: { select: { name: true } } } }, payStructure: true, basicSalary: true, housingAllowance: true, foodAllowance: true, transportAllowance: true,
     otherAllowance: true, flatMonthlyRate: true, hourlyRate: true, paysOvertime: true, otMultiplier: true, otHourlyRate: true, dailyHours: true, restOtMultiplier: true, molPersonCode: true, wpsPaymentMode: true, wpsBankName: true,
     wpsRoutingCode: true, wpsIban: true, wpsAccountNumber: true,
   } as const;
@@ -208,7 +208,7 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
         flat: pf.flatMonthlyRate, hourly: byTrade && byTrade.hours > 0 ? byTrade.blended : pf.hourlyRate, paysOvertime: isHourly ? false : pf.paysOvertime, otMultiplier: pf.otMultiplier,
         dailyHours: pf.dailyHours, restOtMultiplier: pf.otMultiplier, // rest-day and holiday hours use the same multiplier
         otHourlyRate: pf.otHourlyRate, // a fixed AED per overtime hour replaces both multipliers
-        absenceFreeDays: e.supplier?.absentFreeDays ?? 2, absencePerDay: e.supplier ? num(e.supplier.absentDeductionPerDay) : 30,
+        absenceFreeDays: (isHourly ? e.supplier?.absentFreeDaysHourly : e.supplier?.absentFreeDays) ?? 2, absencePerDay: e.supplier ? num(e.supplier.absentDeductionPerDay) : 30,
       },
       isHourly
         ? { absentDays: facts.absent, unpaidLeaveDays: 0, otHours: 0, normalHours: hours }

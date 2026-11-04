@@ -355,6 +355,7 @@ export default async function SupplierDetailPage({
                   allowManualLabourId: supplier.allowManualLabourId,
                   overtime: supplier.overtime,
                   absentFreeDays: supplier.absentFreeDays,
+                  absentFreeDaysHourly: supplier.absentFreeDaysHourly,
                   absentDeductionPerDay: Number(supplier.absentDeductionPerDay),
                   gasPerDay: Number(supplier.gasPerDay),
                   gasMonthlyCap: Number(supplier.gasMonthlyCap),

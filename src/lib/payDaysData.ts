@@ -116,7 +116,7 @@ export async function loadPayDays(runId: string, employeeId: string, opts: { can
     pattern: { dailyHours, weeklyOffDays: e.project?.weeklyOffDays ?? [0] },
     hourly, hourlyRate: pf.hourlyRate, fixedPaid: hourly ? 0 : round2(num(line.basic) + num(line.allowances)),
     paysOvertime: hourly ? false : pf.paysOvertime, otMultiplier: pf.otMultiplier, restMultiplier: pf.otMultiplier, otFixedRate: pf.otHourlyRate, otHourlyBase: basic / 30 / dailyHours,
-    absence: { freeDays: e.supplier?.absentFreeDays ?? 2, perDay: e.supplier ? num(e.supplier.absentDeductionPerDay) : 30, dailyRate: monthlyFixed / 30 },
+    absence: { freeDays: (hourly ? e.supplier?.absentFreeDaysHourly : e.supplier?.absentFreeDays) ?? 2, perDay: e.supplier ? num(e.supplier.absentDeductionPerDay) : 30, dailyRate: monthlyFixed / 30 },
     shortfall: hourly ? undefined : { rule: shortRule, rates: { hourly: basic / 30 / dailyHours, day: monthlyFixed / 30 } },
   });
 

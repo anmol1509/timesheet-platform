@@ -40,6 +40,7 @@ type Supplier = {
   allowManualLabourId: boolean;
   overtime: boolean;
   absentFreeDays: number;
+  absentFreeDaysHourly: number;
   absentDeductionPerDay: number;
   gasPerDay: number;
   gasMonthlyCap: number;
@@ -200,8 +201,11 @@ export function SupplierCompanyForm({
           </>
         )}
           <input type="hidden" name="ruleSent" value="1" />
-          <Field label="Payroll: days off with no deduction (each month)">
+          <Field label="Payroll: days off with no deduction each month (monthly-salary workers)">
             <NumberInput name="absentFreeDays" defaultValue={supplier.absentFreeDays} min={0} max={31} step={1} className="w-full" />
+          </Field>
+          <Field label="Payroll: days off with no deduction each month (hourly workers)">
+            <NumberInput name="absentFreeDaysHourly" defaultValue={supplier.absentFreeDaysHourly} min={0} max={31} step={1} className="w-full" />
           </Field>
           <Field label="Payroll: deduction per day off after that (AED)">
             <NumberInput name="absentDeductionPerDay" defaultValue={supplier.absentDeductionPerDay} min={0} step={0.01} className="w-full" />
