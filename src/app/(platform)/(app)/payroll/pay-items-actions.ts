@@ -165,6 +165,34 @@ export async function cancelLoanAction(formData: FormData): Promise<State> {
   return { error: null, ok: true };
 }
 
+/**
+ * Removes an advance or loan altogether (a mistake, a duplicate). Refused once any of it has been taken from a payroll run,
+ * because those pay lines would then point at nothing: stop the recovery instead, which keeps the record.
+ */
+export async function deleteLoanAction(formData: FormData): Promise<State> {
+  await requireWrite("payroll.payroll");
+  { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
+  await requirePermission("payroll.payroll", "delete");
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const loan = await prisma.employeeLoan.findUnique({ where: { id: str(formData.get("id")) }, include: { employee: { select: { name: true } }, _count: { select: { repayments: true } } } });
+  if (!loan || isOutsideBranch(loan.branchId, branchId, isSuperAdmin)) return { error: "Advance or loan not found." };
+  if (loan._count.repayments > 0 || Number(loan.repaid) > 0) {
+    return { error: "Part of this has already been taken from payroll, so it can't be deleted. Use Stop recovery instead: it keeps the record." };
+  }
+  await prisma.$transaction([
+    prisma.attachment.deleteMany({ where: { entityType: "EMPLOYEE_LOAN", entityId: loan.id } }),
+    prisma.employeeLoan.delete({ where: { id: loan.id } }),
+  ]);
+  await logAudit({
+    entityType: "EMPLOYEE_LOAN", entityId: loan.id, action: "DELETE",
+    before: { ref: advanceRef(loan.refNo), type: loan.type, employee: loan.employee.name, principal: Number(loan.principal), status: loan.status, approval: loan.approvalStatus, givenDate: loan.givenDate?.toISOString().slice(0, 10) ?? null, reason: loan.reason },
+    userId: user.id, userName: user.name, branchId: loan.branchId,
+  });
+  revalidatePath("/payroll/loans");
+  revalidatePath("/approvals");
+  return { error: null, ok: true };
+}
+
 // ---------------------------------------------- recurring earnings / deductions
 export async function createAdjustmentAction(_prev: State, formData: FormData): Promise<State> {
   await requireWrite("payroll.payroll");

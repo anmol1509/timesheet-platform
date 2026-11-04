@@ -60,6 +60,7 @@ export default async function LoansPage() {
         employees={employees.map((e) => ({ id: e.id, label: `${e.name} (${e.employeeIdNo})` }))}
         canCreate={!!branchId && can(subject, "payroll.payroll", "create")}
         canEdit={can(subject, "payroll.payroll", "edit")}
+        canDelete={can(subject, "payroll.payroll", "delete")}
         canApprove={can(subject, "payroll.payroll", "approve")}
         canImport={!!branchId && isAdminRole(user.role) && can(subject, "payroll", "edit")}
       />
