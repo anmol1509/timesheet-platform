@@ -103,7 +103,8 @@ export async function loadCardWorkers(opts: {
       days: built.days,
       totals: built.totals,
       money: opts.showPay && opts.filled && l
-        ? { basic: aed(fixed), overtime: num(l.overtimePay) > 0 ? aed(num(l.overtimePay)) : "", earned: aed(fixed + num(l.overtimePay)), advance: num(l.loanDeduction) > 0 ? aed(num(l.loanDeduction)) : "", balance: aed(num(l.net)) }
+        ? { basic: aed(fixed), overtime: num(l.overtimePay) > 0 ? aed(num(l.overtimePay)) : "", // what was earned after deductions and before the advance, so earned less advance is the balance
+        earned: aed(num(l.net) + num(l.loanDeduction)), advance: num(l.loanDeduction) > 0 ? aed(num(l.loanDeduction)) : "", balance: aed(num(l.net)) }
         : null,
     } satisfies CardWorker;
   });

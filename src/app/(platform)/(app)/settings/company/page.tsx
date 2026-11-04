@@ -10,6 +10,8 @@ import { CompanyForm } from "./company-form";
 import { WpsForm } from "./wps-form";
 import { PrintPreview } from "./print-preview";
 import { LettersSection } from "./letters-section";
+import { TimeCardSection } from "./time-card-section";
+import { readTimeCardSpec } from "@/lib/timeCard";
 import { removeLogoAction, uploadLogoAction } from "./actions";
 
 export const metadata = { title: "Company profile" };
@@ -118,6 +120,14 @@ export default async function CompanyProfilePage({
           plain={marginsOfBranch(branch).plain}
           letterhead={{ top: branch.letterheadTopMm, bottom: branch.letterheadBottomMm, ...marginsOfBranch(branch).letterheadSides }}
         />
+      </section>
+
+      <section className="card space-y-4 p-5">
+        <div>
+          <h2 className="text-base font-semibold text-primary">Time card</h2>
+          <p className="mt-1 text-xs text-muted">Print each worker&apos;s time card (11.5 × 22 cm): on top of your uploaded card, onto the physical card, or as a card the app draws from the template below. Printing is from Client Timesheet.</p>
+        </div>
+        <TimeCardSection key={branch.id} branchId={branch.id} artworkUrl={branch.timeCardImageId ? `/api/images/${branch.timeCardImageId}` : null} spec={readTimeCardSpec(branch.timeCardSpec)} custom={!!branch.timeCardSpec} />
       </section>
 
       <section className="card space-y-4 p-5">

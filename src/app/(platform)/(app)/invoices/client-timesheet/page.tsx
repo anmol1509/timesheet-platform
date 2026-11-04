@@ -4,7 +4,9 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { monthLabelFromKey } from "@/lib/timesheetSummary";
 import { TimesheetFilters } from "./timesheet-filters";
-import { requireUserWithBranch } from "@/lib/auth";
+import { requireUserWithBranch, subjectOf } from "@/lib/auth";
+import { can } from "@/lib/permissions";
+import { readTimeCardSpec } from "@/lib/timeCard";
 import { isAdminRole } from "@/lib/roles";
 import { branchWhere } from "@/lib/branch";
 import { findDivergences } from "@/lib/attendanceTimesheetSync";
@@ -122,6 +124,11 @@ export default async function ClientTimesheetPage({
       ? (await findDivergences({ branchId, month: selectedMonth })).length
       : 0;
 
+  // What the Print time cards dialog needs: whether a card has been uploaded, whether this person may include pay, the shift times.
+  const cardBranch = branchId ? await prisma.branch.findUnique({ where: { id: branchId }, select: { timeCardImageId: true, timeCardSpec: true } }) : null;
+  const cardSpec = readTimeCardSpec(cardBranch?.timeCardSpec);
+  const timeCardInfo = { hasArtwork: !!cardBranch?.timeCardImageId, canSeePay: can(subjectOf(user), "payroll", "view"), shiftIn: cardSpec.shiftIn, shiftOut: cardSpec.shiftOut };
+
   // Locked rows can be corrected by approvers, except for workers whose pay for the month is already approved or paid.
   const lockedIdNos = [...new Set(entries.filter((e) => e.status === "LOCKED").map((e) => e.employeeIdNo))];
   const lockedWorkers = lockedIdNos.length && branchId && selectedMonth
@@ -212,7 +219,7 @@ export default async function ClientTimesheetPage({
           )}
         </div>
       ) : (
-        <ClientTimesheetGrid month={selectedMonth!} entries={gridEntries} showClient={allClients} />
+        <ClientTimesheetGrid month={selectedMonth!} entries={gridEntries} showClient={allClients} timeCard={timeCardInfo} />
       )}
     </div>
   );

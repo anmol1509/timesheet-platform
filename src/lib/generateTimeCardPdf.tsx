@@ -53,7 +53,7 @@ function Values({ w, offset }: { w: CardWorker; offset: { x: number; y: number }
     <View style={{ position: "absolute", left: 0, top: 0, width: pt(CARD_WIDTH_MM), height: pt(CARD_HEIGHT_MM) }}>
       {header.map(([k, v]) =>
         v ? (
-          <Text key={k} style={{ ...box(g.fields[k].x + 1 + offset.x, g.fields[k].line - 4.3 + offset.y, g.fields[k].w - 1, 4.2), fontSize: F, fontFamily: "Helvetica-Bold", color: BLACK }}>
+          <Text key={k} style={{ ...box(g.fields[k].x + 1 + offset.x, g.fields[k].line - 3.6 + offset.y, g.fields[k].w - 1, 4.2), fontSize: F, fontFamily: "Helvetica-Bold", color: BLACK }}>
             {fit(v, g.fields[k].w - 1, F)}
           </Text>
         ) : null
@@ -176,7 +176,8 @@ function Template({ spec, letterhead }: { spec: TimeCardSpec; letterhead: Letter
             <View style={{ ...box(x0, y0, x1 - x0, y1 - y0), borderWidth: 0.8, borderColor: ink }} />
             {line(x0, t.headY[1], t.cols[4] - x0, 0.4, ink)}
             {t.rowsY.slice(1, 5).map((y) => line(x0, y, t.cols[4] - x0, 0.4, ink))}
-            {[t.cols[1], t.cols[2], t.cols[3], t.cols[4]].map((x) => line(x, t.headY[1], 0.4, y1 - t.headY[1], ink, { key: x }))}
+            {[t.cols[1], t.cols[2], t.cols[4]].map((x) => line(x, t.headY[0], 0.4, y1 - t.headY[0], ink, { key: x }))}
+            {line(t.cols[3], t.headY[1], 0.4, y1 - t.headY[1], ink)}
             {head(spec.totals.header, t.cols[2], t.cols[4], y0, t.headY[1])}
             {labels.map((txt, i) => (
               <View key={i} style={{ ...box(x0 + 1, t.rowsY[i], t.cols[1] - x0 - 1, t.rowsY[i + 1] - t.rowsY[i]), justifyContent: "center" }}>
@@ -203,8 +204,8 @@ function Template({ spec, letterhead }: { spec: TimeCardSpec; letterhead: Letter
 function CornerMarks() {
   const m = (x: number, y: number, i: number) => (
     <View key={i}>
-      {line(x - 3, y, 6, 0.2, "#9CA3AF")}
-      {line(x, y - 3, 0.2, 6, "#9CA3AF")}
+      {line(x - 4, y - 0.15, 8, 0.3, "#6B7280")}
+      {line(x - 0.15, y - 4, 0.3, 8, "#6B7280")}
     </View>
   );
   const o = A4_ORIGIN_MM;
