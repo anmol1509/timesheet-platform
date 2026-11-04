@@ -9,11 +9,11 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import type { TimeCardSpec } from "@/lib/timeCard";
 import { removeLetterImageAction, resetTimeCardSpecAction, saveTimeCardSpecAction, uploadLetterImageAction } from "./actions";
 
-type Props = { branchId: string; artworkUrl: string | null; spec: TimeCardSpec; custom: boolean };
+type Props = { branchId: string; artworkUrl: string | null; spec: TimeCardSpec; custom: boolean; companies: { id: string; name: string; hasCard: boolean }[] };
 
 const PREVIEW_MODES = [
   { value: "template", label: "The card drawn by the app (editable template)" },
-  { value: "artwork", label: "On top of your uploaded card" },
+  { value: "artwork", label: "On top of the default uploaded card" },
   { value: "overprint", label: "Values only (to print on the physical card)" },
 ];
 
@@ -30,7 +30,7 @@ function Text({ name, label, defaultValue, max = 40, className = "" }: { name: s
  * The company's time card: the uploaded picture of the pre-printed card, the template the app draws it from, and the printer offset.
  * The three ways to print one are on the timesheet page; here they can be previewed with a made-up worker.
  */
-export function TimeCardSection({ branchId, artworkUrl, spec, custom }: Props) {
+export function TimeCardSection({ branchId, artworkUrl, spec, custom, companies }: Props) {
   const [state, action, pending] = useActionState(async (_p: { error: string | null; ok?: boolean }, fd: FormData) => saveTimeCardSpecAction(_p, fd), { error: null } as { error: string | null; ok?: boolean });
   const [mode, setMode] = useState(artworkUrl ? "artwork" : "template");
   const [version, setVersion] = useState(0);
@@ -47,8 +47,8 @@ export function TimeCardSection({ branchId, artworkUrl, spec, custom }: Props) {
             stacked
             currentUrl={artworkUrl}
             fallback={<span className="text-xs text-subtle">Time card</span>}
-            label="Your time card (11.5 × 22 cm)"
-            hint="A flat scan or photo of the pre-printed card, upright and cropped to the card's edge. Used for “on top of your uploaded card”."
+            label="Default time card (11.5 × 22 cm)"
+            hint="For workers who have no company of their own. Each company keeps its own card under its Documents tab (below). A flat JPG or PNG scan of the blank card, upright and cropped to its edge."
             shape="square"
             format="image/jpeg"
             maxPx={2200}
@@ -57,6 +57,26 @@ export function TimeCardSection({ branchId, artworkUrl, spec, custom }: Props) {
             removeAction={removeLetterImageAction}
             extraFields={extra}
           />
+
+          <div>
+            <p className="mb-2 text-xs font-semibold tracking-wide text-muted uppercase">Each company&apos;s own card</p>
+            {companies.length === 0 ? (
+              <p className="text-xs text-muted">No own companies yet.</p>
+            ) : (
+              <ul className="max-h-56 divide-y divide-[var(--border)] overflow-y-auto rounded-card border border-default">
+                {companies.map((c) => (
+                  <li key={c.id} className="flex items-center justify-between gap-3 px-3 py-1.5 text-sm">
+                    <span className="min-w-0 truncate text-primary">{c.name}</span>
+                    <span className="flex shrink-0 items-center gap-3 text-xs">
+                      <span className={c.hasCard ? "text-[var(--success)]" : "text-[var(--warning)]"}>{c.hasCard ? "Card uploaded" : "No card yet"}</span>
+                      <a href={`/suppliers/${c.id}`} className="font-medium text-[var(--brand-primary)] hover:underline">{c.hasCard ? "Open" : "Upload"}</a>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="mt-1 text-xs text-muted">On the company&apos;s page: Documents → Time card. Its name and logo on the template come from its own profile.</p>
+          </div>
 
           <form action={action} className="space-y-5">
             <input type="hidden" name="branchId" value={branchId} />

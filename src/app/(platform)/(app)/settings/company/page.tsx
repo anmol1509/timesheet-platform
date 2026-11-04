@@ -41,6 +41,12 @@ export default async function CompanyProfilePage({
   }
 
 
+  // Each own company keeps its own blank time card under its Documents; list who has one.
+  const ownCompanies = await prisma.supplier.findMany({ where: { branchId: branch.id, isOwnCompany: true }, select: { id: true, name: true, fullName: true }, orderBy: { name: "asc" } });
+  const cardsOnFile = ownCompanies.length ? await prisma.attachment.findMany({ where: { entityType: "SUPPLIER", entityId: { in: ownCompanies.map((c) => c.id) }, docType: "TIME_CARD" }, select: { entityId: true }, distinct: ["entityId"] }) : [];
+  const cardIds = new Set(cardsOnFile.map((c) => c.entityId));
+  const companyCards = ownCompanies.map((c) => ({ id: c.id, name: c.fullName || c.name, hasCard: cardIds.has(c.id) }));
+
   const todo = [
     { label: "Company TRN", done: !!branch.trn },
     { label: "Address", done: !!branch.address },
@@ -125,9 +131,9 @@ export default async function CompanyProfilePage({
       <section className="card space-y-4 p-5">
         <div>
           <h2 className="text-base font-semibold text-primary">Time card</h2>
-          <p className="mt-1 text-xs text-muted">Print each worker&apos;s time card (11.5 × 22 cm): on top of your uploaded card, onto the physical card, or as a card the app draws from the template below. Printing is from Client Timesheet.</p>
+          <p className="mt-1 text-xs text-muted">Print each worker&apos;s time card (11.5 × 22 cm) with their own company&apos;s name and logo: on top of that company&apos;s uploaded card, onto the physical card, or as a card the app draws from the template below. Printing is from Client Timesheet.</p>
         </div>
-        <TimeCardSection key={branch.id} branchId={branch.id} artworkUrl={branch.timeCardImageId ? `/api/images/${branch.timeCardImageId}` : null} spec={readTimeCardSpec(branch.timeCardSpec)} custom={!!branch.timeCardSpec} />
+        <TimeCardSection key={branch.id} branchId={branch.id} artworkUrl={branch.timeCardImageId ? `/api/images/${branch.timeCardImageId}` : null} spec={readTimeCardSpec(branch.timeCardSpec)} custom={!!branch.timeCardSpec} companies={companyCards} />
       </section>
 
       <section className="card space-y-4 p-5">

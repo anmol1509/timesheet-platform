@@ -2,7 +2,8 @@ import { prisma } from "@/lib/db";
 import { branchWhere } from "@/lib/branch";
 import { PAY_EMPLOYEE_SELECT, hourlyRateSource } from "@/lib/payrollRun";
 import { parseDailyHours } from "@/lib/timesheetCells";
-import { buildCardDays, type CardWorker, type RawDay } from "@/lib/timeCard";
+import { buildCardDays, cardCompanyOf, type CardWorker, type RawDay } from "@/lib/timeCard";
+import { buildLetterhead, imageIsReadable, type Letterhead } from "@/lib/letterhead";
 
 const num = (d: { toString(): string } | null | undefined) => (d == null ? 0 : Number(d.toString()));
 const aed = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -66,7 +67,7 @@ export async function loadCardWorkers(opts: {
 
   const employees = await prisma.employee.findMany({
     where: { ...branchWhere(branchId), employeeIdNo: { in: idNos } },
-    select: { ...PAY_EMPLOYEE_SELECT, skills: { select: { rate: true, isActive: true, skill: { select: { name: true } } } }, project: { select: { name: true, weeklyOffDays: true } }, payStructure: true, basicSalary: true, housingAllowance: true, foodAllowance: true, transportAllowance: true },
+    select: { ...PAY_EMPLOYEE_SELECT, supplier: { select: { id: true, name: true, fullName: true, isOwnCompany: true } }, sponsorSupplier: { select: { id: true, name: true, fullName: true, isOwnCompany: true } }, skills: { select: { rate: true, isActive: true, skill: { select: { name: true } } } }, project: { select: { name: true, weeklyOffDays: true } }, payStructure: true, basicSalary: true, housingAllowance: true, foodAllowance: true, transportAllowance: true },
   });
   const order = new Map(idNos.map((id, i) => [id, i]));
   employees.sort((a, b) => (order.get(a.employeeIdNo) ?? 0) - (order.get(b.employeeIdNo) ?? 0));
@@ -93,7 +94,11 @@ export async function loadCardWorkers(opts: {
     }
     const l = lineOf.get(e.id);
     const fixed = l ? num(l.basic) + num(l.allowances) : 0;
+    const companyId = cardCompanyOf(e);
+    const company = companyId ? (e.supplier?.id === companyId ? e.supplier : e.sponsorSupplier) : null;
     return {
+      companyId,
+      companyName: company ? company.fullName || company.name : "",
       name: e.name,
       idNo: e.employeeIdNo,
       profession: e.trade ?? e.position ?? "",
@@ -121,5 +126,30 @@ export function sampleCardWorker(month: string, spec: { shiftIn: string; shiftOu
     raw.push(dow === 0 ? { date, status: "OFF", normalHours: null, otHours: null } : d === 9 ? { date, status: "ABSENT", normalHours: null, otHours: null } : { date, status: "PRESENT", normalHours: d % 5 === 0 ? 10 : 8, otHours: null });
   }
   const built = buildCardDays({ month, days: raw, dailyHours: 8, weeklyOffDays: [0], inOut: "standard", shiftIn: spec.shiftIn, shiftOut: spec.shiftOut });
-  return { name: "SAMPLE WORKER", idNo: "ID-0001", profession: "Carpenter", site: "Sample Project", monthLabel: monthLabel(month), wage: "1,500.00 / month", days: built.days, totals: built.totals, money: { basic: "1,700.00", overtime: "156.25", earned: "1,856.25", advance: "100.00", balance: "1,756.25" } };
+  return { companyId: null, companyName: "", name: "SAMPLE WORKER", idNo: "ID-0001", profession: "Carpenter", site: "Sample Project", monthLabel: monthLabel(month), wage: "1,500.00 / month", days: built.days, totals: built.totals, money: { basic: "1,700.00", overtime: "156.25", earned: "1,856.25", advance: "100.00", balance: "1,756.25" } };
+}
+
+/** One own company's card: the blank pre-printed card from its Documents (when there is a usable one) and the header it prints on the template. */
+export type CompanyCard = { id: string; name: string; artwork: string | null; /** A card is on file but is not a JPG or PNG. */ unusable: boolean; letterhead: Letterhead };
+
+export async function loadCompanyCards(companyIds: string[], wantArtwork: boolean): Promise<Map<string, CompanyCard>> {
+  const ids = [...new Set(companyIds)];
+  const out = new Map<string, CompanyCard>();
+  if (ids.length === 0) return out;
+  const [companies, cards] = await Promise.all([
+    prisma.supplier.findMany({ where: { id: { in: ids } }, select: { id: true, name: true, fullName: true, location: true, emirate: true, country: true, contactPhone: true, phone: true, contactEmail: true, poBox: true, trn: true, logoId: true } }),
+    wantArtwork ? prisma.attachment.findMany({ where: { entityType: "SUPPLIER", entityId: { in: ids }, docType: "TIME_CARD" }, orderBy: { uploadedAt: "desc" }, select: { entityId: true, fileData: true, mimeType: true } }) : [],
+  ]);
+  for (const c of companies) {
+    const card = cards.find((a) => a.entityId === c.id);
+    const usable = !!card && /^image\/(png|jpe?g)$/i.test(card.mimeType) && imageIsReadable(card.fileData, card.mimeType);
+    out.set(c.id, {
+      id: c.id,
+      name: c.fullName || c.name,
+      artwork: usable && card ? `data:${card.mimeType};base64,${Buffer.from(card.fileData).toString("base64")}` : null,
+      unusable: !!card && !usable,
+      letterhead: await buildLetterhead({ name: c.fullName || c.name, address: c.location, emirate: c.emirate, country: c.country, phone: c.contactPhone ?? c.phone, fax: null, email: c.contactEmail, poBox: c.poBox, trn: c.trn, logoId: c.logoId, strictLogo: true }),
+    });
+  }
+  return out;
 }

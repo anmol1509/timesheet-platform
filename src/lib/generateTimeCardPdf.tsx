@@ -11,14 +11,14 @@ import { CARD_HEIGHT_MM, CARD_WIDTH_MM, GEOM, dayOfRow, type CardWorker, type Ti
  */
 export type TimeCardMode = "artwork" | "overprint" | "template";
 
+/** One card: the worker, the picture of their company's card (artwork mode) and the header of their company (template mode). */
+export type TimeCardPage = { worker: CardWorker; artwork: string | null; letterhead: Letterhead };
+
 export type TimeCardPdfInput = {
   mode: TimeCardMode;
   paper: "card" | "a4";
   spec: TimeCardSpec;
-  /** The uploaded artwork as a data URI (PNG or JPEG), for the artwork mode. */
-  artwork: string | null;
-  letterhead: Letterhead;
-  workers: CardWorker[];
+  pages: TimeCardPage[];
 };
 
 const PT = 72 / 25.4;
@@ -220,15 +220,15 @@ export async function generateTimeCardPdf(input: TimeCardPdfInput): Promise<Buff
   const offset = mode === "overprint" ? { x: spec.offsetXmm, y: spec.offsetYmm } : { x: 0, y: 0 };
   const doc = (
     <Document title="Time cards">
-      {input.workers.map((w, i) => (
+      {input.pages.map(({ worker: w, artwork, letterhead }, i) => (
         <Page key={i} size={size} style={{ backgroundColor: "#FFFFFF", fontFamily: "Helvetica" }}>
           {paper === "a4" && mode === "overprint" && <CornerMarks />}
           <View style={{ position: "absolute", left: pt(origin), top: pt(origin), width: pt(CARD_WIDTH_MM), height: pt(CARD_HEIGHT_MM) }}>
-            {mode === "artwork" && input.artwork && (
+            {mode === "artwork" && artwork && (
               // eslint-disable-next-line jsx-a11y/alt-text -- react-pdf Image has no alt prop
-              <Image src={input.artwork} style={{ position: "absolute", left: 0, top: 0, width: pt(CARD_WIDTH_MM), height: pt(CARD_HEIGHT_MM) }} />
+              <Image src={artwork} style={{ position: "absolute", left: 0, top: 0, width: pt(CARD_WIDTH_MM), height: pt(CARD_HEIGHT_MM) }} />
             )}
-            {mode === "template" && <Template spec={spec} letterhead={input.letterhead} />}
+            {mode === "template" && <Template spec={spec} letterhead={letterhead} />}
             <Values w={w} offset={offset} />
           </View>
         </Page>

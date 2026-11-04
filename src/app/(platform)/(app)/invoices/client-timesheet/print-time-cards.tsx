@@ -38,12 +38,12 @@ export function PrintTimeCards({ month, idNos, info, count }: { month: string; i
               value={mode}
               onChange={setMode}
               options={[
-                { value: "artwork", label: info.hasArtwork ? "The whole card, from your uploaded card (plain paper)" : "The whole card, from your uploaded card (upload it first)" },
+                { value: "artwork", label: "The whole card, from each company's uploaded card (plain paper)" },
                 { value: "overprint", label: "Only the writing, to print on top of the physical card" },
                 { value: "template", label: "The whole card drawn by the app from the template (plain paper)" },
               ]}
             />
-            {mode === "artwork" && !info.hasArtwork && <p className="mt-2 text-xs text-[var(--warning)]">No card has been uploaded yet. Upload one in Settings → Company profile → Time card.</p>}
+            <p className="mt-2 text-xs text-muted">Each worker&apos;s card carries their own company&apos;s name and logo. For the first option, upload each company&apos;s blank card under its Documents → Time card.</p>
           </div>
 
           <div>
@@ -94,8 +94,8 @@ export function PrintTimeCards({ month, idNos, info, count }: { month: string; i
               href={href}
               target="_blank"
               rel="noreferrer"
-              aria-disabled={tooMany || (mode === "artwork" && !info.hasArtwork)}
-              className={`btn btn-primary ${tooMany || (mode === "artwork" && !info.hasArtwork) ? "pointer-events-none opacity-50" : ""}`}
+              aria-disabled={tooMany}
+              className={`btn btn-primary ${tooMany ? "pointer-events-none opacity-50" : ""}`}
               onClick={() => setOpen(false)}
             >
               Open the PDF

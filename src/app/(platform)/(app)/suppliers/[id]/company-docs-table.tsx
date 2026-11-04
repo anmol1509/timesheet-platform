@@ -64,7 +64,7 @@ export function CompanyDocsTable({ rows, legacy, supplierId, revalidate, canEdit
   const [queue, setQueue] = useState<Queued[]>([]);
   const [over, setOver] = useState(false);
   const bulkInput = useRef<HTMLInputElement>(null);
-  const uploadable = (key: string) => canEdit && (!restricted || key === "LETTERHEAD");
+  const uploadable = (key: string) => canEdit && (!restricted || key === "LETTERHEAD" || key === "TIME_CARD");
   const typeOptions = rows.filter((r) => uploadable(r.key)).map((r) => ({ value: r.key, label: r.label }));
   const toggleFiles = (key: string) => setFilesOpen((cur) => { const n = new Set(cur); if (n.has(key)) n.delete(key); else n.add(key); return n; });
 
@@ -278,7 +278,7 @@ function RowUploader({ row, supplierId, revalidate, onDone }: { row: DocRow; sup
       setNote(read.name || read.expiry ? "Filled in from the file. Check it before saving." : null);
       return;
     }
-    if (row.key === "LETTERHEAD") return;
+    if (row.key === "LETTERHEAD" || row.key === "TIME_CARD") return;
     setNote("Reading the file…"); setReading(true);
     const read = await readCompanyDoc(f);
     setReading(false);
@@ -314,7 +314,7 @@ function RowUploader({ row, supplierId, revalidate, onDone }: { row: DocRow; sup
           <span className="mb-1 block text-xs font-medium text-muted">File (max {MAX_UPLOAD_LABEL})</span>
           <input type="file" accept=".pdf,.jpg,.jpeg,.png,.gif,.webp" className="file-input" onChange={(e) => void choose(e.target.files?.[0])} />
         </label>
-        {!isOther && row.key !== "LETTERHEAD" && (
+        {!isOther && row.key !== "LETTERHEAD" && row.key !== "TIME_CARD" && (
           <label className="block w-56">
             <span className="mb-1 block text-xs font-medium text-muted">Number on the document</span>
             <input value={number} onChange={(e) => setNumber(e.target.value)} aria-label="Number on the document" className="input w-full" placeholder="Optional" />

@@ -134,6 +134,9 @@ export function readTimeCardSpec(raw: unknown): TimeCardSpec {
 export type CardDay = { day: number; in: string; out: string; overtime: string; total: string };
 
 export type CardWorker = {
+  /** The own company whose card this is: the worker's employer if it is one of ours, else the company that sponsors their visa; null for neither. */
+  companyId: string | null;
+  companyName: string;
   name: string;
   idNo: string;
   profession: string;
@@ -187,3 +190,10 @@ export function buildCardDays(opts: { month: string; days: RawDay[]; dailyHours:
 
 /** Day number printed in a grid row: rows run 1 to 16 down the left half and 17 to 31 down the right. */
 export const dayOfRow = (half: 0 | 1, row: number) => (half === 0 ? row + 1 : row + 17);
+
+/** The own company a worker's card belongs to: their employer if it is one of ours, else their visa sponsor if it is, else none. */
+export function cardCompanyOf(e: { supplier?: { id: string; isOwnCompany: boolean } | null; sponsorSupplier?: { id: string; isOwnCompany: boolean } | null }): string | null {
+  if (e.supplier?.isOwnCompany) return e.supplier.id;
+  if (e.sponsorSupplier?.isOwnCompany) return e.sponsorSupplier.id;
+  return null;
+}

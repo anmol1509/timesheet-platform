@@ -62,3 +62,13 @@ test("a saved template is made safe: unknown keys dropped, texts limited, bad co
   assert.equal(spec.showLogo, false);
   assert.deepEqual(readTimeCardSpec(null), DEFAULT_SPEC);
 });
+
+test("a worker's card belongs to their employer if it is one of our companies, else their visa sponsor, else none", async () => {
+  const { cardCompanyOf } = await import("./timeCard");
+  const own = (id: string) => ({ id, isOwnCompany: true });
+  const other = (id: string) => ({ id, isOwnCompany: false });
+  assert.equal(cardCompanyOf({ supplier: own("A"), sponsorSupplier: own("B") }), "A");
+  assert.equal(cardCompanyOf({ supplier: other("S"), sponsorSupplier: own("B") }), "B");
+  assert.equal(cardCompanyOf({ supplier: other("S"), sponsorSupplier: other("T") }), null);
+  assert.equal(cardCompanyOf({ supplier: null, sponsorSupplier: null }), null);
+});
