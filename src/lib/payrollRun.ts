@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 import { payrollScopeWhere } from "@/lib/payrollCompany";
 import { payByTrade } from "@/lib/tradePay";
 import { advanceRef, loanInstalmentFor, readSchedule } from "@/lib/advances";
-import { isShortfallMode, shortDayWorked, shortfallTotal, type ShortfallMode, paidHourly, appliesToMonth, capToAvailable, computePay, employmentWindow, isPayType, monthBounds, netPayWithExtras, payDataGap, planLoanRecovery, round2, splitDayHours, effectivePay, type PayStructure, reconcileDeductionItems, readDeductionItems } from "@/lib/payroll";
+import { isShortfallMode, shortDayWorked, shortfallTotal, type ShortfallMode, paidHourly, appliesToMonth, capToAvailable, computePay, employmentWindow, isPayType, monthBounds, netPayWithExtras, payDataGap, planLoanRecovery, round2, splitDayHours, effectivePay, type PayStructure, type PayProfile, reconcileDeductionItems, readDeductionItems } from "@/lib/payroll";
 
 const num = (d: { toString(): string } | null | undefined) => (d == null ? 0 : Number(d.toString()));
 
@@ -55,9 +55,35 @@ export async function loadPayOf(_branchId: string, _employees: PayEmployee[]) {
     );
 }
 
+/** The supplier fields that decide how days off are charged. */
+type SupplierAbsence = {
+  absentFreeDays: number; absentFreeDaysHourly: number; absentDeductionPerDay: unknown; absentDeductionPerDayHourly: unknown;
+  absentMethod: string; absentMethodHourly: string; absentPercent: unknown; absentPercentHourly: unknown;
+  absentBase: string; absentDivisor: string; absentCapPercent: unknown;
+};
+
+/**
+ * The absence rule that applies to a worker, from their company: monthly-salary and hourly workers each have their own free
+ * days, method (a fixed AED amount per day, or a percentage of the day's pay) and amount; the pay the day is worked out from
+ * and the monthly limit are shared. A worker with no company gets the old defaults (2 free days, AED 30 a day).
+ */
+export function absenceRuleFields(s: SupplierAbsence | null | undefined, hourly: boolean): Pick<PayProfile, "absenceFreeDays" | "absencePerDay" | "absenceMethod" | "absencePercent" | "absenceBase" | "absenceDivisor" | "absenceCapPercent"> {
+  if (!s) return { absenceFreeDays: 2, absencePerDay: 30 };
+  const cap = num(s.absentCapPercent as { toString(): string } | null);
+  return {
+    absenceFreeDays: hourly ? s.absentFreeDaysHourly : s.absentFreeDays,
+    absencePerDay: num((hourly ? s.absentDeductionPerDayHourly : s.absentDeductionPerDay) as { toString(): string }),
+    absenceMethod: (hourly ? s.absentMethodHourly : s.absentMethod) === "PERCENT" ? "PERCENT" : "FIXED",
+    absencePercent: num((hourly ? s.absentPercentHourly : s.absentPercent) as { toString(): string }) || 100,
+    absenceBase: s.absentBase === "BASIC" ? "BASIC" : "GROSS",
+    absenceDivisor: s.absentDivisor === "MONTH" ? "MONTH" : "30",
+    absenceCapPercent: cap > 0 ? cap : null,
+  };
+}
+
 /** What is read about an employee to work out their pay; shared with the day-by-day view. */
 export const PAY_EMPLOYEE_SELECT = {
-    id: true, name: true, employeeIdNo: true, active: true, joinDate: true, exitDate: true, projectId: true, supplierId: true, trade: true, position: true, payOverride: true, project: { select: { weeklyOffDays: true } }, supplier: { select: { absentFreeDays: true, absentFreeDaysHourly: true, absentDeductionPerDay: true, gasPerDay: true, gasMonthlyCap: true, shortfallMode: true, shortfallHalfDayUnder: true } }, gasWaived: true, siteArrivalDate: true, skills: { select: { rate: true, isActive: true, skill: { select: { name: true } } } }, payStructure: true, basicSalary: true, housingAllowance: true, foodAllowance: true, transportAllowance: true,
+    id: true, name: true, employeeIdNo: true, active: true, joinDate: true, exitDate: true, projectId: true, supplierId: true, trade: true, position: true, payOverride: true, project: { select: { weeklyOffDays: true } }, supplier: { select: { absentFreeDays: true, absentFreeDaysHourly: true, absentDeductionPerDay: true, absentMethod: true, absentPercent: true, absentBase: true, absentDivisor: true, absentDeductionPerDayHourly: true, absentMethodHourly: true, absentPercentHourly: true, absentCapPercent: true, gasPerDay: true, gasMonthlyCap: true, shortfallMode: true, shortfallHalfDayUnder: true } }, gasWaived: true, siteArrivalDate: true, skills: { select: { rate: true, isActive: true, skill: { select: { name: true } } } }, payStructure: true, basicSalary: true, housingAllowance: true, foodAllowance: true, transportAllowance: true,
     otherAllowance: true, flatMonthlyRate: true, hourlyRate: true, paysOvertime: true, otMultiplier: true, otHourlyRate: true, dailyHours: true, restOtMultiplier: true, molPersonCode: true, wpsPaymentMode: true, wpsBankName: true,
     wpsRoutingCode: true, wpsIban: true, wpsAccountNumber: true,
   } as const;
@@ -208,7 +234,7 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
         flat: pf.flatMonthlyRate, hourly: byTrade && byTrade.hours > 0 ? byTrade.blended : pf.hourlyRate, paysOvertime: isHourly ? false : pf.paysOvertime, otMultiplier: pf.otMultiplier,
         dailyHours: pf.dailyHours, restOtMultiplier: pf.otMultiplier, // rest-day and holiday hours use the same multiplier
         otHourlyRate: pf.otHourlyRate, // a fixed AED per overtime hour replaces both multipliers
-        absenceFreeDays: (isHourly ? e.supplier?.absentFreeDaysHourly : e.supplier?.absentFreeDays) ?? 2, absencePerDay: e.supplier ? num(e.supplier.absentDeductionPerDay) : 30,
+        ...absenceRuleFields(e.supplier, isHourly),
       },
       isHourly
         ? { absentDays: facts.absent, unpaidLeaveDays: 0, otHours: 0, normalHours: hours }

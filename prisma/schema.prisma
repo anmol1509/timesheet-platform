@@ -422,6 +422,19 @@ model Supplier {
   absentFreeDays        Int          @default(2) // for workers on a monthly salary
   absentFreeDaysHourly  Int          @default(2) // for workers paid by the hour
   absentDeductionPerDay Decimal      @default(30) @db.Decimal(10, 2)
+  // How a day off beyond the free days is charged. FIXED: an AED amount per day (absentDeductionPerDay for monthly-salary
+  // workers, absentDeductionPerDayHourly for hourly ones). PERCENT: that percentage of the day's pay, where a monthly worker's
+  // day's pay is their basic (absentBase BASIC) or basic plus allowances (GROSS) divided by 30 (absentDivisor "30") or the days
+  // of the month ("MONTH"), and an hourly worker's is their standard hours times their hourly rate.
+  absentMethod          String       @default("FIXED")
+  absentPercent         Decimal      @default(100) @db.Decimal(6, 2)
+  absentBase            String       @default("GROSS")
+  absentDivisor         String       @default("30")
+  absentDeductionPerDayHourly Decimal @default(30) @db.Decimal(10, 2)
+  absentMethodHourly    String       @default("FIXED")
+  absentPercentHourly   Decimal      @default(100) @db.Decimal(6, 2)
+  // The most the absence deductions may take in a month, as a percentage of the worker's pay for it; blank = no limit.
+  absentCapPercent      Decimal?     @db.Decimal(5, 2)
   gasPerDay             Decimal      @default(1) @db.Decimal(6, 2)
   gasMonthlyCap         Decimal      @default(30) @db.Decimal(8, 2)
   // Short hours on a present working day: OFF (no deduction), HOURLY (the missing hours at the

@@ -15,6 +15,7 @@ import { ComboSelect } from "@/components/ui/ComboSelect";
 import { SUPPLIER_CATEGORIES } from "@/lib/formLists";
 import { MaskedInput } from "@/components/ui/MaskedInput";
 import { Alert } from "@/components/Alert";
+import { AbsenceRuleFields } from "./absence-rule-fields";
 
 type Supplier = {
   id: string;
@@ -42,6 +43,14 @@ type Supplier = {
   absentFreeDays: number;
   absentFreeDaysHourly: number;
   absentDeductionPerDay: number;
+  absentDeductionPerDayHourly: number;
+  absentMethod: string;
+  absentMethodHourly: string;
+  absentPercent: number;
+  absentPercentHourly: number;
+  absentBase: string;
+  absentDivisor: string;
+  absentCapPercent: number | null;
   gasPerDay: number;
   gasMonthlyCap: number;
   shortfallMode: string;
@@ -201,15 +210,13 @@ export function SupplierCompanyForm({
           </>
         )}
           <input type="hidden" name="ruleSent" value="1" />
-          <Field label="Payroll: days off with no deduction each month (monthly-salary workers)">
-            <NumberInput name="absentFreeDays" defaultValue={supplier.absentFreeDays} min={0} max={31} step={1} className="w-full" />
-          </Field>
-          <Field label="Payroll: days off with no deduction each month (hourly workers)">
-            <NumberInput name="absentFreeDaysHourly" defaultValue={supplier.absentFreeDaysHourly} min={0} max={31} step={1} className="w-full" />
-          </Field>
-          <Field label="Payroll: deduction per day off after that (AED)">
-            <NumberInput name="absentDeductionPerDay" defaultValue={supplier.absentDeductionPerDay} min={0} step={0.01} className="w-full" />
-          </Field>
+          <AbsenceRuleFields
+            monthly={{ freeDays: supplier.absentFreeDays, method: supplier.absentMethod, perDay: supplier.absentDeductionPerDay, percent: supplier.absentPercent }}
+            hourly={{ freeDays: supplier.absentFreeDaysHourly, method: supplier.absentMethodHourly, perDay: supplier.absentDeductionPerDayHourly, percent: supplier.absentPercentHourly }}
+            base={supplier.absentBase}
+            divisor={supplier.absentDivisor}
+            capPercent={supplier.absentCapPercent}
+          />
           <Field label="Timesheet gas charge per day from check-in (AED)">
             <NumberInput name="gasPerDay" defaultValue={supplier.gasPerDay} min={0} step={0.01} className="w-full" />
           </Field>

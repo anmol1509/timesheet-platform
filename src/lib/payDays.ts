@@ -30,7 +30,7 @@ export type DayPlan = {
   otFixedRate?: number;
   /** basic ÷ 30 ÷ standard hours */
   otHourlyBase: number;
-  absence: { freeDays: number; perDay: number | null; dailyRate: number };
+  absence: { freeDays: number; perDay: number | null; dailyRate: number; /** The most absence deductions may take this month (AED); none when absent. */ capTotal?: number | null };
   shortfall?: { rule: ShortfallRule; rates: ShortfallRates };
 };
 
@@ -47,6 +47,7 @@ export function buildDays(plan: DayPlan): { rows: DayRow[]; totals: { salary: nu
   const share = !plan.hourly && employed.length > 0 ? plan.fixedPaid / employed.length : 0;
   let spent = 0;
   let absentSeen = 0;
+  let capLeft = plan.absence.capTotal ?? Infinity;
   const rows: DayRow[] = [];
   const lastEmployed = employed[employed.length - 1]?.date;
 
@@ -81,7 +82,9 @@ export function buildDays(plan: DayPlan): { rows: DayRow[]; totals: { salary: nu
     let deduction = 0;
     if (kind === "absent") {
       absentSeen += 1;
-      deduction = plan.absence.perDay == null ? round2(plan.absence.dailyRate) : absentSeen > plan.absence.freeDays ? round2(plan.absence.perDay) : 0;
+      const wanted = plan.absence.perDay == null ? round2(plan.absence.dailyRate) : absentSeen > plan.absence.freeDays ? round2(plan.absence.perDay) : 0;
+      deduction = round2(Math.min(wanted, capLeft));
+      capLeft = round2(capLeft - deduction);
     }
     const worked = plan.shortfall && d.status ? shortDayWorked({ date: dt, status: d.status, normalHours: d.normalHours, otHours: d.otHours }, plan.pattern) : null;
     const short = worked !== null && plan.shortfall ? { ...shortfallDay(plan.shortfall.rule, plan.pattern.dailyHours > 0 ? plan.pattern.dailyHours : 8, worked, d.countShortfall ?? null, plan.shortfall.rates), override: d.countShortfall ?? null, worked } : null;

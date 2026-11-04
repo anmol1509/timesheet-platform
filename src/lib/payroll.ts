@@ -46,6 +46,14 @@ export type PayProfile = {
   // rule of one thirtieth of pay per absent day.
   absenceFreeDays?: number;
   absencePerDay?: number;
+  /** How a day beyond the free days is charged: FIXED (absencePerDay AED) or PERCENT of the day's pay (default FIXED). */
+  absenceMethod?: "FIXED" | "PERCENT";
+  absencePercent?: number;
+  /** PERCENT, monthly-salary workers: the day's pay is basic only or basic plus allowances, over 30 or the days of the month. */
+  absenceBase?: "BASIC" | "GROSS";
+  absenceDivisor?: "30" | "MONTH";
+  /** The most the absence deductions may take, as a percentage of the month's pay. */
+  absenceCapPercent?: number | null;
 };
 
 export type PayPeriodFacts = {
@@ -68,11 +76,26 @@ export type PayResult = {
   overtimePay: number;
 };
 
-/** What the supplier's absence rule takes off for the absences in the period. */
-function absencePenalty(p: PayProfile, f: PayPeriodFacts, fixed = 0) {
+/** What one day off beyond the free days costs under the rule, in AED. */
+export function absenceDayAmount(p: PayProfile, ctx: { basic: number; monthlyFixed: number; daysInMonth?: number; hourlyDayPay?: number }): number {
+  if (p.absenceMethod !== "PERCENT") return p.absencePerDay ?? 0;
+  const pct = Math.max(0, p.absencePercent ?? 100) / 100;
+  if (ctx.hourlyDayPay !== undefined) return round2(ctx.hourlyDayPay * pct);
+  const base = p.absenceBase === "BASIC" ? ctx.basic : ctx.monthlyFixed;
+  const divisor = p.absenceDivisor === "MONTH" ? ctx.daysInMonth || 30 : 30;
+  return round2((base / divisor) * pct);
+}
+
+/** The most the absence deductions may be for a month, or null when there is no limit. */
+export const absenceCap = (p: PayProfile, pay: number): number | null =>
+  p.absenceCapPercent && p.absenceCapPercent > 0 ? round2((pay * p.absenceCapPercent) / 100) : null;
+
+/** What the supplier's absence rule takes off for the absences in the period (before any monthly limit). */
+function absencePenalty(p: PayProfile, f: PayPeriodFacts, ctx: { basic: number; monthlyFixed: number; hourlyDayPay?: number } = { basic: 0, monthlyFixed: 0 }) {
   const absent = Math.max(0, f.absentDays);
-  if (p.absencePerDay == null) return round2((fixed / 30) * absent);
-  return round2(Math.max(0, absent - (p.absenceFreeDays ?? 0)) * p.absencePerDay);
+  if (p.absencePerDay == null) return round2((ctx.monthlyFixed / 30) * absent);
+  const charged = Math.max(0, absent - (p.absenceFreeDays ?? 0));
+  return round2(charged * absenceDayAmount(p, { ...ctx, daysInMonth: f.daysInMonth }));
 }
 
 /**
@@ -194,7 +217,9 @@ export function computePay(p: PayProfile, f: PayPeriodFacts): PayResult {
     const earned = round2(Math.max(0, f.normalHours) * p.hourly);
     const overtimePay = p.paysOvertime ? overtimeAmount(p.hourly, p, f) : 0;
     // Hourly pay is already only for hours worked; the supplier's absence penalty still applies on top.
-    const penalty = Math.min(earned, absencePenalty(p, f));
+    const raw = absencePenalty(p, f, { basic: 0, monthlyFixed: 0, hourlyDayPay: p.hourly * dailyHoursOf(p) });
+    const cap = absenceCap(p, earned);
+    const penalty = Math.min(earned, cap === null ? raw : Math.min(raw, cap));
     return { basic: earned, allowances: 0, fixed: earned, deductions: penalty, overtimePay };
   }
   const basic = p.payStructure === "FLAT" ? p.flat : p.basic;
@@ -208,7 +233,9 @@ export function computePay(p: PayProfile, f: PayPeriodFacts): PayResult {
 
   // Daily rates stay those of the full month: a partial month is not a cheaper day.
   const unpaidLeave = round2((monthlyFixed / 30) * Math.max(0, f.unpaidLeaveDays));
-  const deductions = Math.min(fixed, round2(absencePenalty(p, f, monthlyFixed) + unpaidLeave));
+  const rawAbsence = absencePenalty(p, f, { basic, monthlyFixed });
+  const cap = absenceCap(p, fixed);
+  const deductions = Math.min(fixed, round2((cap === null ? rawAbsence : Math.min(rawAbsence, cap)) + unpaidLeave));
 
   const hourly = basic / 30 / dailyHoursOf(p);
   const overtimePay = p.paysOvertime ? overtimeAmount(hourly, p, f) : 0;
