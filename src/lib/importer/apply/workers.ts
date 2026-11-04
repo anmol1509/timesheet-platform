@@ -218,7 +218,7 @@ export async function applyWorkers(ctx: ApplyCtx, input: MappedRow[], fixes: Fix
           else Object.assign(data, payColumns(fields.fields), { payOverride: true });
         }
       }
-      const termCells = parseWorkTerms({ dailyHours: v.dailyHours, overtime: v.overtime, otMultiplier: v.otMultiplier, restOtMultiplier: v.restOtMultiplier, gasWaived: v.gasWaived });
+      const termCells = parseWorkTerms({ dailyHours: v.dailyHours, overtime: v.overtime, otMultiplier: v.otMultiplier, restOtMultiplier: v.restOtMultiplier, otHourlyRate: v.otHourlyRate, gasWaived: v.gasWaived });
       if (!("skip" in termCells)) {
         if (!ctx.user.canEditPay) { if ("skip" in payCells) notes.push({ tone: "info", title: "Pay columns were not used", detail: "Setting pay needs payroll access. Everything else on this row was imported." }); }
         else if ("error" in termCells) notes.push({ tone: "warn", title: "Daily hours or overtime were not set", detail: `${termCells.error} The rest of the row was imported.` });

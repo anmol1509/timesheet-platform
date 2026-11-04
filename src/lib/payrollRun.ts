@@ -12,7 +12,7 @@ const n2 = (d: unknown) => num(d as { toString(): string } | null);
 type PayEmployee = {
   supplierId: string | null; trade: string | null; position: string | null; payOverride: boolean; payStructure: string | null; basicSalary: unknown; housingAllowance: unknown;
   foodAllowance: unknown; transportAllowance: unknown; otherAllowance: unknown; flatMonthlyRate: unknown; hourlyRate: unknown; dailyHours: unknown; paysOvertime: boolean;
-  otMultiplier: unknown; restOtMultiplier: unknown;
+  otMultiplier: unknown; restOtMultiplier: unknown; otHourlyRate?: unknown;
   skills?: { rate: number | null; isActive: boolean; skill: { name: string } }[];
 };
 
@@ -49,7 +49,7 @@ export async function loadPayOf(_branchId: string, _employees: PayEmployee[]) {
       {
         payStructure: e.payStructure, basicSalary: n2(e.basicSalary), housingAllowance: n2(e.housingAllowance), foodAllowance: n2(e.foodAllowance), transportAllowance: n2(e.transportAllowance),
         otherAllowance: n2(e.otherAllowance), flatMonthlyRate: n2(e.flatMonthlyRate), hourlyRate: hourlyRateOf(e), dailyHours: n2(e.dailyHours) || 8, paysOvertime: e.paysOvertime,
-        otMultiplier: n2(e.otMultiplier) || 1.25, restOtMultiplier: n2(e.restOtMultiplier) || 1.5, payOverride: true,
+        otMultiplier: n2(e.otMultiplier) || 1.25, restOtMultiplier: n2(e.restOtMultiplier) || 1.5, otHourlyRate: n2(e.otHourlyRate) || undefined, payOverride: true,
       },
       null
     );
@@ -58,7 +58,7 @@ export async function loadPayOf(_branchId: string, _employees: PayEmployee[]) {
 /** What is read about an employee to work out their pay; shared with the day-by-day view. */
 export const PAY_EMPLOYEE_SELECT = {
     id: true, name: true, employeeIdNo: true, active: true, joinDate: true, exitDate: true, projectId: true, supplierId: true, trade: true, position: true, payOverride: true, project: { select: { weeklyOffDays: true } }, supplier: { select: { absentFreeDays: true, absentDeductionPerDay: true, gasPerDay: true, gasMonthlyCap: true, shortfallMode: true, shortfallHalfDayUnder: true } }, gasWaived: true, siteArrivalDate: true, skills: { select: { rate: true, isActive: true, skill: { select: { name: true } } } }, payStructure: true, basicSalary: true, housingAllowance: true, foodAllowance: true, transportAllowance: true,
-    otherAllowance: true, flatMonthlyRate: true, hourlyRate: true, paysOvertime: true, otMultiplier: true, dailyHours: true, restOtMultiplier: true, molPersonCode: true, wpsPaymentMode: true, wpsBankName: true,
+    otherAllowance: true, flatMonthlyRate: true, hourlyRate: true, paysOvertime: true, otMultiplier: true, otHourlyRate: true, dailyHours: true, restOtMultiplier: true, molPersonCode: true, wpsPaymentMode: true, wpsBankName: true,
     wpsRoutingCode: true, wpsIban: true, wpsAccountNumber: true,
   } as const;
 
@@ -207,6 +207,7 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
         basic: pf.basicSalary, housing: pf.housingAllowance, food: pf.foodAllowance, transport: pf.transportAllowance, other: pf.otherAllowance,
         flat: pf.flatMonthlyRate, hourly: byTrade && byTrade.hours > 0 ? byTrade.blended : pf.hourlyRate, paysOvertime: isHourly ? false : pf.paysOvertime, otMultiplier: pf.otMultiplier,
         dailyHours: pf.dailyHours, restOtMultiplier: pf.otMultiplier, // rest-day and holiday hours use the same multiplier
+        otHourlyRate: pf.otHourlyRate, // a fixed AED per overtime hour replaces both multipliers
         absenceFreeDays: e.supplier?.absentFreeDays ?? 2, absencePerDay: e.supplier ? num(e.supplier.absentDeductionPerDay) : 30,
       },
       isHourly
@@ -319,7 +320,7 @@ export async function runSkipped(run: RunScope): Promise<SkippedEmployee[]> {
     where: { branchId: run.branchId, status: { notIn: ["TERMINATED", "ABSCONDING"] }, ...payrollScopeWhere(run.companyId) },
     select: {
       id: true, name: true, active: true, joinDate: true, exitDate: true, supplierId: true, trade: true, position: true, payOverride: true, skills: { select: { rate: true, isActive: true, skill: { select: { name: true } } } }, payStructure: true, basicSalary: true, housingAllowance: true, foodAllowance: true,
-      transportAllowance: true, otherAllowance: true, flatMonthlyRate: true, hourlyRate: true, dailyHours: true, paysOvertime: true, otMultiplier: true, restOtMultiplier: true,
+      transportAllowance: true, otherAllowance: true, flatMonthlyRate: true, hourlyRate: true, dailyHours: true, paysOvertime: true, otMultiplier: true, otHourlyRate: true, restOtMultiplier: true,
     },
   });
   const payOf = await loadPayOf(run.branchId, employees);
@@ -338,7 +339,7 @@ export type ReadinessIssue = {
   text: string;
   href?: string;
   /** What kind of thing it is, so the screen can offer the right fix. */
-  kind?: "skipped" | "pending-timesheets" | "no-hours" | "no-attendance" | "zero-pay" | "swing";
+  kind?: "skipped" | "pending-timesheets" | "no-hours" | "no-attendance" | "zero-pay" | "swing" | "high-overtime";
   /** The workers it is about, each of whom can be opened and corrected where the issue is shown. */
   workers?: { id: string; name: string }[];
 };
@@ -353,7 +354,7 @@ export async function runReadiness(run: RunScope): Promise<ReadinessIssue[]> {
   if (!bounds) return [];
   const nextMonth = new Date(Date.UTC(bounds.start.getUTCFullYear(), bounds.start.getUTCMonth() + 1, 1));
   const [lines, skipped, prevRun] = await Promise.all([
-    prisma.payrollLine.findMany({ where: { runId: run.id }, select: { employeeId: true, net: true, payStructure: true, timesheetHours: true, employee: { select: { name: true, employeeIdNo: true } } } }),
+    prisma.payrollLine.findMany({ where: { runId: run.id }, select: { employeeId: true, net: true, payStructure: true, timesheetHours: true, basic: true, allowances: true, overtimePay: true, employee: { select: { name: true, employeeIdNo: true } } } }),
     runSkipped(run),
     prisma.payrollRun.findFirst({ where: { branchId: run.branchId, companyId: run.companyId, month: { lt: run.month } }, orderBy: { month: "desc" }, include: { lines: { select: { net: true } } } }),
   ]);
@@ -382,6 +383,9 @@ export async function runReadiness(run: RunScope): Promise<ReadinessIssue[]> {
     if (attended.size === 0) issues.push({ level: "warn", text: `No attendance has been recorded for ${run.month}. Everyone is paid in full with no overtime.`, href: "/attendance", kind: "no-attendance", workers: basicLines.map((l) => ({ id: l.employeeId, name: l.employee.name })) });
   }
 
+  // Overtime worth more than half of someone's monthly pay is most often a multiplier typed as a rate (4.17 instead of 1.25).
+  const highOt = lines.filter((l) => l.payStructure !== "HOURLY" && num(l.overtimePay) > 0 && num(l.overtimePay) > 0.5 * (num(l.basic) + num(l.allowances)));
+  if (highOt.length > 0) issues.push({ level: "warn", text: `${highOt.length} employee${highOt.length === 1 ? " has" : "s have"} overtime pay of more than half their monthly pay: ${names(highOt.map((l) => l.employee))}. Check their overtime multiplier (1.25 is usual).`, kind: "high-overtime", workers: highOt.map((l) => ({ id: l.employeeId, name: l.employee.name })) });
   const zero = lines.filter((l) => num(l.net) <= 0);
   if (zero.length > 0) issues.push({ level: "warn", text: `${zero.length} employee${zero.length === 1 ? " has" : "s have"} zero net pay: ${names(zero.map((l) => l.employee))}.`, kind: "zero-pay", workers: zero.map((l) => ({ id: l.employeeId, name: l.employee.name })) });
   if (prevRun && prevRun.lines.length > 0) {

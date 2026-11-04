@@ -37,6 +37,8 @@ export type PayProfile = {
   hourly: number; // HOURLY rate per normal hour
   paysOvertime: boolean;
   otMultiplier: number;
+  /** A fixed AED amount for every overtime hour (working-day overtime and rest-day hours alike). When set, the multipliers are not used. */
+  otHourlyRate?: number;
   dailyHours?: number; // standard hours in a working day (default 8)
   restOtMultiplier?: number; // rest-day / holiday work (default 1.5)
   // The supplier's absence rule: the first absenceFreeDays absences in the month
@@ -90,6 +92,7 @@ export function gasChargeFor(o: { checkIn: Date | null; monthStart: Date; daysIn
 const dailyHoursOf = (p: { dailyHours?: number }) => (p.dailyHours && p.dailyHours > 0 ? p.dailyHours : 8);
 
 function overtimeAmount(rate: number, p: PayProfile, f: PayPeriodFacts) {
+  if (p.otHourlyRate && p.otHourlyRate > 0) return round2((Math.max(0, f.otHours) + Math.max(0, f.restHours ?? 0)) * p.otHourlyRate);
   const rest = p.restOtMultiplier && p.restOtMultiplier > 0 ? p.restOtMultiplier : 1.5;
   return round2(Math.max(0, f.otHours) * rate * p.otMultiplier + Math.max(0, f.restHours ?? 0) * rate * rest);
 }
@@ -218,6 +221,8 @@ export type PayFigures = {
   basicSalary: number; housingAllowance: number; foodAllowance: number; transportAllowance: number; otherAllowance: number;
   flatMonthlyRate: number; hourlyRate: number;
   dailyHours: number; paysOvertime: boolean; otMultiplier: number; restOtMultiplier: number;
+  /** A fixed AED amount per overtime hour; 0 or absent means the multiplier is used. */
+  otHourlyRate?: number;
 };
 
 /** Case- and space-insensitive key for matching a worker's trade to a trade pay row. */

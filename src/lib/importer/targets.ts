@@ -89,6 +89,7 @@ const WORKERS: FieldDef[] = [
   { key: "overtime", label: "Overtime", aliases: ["overtime", "pays overtime", "ot", "ot applicable"] },
   { key: "otMultiplier", label: "Overtime multiplier", aliases: ["overtime multiplier", "ot multiplier", "ot rate", "overtime rate"] },
   { key: "restOtMultiplier", label: "Rest-day overtime multiplier", aliases: ["rest day overtime multiplier", "rest day ot", "rest day multiplier", "friday ot"] },
+  { key: "otHourlyRate", label: "Overtime hourly rate (AED)", aliases: ["overtime hourly rate", "ot hourly rate", "fixed overtime rate", "overtime per hour", "ot per hour"] },
   { key: "gasWaived", label: "Gas charge waived", aliases: ["gas charge waived", "gas waived", "no gas"] },
   { key: "abscondedAt", label: "Absconding date", aliases: ["absconding date", "absconded date", "absconded on", "date absconded", "absconder date"] },
   { key: "abscondCaseStatus", label: "Absconding case status", aliases: ["absconding case status", "absconding status", "absconder status", "case status"], hint: "Reported, Under investigation, Closed or Returned" },

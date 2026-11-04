@@ -9,7 +9,7 @@ export type AuditLike = { entityType: string; action: string; changes: Record<st
 /** Words people use, where turning the column name into words would read badly. */
 const LABELS: Record<string, string> = {
   basicSalary: "basic salary", housingAllowance: "housing allowance", foodAllowance: "food allowance", transportAllowance: "transport allowance",
-  otherAllowance: "other allowance", flatMonthlyRate: "monthly rate", hourlyRate: "hourly rate", otMultiplier: "overtime multiplier", paysOvertime: "pays overtime",
+  otherAllowance: "other allowance", flatMonthlyRate: "monthly rate", hourlyRate: "hourly rate", otMultiplier: "overtime multiplier", otHourlyRate: "overtime hourly rate", paysOvertime: "pays overtime",
   payStructure: "pay structure", payOverride: "pay override", gasWaived: "gas charge waived", siteArrivalDate: "site arrival date", mobilisationDate: "mobilisation date",
   employeeIdNo: "employee ID", emiratesId: "Emirates ID", emiratesIdExpiry: "Emirates ID expiry", eidStatus: "Emirates ID status", laborCardExpiry: "labour card expiry",
   laborCardNumber: "labour card number", laborCardPersonalNo: "labour card personal no.", medicalExpiry: "medical expiry", passportExpiry: "passport expiry",

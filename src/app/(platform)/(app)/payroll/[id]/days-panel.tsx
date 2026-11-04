@@ -97,7 +97,7 @@ export function DaysButton({ runId, employeeId, name }: { runId: string; employe
           <div className="mt-4 space-y-4">
             <div className={cn("grid gap-3", showShort(view) ? "sm:grid-cols-5" : "sm:grid-cols-4")}>
               <Stat label="Salary for the days" value={`AED ${aed(view.totals.salary)}`} />
-              <Stat label={`Overtime${view.totals.ot + view.totals.rest > 0 ? ` (${view.totals.ot + view.totals.rest} h)` : ""}`} value={`AED ${aed(view.totals.otPay)}`} />
+              <Stat label={`Overtime${view.totals.ot + view.totals.rest > 0 ? ` (${view.totals.ot + view.totals.rest} h)` : ""}`} value={`AED ${aed(view.totals.otPay)}`} hint={view.otBasis && view.totals.ot + view.totals.rest > 0 ? (view.otBasis.fixed ? `Each overtime hour: AED ${aed(view.otBasis.fixed)} (fixed)` : `Each hour: ${aed(view.otBasis.hourly)} × ${view.otBasis.multiplier} = ${aed(view.otBasis.hourly * view.otBasis.multiplier)}`) : undefined} />
               <Stat label={`Absence${view.totals.absent > 0 ? ` (${view.totals.absent} day${view.totals.absent === 1 ? "" : "s"})` : ""}`} value={view.totals.deduction > 0 ? `−AED ${aed(view.totals.deduction)}` : "AED 0.00"} />
               {showShort(view) && <Stat label={`Short hours${view.totals.shortHours > 0 ? ` (${view.totals.shortHours} h)` : ""}`} value={view.totals.shortfall > 0 ? `−AED ${aed(view.totals.shortfall)}` : "AED 0.00"} />}
               <Stat label="Net pay" value={`AED ${aed(view.lineNet)}`} strong />
@@ -296,11 +296,12 @@ export function DaysButton({ runId, employeeId, name }: { runId: string; employe
 
 const statusOf = (label: string) => ({ Present: "PRESENT", Absent: "ABSENT", Leave: "LEAVE", Sick: "SICK_LEAVE", Idle: "IDLE", Holiday: "HOLIDAY", Off: "OFF" } as Record<string, string>)[label] ?? "PRESENT";
 
-function Stat({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
+function Stat({ label, value, strong, hint }: { label: string; value: string; strong?: boolean; hint?: string }) {
   return (
     <div className="rounded-md border border-default px-3 py-2">
       <p className="text-xs text-muted">{label}</p>
       <p className={cn("tabular-nums text-primary", strong ? "text-lg font-semibold" : "text-base font-medium")}>{value}</p>
+      {hint && <p className="mt-0.5 text-[11px] text-muted">{hint}</p>}
     </div>
   );
 }
