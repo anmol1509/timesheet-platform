@@ -7,6 +7,8 @@ import { Checkbox } from "@/components/ui/Checkbox";
 import { Badge } from "@/components/Badge";
 import { Button } from "@/components/ui/Button";
 import { EmployeeAvatar } from "@/components/Avatar";
+import { ColumnPicker, useColumnChoice } from "@/components/ColumnPicker";
+import { ALL_CHECKIN_COLUMNS, CHECKIN_COLUMNS } from "@/lib/checkInColumns";
 
 type HistoryRow = {
   checkInId: string;
@@ -40,6 +42,7 @@ const STATUS_BADGE: Record<string, { label: string; color: "amber" | "green" | "
  */
 export function CheckInHistory({ rows, camps }: { rows: HistoryRow[]; camps: { id: string; name: string }[] }) {
   const [campId, setCampId] = useState(camps[0]?.id ?? "");
+  const [columns, setColumns] = useColumnChoice("checkin", ALL_CHECKIN_COLUMNS);
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const [query, setQuery] = useState("");
@@ -69,7 +72,7 @@ export function CheckInHistory({ rows, camps }: { rows: HistoryRow[]; camps: { i
     // popup — it fires from a click handler with no await in between, and
     // the Content-Disposition header makes the browser download rather than
     // navigate away.
-    window.location.href = `/api/checkins/pdf?ids=${[...selected].join(",")}`;
+    window.location.href = `/api/checkins/pdf?ids=${[...selected].join(",")}${columns.length < ALL_CHECKIN_COLUMNS.length ? `&columns=${columns.join(",")}` : ""}`;
   }
 
   return (
@@ -81,10 +84,13 @@ export function CheckInHistory({ rows, camps }: { rows: HistoryRow[]; camps: { i
             Reprint or regenerate the check-in slip PDF for a past batch.
           </p>
         </div>
-        <Button variant="primary" size="sm" onClick={generate} disabled={selected.size === 0}>
-          <FileDown className="h-3.5 w-3.5" />
-          Generate ({selected.size})
-        </Button>
+        <div className="flex items-center gap-2">
+          <ColumnPicker options={CHECKIN_COLUMNS.map((c) => ({ key: c.key, label: c.label, always: c.always }))} value={columns} onChange={setColumns} />
+          <Button variant="primary" size="sm" onClick={generate} disabled={selected.size === 0}>
+            <FileDown className="h-3.5 w-3.5" />
+            Generate ({selected.size})
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-end gap-3">

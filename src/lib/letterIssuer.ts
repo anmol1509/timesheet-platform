@@ -102,8 +102,10 @@ export async function buildLetterSections(opts: {
   branchId: string;
   /** Company-issued letters only: what to print in the signature block. */
   signing?: { signatoryName?: string | null; signatoryTitle?: string | null; showSignature?: boolean; showStamp?: boolean };
+  /** Company-issued letters only: one of our own companies to issue it, on its own letterhead, instead of the company profile. */
+  issuerSupplierId?: string | null;
 }): Promise<{ sections: LetterSection[]; missingLetterheads: string[] }> {
-  if (opts.issuedBy === "COMPANY") return buildCompanySection(opts);
+  if (opts.issuedBy === "COMPANY") return opts.issuerSupplierId ? buildOwnCompanySection({ ...opts, issuerSupplierId: opts.issuerSupplierId }) : buildCompanySection(opts);
   const groups = groupWorkersBySponsor(opts.workers);
   const supplierIds = groups
     .map((g) => g.supplierId)
@@ -188,6 +190,45 @@ export function toLetterWorker(e: {
 
 export type { LetterGroup };
 
+
+/**
+ * One letter from one of our own companies (chosen when the letter is made), on that company's own letterhead. The
+ * signature and stamp images, when asked for, are the ones in the company profile.
+ */
+async function buildOwnCompanySection(opts: {
+  workers: LetterWorker[];
+  templateHtml: string;
+  context: LetterContext;
+  onLetterhead: boolean;
+  branchId: string;
+  issuerSupplierId: string;
+  signing?: { signatoryName?: string | null; signatoryTitle?: string | null; showSignature?: boolean; showStamp?: boolean };
+}): Promise<{ sections: LetterSection[]; missingLetterheads: string[] }> {
+  const [supplier, branch, letterheads] = await Promise.all([
+    prisma.supplier.findUnique({ where: { id: opts.issuerSupplierId }, select: { name: true, fullName: true, contactPerson: true, contactPhone: true, contactEmail: true, letterheadTopMm: true, letterheadBottomMm: true, isOwnCompany: true, branchId: true } }),
+    prisma.branch.findUnique({ where: { id: opts.branchId }, select: { signatoryTitle: true, signatureId: true, stampId: true } }),
+    opts.onLetterhead ? loadLetterheads([opts.issuerSupplierId]) : Promise.resolve(new Map<string, { image: string | null; pdf: Uint8Array | null }>()),
+  ]);
+  if (!supplier || !supplier.isOwnCompany || (supplier.branchId && supplier.branchId !== opts.branchId)) return buildCompanySection(opts);
+  const name = supplier.fullName || supplier.name;
+  const letterhead = letterheads.get(opts.issuerSupplierId);
+  const issuer: LetterIssuer = {
+    name,
+    signatoryName: opts.signing?.signatoryName?.trim() || supplier.contactPerson || null,
+    signatoryTitle: opts.signing?.signatoryTitle?.trim() || branch?.signatoryTitle || null,
+    signatoryPhone: supplier.contactPhone ?? null,
+    signatoryEmail: supplier.contactEmail ?? null,
+    letterheadImage: letterhead?.image ?? null,
+    letterheadPdf: letterhead?.pdf ?? null,
+    topMm: supplier.letterheadTopMm ?? null,
+    bottomMm: supplier.letterheadBottomMm ?? null,
+    signatureImage: opts.signing?.showSignature ? await imageDataUri(branch?.signatureId) : null,
+    stampImage: opts.signing?.showStamp ? await imageDataUri(branch?.stampId) : null,
+  };
+  const group: LetterGroup = { supplierId: opts.issuerSupplierId, supplierName: name, workers: opts.workers };
+  const bodyHtml = substituteInHtml(opts.templateHtml, SUBSTITUTIONS(opts, name, opts.workers.length));
+  return { sections: [{ group, issuer, bodyHtml } satisfies LetterSection], missingLetterheads: opts.onLetterhead && !letterhead ? [name] : [] };
+}
 
 /** One letter from our own company, on the letterhead saved in the company profile. */
 async function buildCompanySection(opts: {

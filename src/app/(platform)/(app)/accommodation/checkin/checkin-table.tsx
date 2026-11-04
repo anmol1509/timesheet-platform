@@ -15,6 +15,8 @@ import { cn } from "@/lib/cn";
 import { checkInAndAssignAction, createCheckInAction, switchCampAction, switchToExternalCampAction, type CheckInAndAssignResult } from "../checkin-actions";
 import { ExternalCampFields, type Party } from "../external-camp-fields";
 import { DatePicker } from "@/components/ui/DatePicker";
+import { ColumnPicker, useColumnChoice } from "@/components/ColumnPicker";
+import { ALL_CHECKIN_COLUMNS, CHECKIN_COLUMNS } from "@/lib/checkInColumns";
 
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/Alert";
@@ -69,7 +71,8 @@ export function CheckInTable({ rows, camps, suppliers, clients }: { rows: Employ
   const [filter, setFilter] = useState<Filter>("all");
   // The date printed on a check-in document when it is downloaded (YYYY-MM-DD); blank means today.
   const [letterDate, setLetterDate] = useState("");
-  const pdfHref = (ids: string) => `/api/checkins/pdf?ids=${ids}${letterDate ? `&letterDate=${letterDate}` : ""}`;
+  const [columns, setColumns] = useColumnChoice("checkin", ALL_CHECKIN_COLUMNS);
+  const pdfHref = (ids: string) => `/api/checkins/pdf?ids=${ids}${letterDate ? `&letterDate=${letterDate}` : ""}${columns.length < ALL_CHECKIN_COLUMNS.length ? `&columns=${columns.join(",")}` : ""}`;
   const [query, setQuery] = useState("");
   const [project, setProject] = useState(ALL);
   const [supplier, setSupplier] = useState(ALL);
@@ -153,6 +156,7 @@ export function CheckInTable({ rows, camps, suppliers, clients }: { rows: Employ
           <span className="ml-auto flex flex-wrap items-center gap-2">
             <span className="text-xs text-muted">Document date</span>
             <DatePicker value={letterDate} onChange={setLetterDate} ariaLabel="Document date (blank = today)" className="w-40" />
+            <ColumnPicker options={CHECKIN_COLUMNS.map((c) => ({ key: c.key, label: c.label, always: c.always }))} value={columns} onChange={setColumns} />
             <a href={pdfHref(visible.map((r) => r.checkInId).join(","))} className="text-xs font-medium text-[var(--brand-primary)] hover:underline">Download the check-in document for these {visible.length}</a>
           </span>
         )}

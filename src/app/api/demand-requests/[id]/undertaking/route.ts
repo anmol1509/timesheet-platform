@@ -7,6 +7,7 @@ import { isOutsideBranch } from "@/lib/branch";
 import { generateLetterPdf } from "@/lib/generateLetterPdf";
 import { parseDay } from "@/lib/dates";
 import { buildLetterSections, toLetterWorker, loadPaperMargins } from "@/lib/letterIssuer";
+import { columnsFromNocFields } from "@/lib/letterLayout";
 
 /**
  * Undertaking letter for a demand's mobilised workers.
@@ -31,6 +32,11 @@ export async function GET(
     showSignature: url.searchParams.get("signature") === "1",
     showStamp: url.searchParams.get("stamp") === "1",
   };
+
+  // Which table columns to print (the same field keys as the NOC) and which of our own companies issues the letter.
+  const fieldsParam = url.searchParams.get("fields") ?? "";
+  const columns = columnsFromNocFields(fieldsParam ? fieldsParam.split(",").filter(Boolean) : []);
+  const issuerSupplierId = url.searchParams.get("issuerId") || null;
 
   // Optional dates, as YYYY-MM-DD: the date printed on the letter (today when not given) and the mobilisation date.
   const dayParam = (name: string) => { const v = url.searchParams.get(name) ?? ""; return /^\d{4}-\d{2}-\d{2}$/.test(v) ? parseDay(v) : null; };
@@ -79,6 +85,7 @@ export async function GET(
     onLetterhead,
     fallbackIssuerName: demand.branch.name,
     issuedBy: "COMPANY",
+    issuerSupplierId,
     branchId: demand.branchId,
     signing,
     context: {
@@ -100,6 +107,7 @@ export async function GET(
     projectName: demand.project.name,
     date: letterDate,
     sections,
+    columns,
   });
 
   return new NextResponse(new Uint8Array(buffer), {
