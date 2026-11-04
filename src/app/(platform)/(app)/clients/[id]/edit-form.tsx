@@ -226,7 +226,7 @@ export function EditClientForm({ client }: { client: Client & CodeProps }) {
           <NumberInput name="absentFreeDays" defaultValue={client.absentFreeDays} min={0} max={31} step={1} className="w-full" />
         </Field>
         <Field label="Deduction per day off after that (AED)">
-          <NumberInput name="absentDeductionPerDay" defaultValue={client.absentDeductionPerDay} min={0} step={0.5} className="w-full" />
+          <NumberInput name="absentDeductionPerDay" defaultValue={client.absentDeductionPerDay} min={0} step={0.01} className="w-full" />
         </Field>
         <Field label="Billing address" className="sm:col-span-2">
           <input
