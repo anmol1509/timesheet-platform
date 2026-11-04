@@ -33,6 +33,35 @@ test("absence: the free days cost nothing, then the per-day amount", () => {
   assert.equal(computePay(rule, { ...facts, absentDays: 5 }).deductions, 90);
 });
 
+test("absence as a percentage of the day's pay: basic only or with allowances, over 30 or the days of the month", () => {
+  const rule = { ...base, absenceFreeDays: 2, absencePerDay: 30, absenceMethod: "PERCENT" as const, absencePercent: 100 };
+  // basic 1500 + 500 allowances = 2000; 5 days off, 2 free, 3 charged
+  // a day is worked out to the fils first, so the days add up to what the day-by-day view shows
+  assert.equal(computePay({ ...rule, absenceBase: "GROSS" }, { ...facts, absentDays: 5 }).deductions, round2(3 * round2(2000 / 30)));
+  assert.equal(computePay({ ...rule, absenceBase: "BASIC" }, { ...facts, absentDays: 5 }).deductions, round2(3 * round2(1500 / 30)));
+  assert.equal(computePay({ ...rule, absenceBase: "GROSS", absenceDivisor: "MONTH" }, { ...facts, absentDays: 5, daysInMonth: 31 }).deductions, round2(3 * round2(2000 / 31)));
+  // 150% is the day's pay and half as much again; 5% is a small fine
+  assert.equal(computePay({ ...rule, absencePercent: 150 }, { ...facts, absentDays: 3 }).deductions, round2(1 * (2000 / 30) * 1.5));
+  assert.equal(computePay({ ...rule, absencePercent: 5 }, { ...facts, absentDays: 3 }).deductions, round2(1 * (2000 / 30) * 0.05));
+  // the fixed method is what it always was
+  assert.equal(computePay({ ...base, absenceFreeDays: 2, absencePerDay: 30, absenceMethod: "FIXED" }, { ...facts, absentDays: 5 }).deductions, 90);
+});
+
+test("an hourly worker's day off is a percentage of their standard hours at the hourly rate", () => {
+  const hourlyRule = { payStructure: "HOURLY" as const, basic: 0, housing: 0, food: 0, transport: 0, other: 0, flat: 0, hourly: 10, paysOvertime: false, otMultiplier: 1.25, dailyHours: 8, absenceFreeDays: 1, absencePerDay: 30, absenceMethod: "PERCENT" as const, absencePercent: 50 };
+  // 208 hours at 10 = 2080 earned; 3 days off, 1 free, 2 charged at 50% of (8 x 10)
+  assert.equal(computePay(hourlyRule, { normalHours: 208, absentDays: 3, unpaidLeaveDays: 0, otHours: 0 }).deductions, 80);
+  assert.equal(computePay({ ...hourlyRule, absenceMethod: "FIXED" }, { normalHours: 208, absentDays: 3, unpaidLeaveDays: 0, otHours: 0 }).deductions, 60);
+});
+
+test("the monthly limit stops absence deductions at a share of the month's pay, but not unpaid leave", () => {
+  const rule = { ...base, absenceFreeDays: 0, absencePerDay: 30, absenceMethod: "PERCENT" as const, absencePercent: 100, absenceBase: "GROSS" as const, absenceCapPercent: 10 };
+  // 2000 pay, limit 10% = 200; 5 days off would be 333.33
+  assert.equal(computePay(rule, { ...facts, absentDays: 5 }).deductions, 200);
+  assert.equal(computePay(rule, { ...facts, absentDays: 5, unpaidLeaveDays: 1 }).deductions, round2(200 + 2000 / 30));
+  assert.equal(computePay({ ...rule, absenceCapPercent: null }, { ...facts, absentDays: 5 }).deductions, round2(5 * round2(2000 / 30)));
+});
+
 test("without a company rule an absent day costs one thirtieth of pay", () => {
   assert.equal(computePay(base, { ...facts, absentDays: 3 }).deductions, 200);
 });

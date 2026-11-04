@@ -88,3 +88,14 @@ test("a fixed overtime rate is what the days add up to, matching the run's total
   assert.equal(totals.otPay, 60);
   assert.notEqual(buildDays(plan({ days: d })).totals.otPay, totals.otPay); // without it the multipliers apply
 });
+
+test("a monthly limit on absence deductions stops the days adding up to more than it", () => {
+  const a = { status: "ABSENT", normalHours: null, otHours: null, ts: "A" };
+  const d = days(30, { 1: a, 2: a, 3: a, 4: a });
+  const open = buildDays(plan({ days: d, absence: { freeDays: 0, perDay: 60, dailyRate: 66.67 } }));
+  assert.equal(open.totals.deduction, 240);
+  const capped = buildDays(plan({ days: d, absence: { freeDays: 0, perDay: 60, dailyRate: 66.67, capTotal: 150 } }));
+  assert.equal(capped.totals.deduction, 150); // 60 + 60 + 30 + 0
+  assert.deepEqual(capped.rows.slice(0, 4).map((r) => r.deduction), [60, 60, 30, 0]);
+});
+

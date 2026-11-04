@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
-import { PAY_EMPLOYEE_SELECT, hourlyRateSource, loadPayOf, otherTradeRates } from "@/lib/payrollRun";
-import { employmentWindow, isShortfallMode, monthBounds, readDeductionItems, round2, type ShortfallMode } from "@/lib/payroll";
+import { PAY_EMPLOYEE_SELECT, absenceRuleFields, hourlyRateSource, loadPayOf, otherTradeRates } from "@/lib/payrollRun";
+import { absenceCap, absenceDayAmount, employmentWindow, isShortfallMode, monthBounds, readDeductionItems, round2, type PayProfile, type ShortfallMode } from "@/lib/payroll";
 import { buildDays, type DayInput, type DayRow } from "@/lib/payDays";
 import { cellsDiffer, parseDailyHours } from "@/lib/timesheetCells";
 import { payByTrade, rateForTrade } from "@/lib/tradePay";
@@ -111,12 +111,15 @@ export async function loadPayDays(runId: string, employeeId: string, opts: { can
   const monthlyFixed = pf.payStructure === "FLAT" ? pf.flatMonthlyRate : pf.basicSalary + pf.housingAllowance + pf.foodAllowance + pf.transportAllowance + pf.otherAllowance;
   const dailyHours = pf.dailyHours > 0 ? pf.dailyHours : 8;
   const shortRule = { mode: (isShortfallMode(e.supplier?.shortfallMode) ? e.supplier!.shortfallMode : "OFF") as ShortfallMode, halfDayUnder: e.supplier ? num(e.supplier.shortfallHalfDayUnder) : 4 };
+  const absence = absenceRuleFields(e.supplier, hourly);
+  const [yy, mm] = line.run.month.split("-").map(Number);
+  const daysInMonth = new Date(Date.UTC(yy, mm, 0)).getUTCDate();
   const { rows, totals } = buildDays({
     from: iso(window.from), to: iso(window.to), days, hasTimesheet: !!entry,
     pattern: { dailyHours, weeklyOffDays: e.project?.weeklyOffDays ?? [0] },
     hourly, hourlyRate: pf.hourlyRate, fixedPaid: hourly ? 0 : round2(num(line.basic) + num(line.allowances)),
     paysOvertime: hourly ? false : pf.paysOvertime, otMultiplier: pf.otMultiplier, restMultiplier: pf.otMultiplier, otFixedRate: pf.otHourlyRate, otHourlyBase: basic / 30 / dailyHours,
-    absence: { freeDays: e.supplier?.absentFreeDays ?? 2, perDay: e.supplier ? num(e.supplier.absentDeductionPerDay) : 30, dailyRate: monthlyFixed / 30 },
+    absence: { freeDays: absence.absenceFreeDays ?? 2, perDay: absenceDayAmount(absence as PayProfile, { basic, monthlyFixed, daysInMonth, hourlyDayPay: hourly ? pf.hourlyRate * dailyHours : undefined }), dailyRate: monthlyFixed / 30, capTotal: absenceCap(absence as PayProfile, hourly ? num(line.basic) : round2(num(line.basic) + num(line.allowances))) },
     shortfall: hourly ? undefined : { rule: shortRule, rates: { hourly: basic / 30 / dailyHours, day: monthlyFixed / 30 } },
   });
 
