@@ -9,6 +9,7 @@ import { NumberInput } from "@/components/ui/NumberInput";
 
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/Alert";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 type State = { error: string | null; ok?: boolean };
 
 export function RunControls({
@@ -53,9 +54,23 @@ export function RunControls({
         )}
         {status === "APPROVED" && canApprove && (
           <>
-            <button type="button" className="btn btn-primary" disabled={pending} onClick={() => run(markPaidAction)}>
-              <CheckCheck className="h-4 w-4" aria-hidden /> Mark as paid
-            </button>
+            <ConfirmDialog
+              danger={false}
+              title="Mark this payroll as paid?"
+              description="Use this once the bank has paid everyone. Every worker in the run is marked paid, and a paid run can't be reopened."
+              confirmLabel="Mark as paid"
+              onConfirm={async () => {
+                const fd = new FormData();
+                fd.set("id", id);
+                const res = await markPaidAction(fd);
+                if (res && res.error) return { error: res.error };
+              }}
+              trigger={(open) => (
+                <button type="button" className="btn btn-primary" disabled={pending} onClick={open}>
+                  <CheckCheck className="h-4 w-4" aria-hidden /> Mark as paid
+                </button>
+              )}
+            />
             <button type="button" className="btn btn-secondary" disabled={pending} onClick={() => run(reopenRunAction)}>
               <Undo2 className="h-4 w-4" aria-hidden /> Reopen
             </button>
