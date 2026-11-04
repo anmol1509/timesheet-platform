@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { generateCheckInPdf } from "@/lib/generateCheckInPdf";
 import { buildLetterhead } from "@/lib/letterhead";
 import { checkInListWording, fillCheckInWording } from "@/lib/checkInList";
+import { checkInColumnsFrom } from "@/lib/checkInColumns";
 
 const CAMP_TYPE_LABEL: Record<string, string> = { OWN: "Own", SUPPLIER: "Supplier", CLIENT: "Client" };
 const STATUS_LABEL: Record<string, string> = {
@@ -54,6 +55,7 @@ export async function GET(request: Request) {
     title: wording.title,
     date: checkInDate,
     campName,
+    columns: checkInColumnsFrom(params.get("columns")),
     bodyHtml: fillCheckInWording(wording.html, {
       companyName: letterhead.name,
       campName,

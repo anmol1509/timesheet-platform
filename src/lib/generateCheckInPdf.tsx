@@ -2,6 +2,7 @@ import { Document, Image, Page, StyleSheet, Text, View, renderToBuffer } from "@
 import type { Letterhead } from "@/lib/letterhead";
 import { splitAtWorkerTable } from "@/lib/letterHtml";
 import { RichHtml } from "@/lib/richPdf";
+import { ALL_CHECKIN_COLUMNS, CHECKIN_COLUMNS } from "@/lib/checkInColumns";
 
 export type CheckInPdfRow = {
   slNo: number;
@@ -23,6 +24,8 @@ export type CheckInPdfInput = {
   /** The template's wording with its merge fields filled; the worker-table marker splits it into before and after. */
   bodyHtml: string;
   rows: CheckInPdfRow[];
+  /** Which columns to print (see CHECKIN_COLUMNS); every column when not given. */
+  columns?: string[];
 };
 
 const NAVY = "#0B1530";
@@ -58,22 +61,14 @@ const s = StyleSheet.create({
   footer: { position: "absolute", left: 40, right: 40, bottom: 24, flexDirection: "row", justifyContent: "space-between", fontSize: 7.5, color: MUTED, borderTopWidth: 0.5, borderColor: LINE, paddingTop: 6 },
 });
 
-const COLS: { key: keyof CheckInPdfRow; label: string; flex: number }[] = [
-  { key: "slNo", label: "No.", flex: 0.4 },
-  { key: "checkInNo", label: "Check-in no.", flex: 0.95 },
-  { key: "employeeName", label: "Employee", flex: 1.7 },
-  { key: "employeeCode", label: "Emp code", flex: 0.9 },
-  { key: "trade", label: "Trade", flex: 1.2 },
-  { key: "nationality", label: "Nationality", flex: 0.9 },
-  { key: "supplierName", label: "Company", flex: 1.5 },
-  { key: "coordinator", label: "Coordinator", flex: 1.2 },
-  { key: "status", label: "Status", flex: 0.95 },
-];
+const ALL_COLS = CHECKIN_COLUMNS.map((c) => ({ key: c.key as keyof CheckInPdfRow, label: c.label as string, flex: c.flex as number }));
 
 const statusColor = (status: string) => (/out/i.test(status) ? "#B42318" : /bed|allocated/i.test(status) ? "#146C43" : "#2A4AA8");
 
 export async function generateCheckInPdf(input: CheckInPdfInput): Promise<Buffer> {
   const { letterhead: lh } = input;
+  const wanted = new Set(input.columns ?? ALL_CHECKIN_COLUMNS);
+  const COLS = ALL_COLS.filter((c) => wanted.has(c.key));
   const { before, after, hasTable } = splitAtWorkerTable(input.bodyHtml);
   const contact = [lh.phone && `Tel ${lh.phone}`, lh.email, lh.poBox && `P.O. Box ${lh.poBox}`, lh.trn && `TRN ${lh.trn}`].filter(Boolean).join("   ·   ");
   const doc = (
