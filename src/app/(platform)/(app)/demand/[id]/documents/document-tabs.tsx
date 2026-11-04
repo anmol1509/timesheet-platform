@@ -113,12 +113,15 @@ function LetterBuilder({
   // Our company a NOC is addressed to; chosen for us when there is only one.
   const [addresseeId, setAddresseeId] = useState(ownCompanies.length === 1 ? ownCompanies[0].id : "");
   const addressee = ownCompanies.find((c) => c.id === addresseeId) ?? null;
+  // For an undertaking the same choice is the company that issues it, on its own letterhead.
+  const issuer = !isNoc ? addressee : null;
   const [onLetterhead, setOnLetterhead] = useState(true);
   const [mobilizeDate, setMobilizeDate] = useState("");
   // The date printed on the letter (NOC or undertaking); empty means today.
   const [letterDate, setLetterDate] = useState("");
   const [remarks, setRemarks] = useState("");
-  const [fields, setFields] = useState<Set<string>>(new Set(DEFAULT_NOC_DISPLAY_FIELDS));
+  // The undertaking has always printed the client's own columns (no Employee ID); the NOC adds it.
+  const [fields, setFields] = useState<Set<string>>(new Set(isNoc ? DEFAULT_NOC_DISPLAY_FIELDS : DEFAULT_NOC_DISPLAY_FIELDS.filter((k) => k !== "EMPLOYEE_ID")));
   const [signatoryName, setSignatoryName] = useState(company.signatoryName);
   const [signatoryTitle, setSignatoryTitle] = useState(company.signatoryTitle);
   const [showSignature, setShowSignature] = useState(false);
@@ -143,22 +146,22 @@ function LetterBuilder({
   const template = baseTemplate && edited && override ? { ...baseTemplate, html: edited, title: override.title || baseTemplate.title } : baseTemplate;
   const picked = workers.filter((w) => chosen.has(w.id));
   const columns = useMemo(() => {
-    const keys = isNoc ? columnsFromNocFields([...fields]) : DEFAULT_LETTER_COLUMNS;
+    const keys = columnsFromNocFields([...fields]);
     return LETTER_TABLE_COLUMNS.filter((c) => keys.includes(c.key)).map((c) => ({ key: c.key as string, label: c.label as string, width: c.width as number }));
-  }, [fields, isNoc]);
+  }, [fields]);
 
   // One letter per sponsor for a NOC; one from our own company for an undertaking.
   const groups = useMemo(() => {
-    if (!isNoc) return [{ id: null as string | null, issuer: company.name, workers: picked }];
+    if (!isNoc) return [{ id: issuer ? issuer.id : null, issuer: issuer ? issuer.name : company.name, workers: picked }];
     const by = new Map<string, Worker[]>();
     for (const w of picked) {
       const key = w.sponsorSupplierId ?? w.supplierId ?? "";
       by.set(key, [...(by.get(key) ?? []), w]);
     }
     return [...by.entries()].map(([id, ws]) => ({ id: id || null, issuer: (id && sponsors[id]?.name) || ws[0]?.supplierName || "Workers with no company set", workers: ws }));
-  }, [picked, isNoc, company.name, sponsors]);
+  }, [picked, isNoc, company.name, sponsors, issuer]);
 
-  const missing = isNoc ? groups.filter((g) => !g.id || !sponsors[g.id]?.hasLetterhead).map((g) => g.issuer) : company.letterheadUrl ? [] : [company.name];
+  const missing = isNoc ? groups.filter((g) => !g.id || !sponsors[g.id]?.hasLetterhead).map((g) => g.issuer) : issuer ? (sponsors[issuer.id]?.hasLetterhead ? [] : [issuer.name]) : company.letterheadUrl ? [] : [company.name];
 
   function toggle(id: string) {
     setChosen((p) => { const n = new Set(p); if (n.has(id)) n.delete(id); else n.add(id); return n; });
@@ -173,6 +176,8 @@ function LetterBuilder({
     if (showSignature) q.set("signature", "1");
     if (showStamp) q.set("stamp", "1");
     if (letterDate) q.set("letterDate", letterDate);
+    if (issuer) q.set("issuerId", issuer.id);
+    q.set("fields", [...fields].join(","));
     return `/api/demand-requests/${demand.id}/undertaking?${q.toString()}`;
   })();
 
@@ -206,7 +211,7 @@ function LetterBuilder({
     return <div className="card p-8 text-center text-sm text-muted">Nobody is mobilised on this demand yet. Mobilise workers first.</div>;
   }
 
-  const ready = !!template && picked.length > 0 && (!isNoc || ownCompanies.length === 0 || !!addresseeId);
+  const ready = !!template && picked.length > 0 && (ownCompanies.length === 0 || !!addresseeId);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)]">
@@ -216,9 +221,9 @@ function LetterBuilder({
             <span className="mb-1 block text-xs font-medium text-muted">Letter</span>
             <Select value={templateId} onChange={setTemplateId} searchable={false} options={templates.map((t) => ({ value: t.id, label: t.name }))} />
           </label>
-          {isNoc && ownCompanies.length > 0 && (
+          {ownCompanies.length > 0 && (
             <label className="block">
-              <span className="mb-1 block text-xs font-medium text-muted">Addressed to (our company)</span>
+              <span className="mb-1 block text-xs font-medium text-muted">{isNoc ? "Addressed to (our company)" : "Issued by (our company)"}</span>
               <Select value={addresseeId} onChange={setAddresseeId} searchable={false} placeholder="Choose our company" options={ownCompanies.map((c) => ({ value: c.id, label: c.name }))} />
             </label>
           )}
@@ -254,6 +259,17 @@ function LetterBuilder({
             <span className="mb-1 block text-xs font-medium text-muted">Letter date <span className="font-normal">(blank = today)</span></span>
             <DatePicker value={letterDate} onChange={setLetterDate} className="w-full" />
           </label>
+          <details className="rounded-card border border-default">
+            <summary className="cursor-pointer px-3 py-2 text-sm font-medium text-secondary">Table columns</summary>
+            <div className="grid grid-cols-2 gap-1 border-t border-default p-2">
+              {NOC_DISPLAY_FIELDS.map((f) => (
+                <label key={f.key} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 text-sm hover:bg-surface-hover">
+                  <input type="checkbox" checked={fields.has(f.key)} onChange={() => setFields((p) => { const n = new Set(p); if (n.has(f.key)) n.delete(f.key); else n.add(f.key); return n; })} />
+                  {f.label}
+                </label>
+              ))}
+            </div>
+          </details>
           {isNoc && (
             <>
               <label className="block">
@@ -264,17 +280,6 @@ function LetterBuilder({
                 <span className="mb-1 block text-xs font-medium text-muted">Remarks (kept on the record, not printed)</span>
                 <input value={remarks} onChange={(e) => setRemarks(e.target.value)} className="input w-full" />
               </label>
-              <details className="rounded-card border border-default">
-                <summary className="cursor-pointer px-3 py-2 text-sm font-medium text-secondary">Table columns</summary>
-                <div className="grid grid-cols-2 gap-1 border-t border-default p-2">
-                  {NOC_DISPLAY_FIELDS.map((f) => (
-                    <label key={f.key} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 text-sm hover:bg-surface-hover">
-                      <input type="checkbox" checked={fields.has(f.key)} onChange={() => setFields((p) => { const n = new Set(p); if (n.has(f.key)) n.delete(f.key); else n.add(f.key); return n; })} />
-                      {f.label}
-                    </label>
-                  ))}
-                </div>
-              </details>
             </>
           )}
         </div>
@@ -288,16 +293,16 @@ function LetterBuilder({
           <label className="flex items-start gap-2 text-sm">
             <input type="radio" name={`paper-${kind}`} checked={onLetterhead} onChange={() => setOnLetterhead(true)} className="mt-1" />
             <span>
-              <span className="font-medium text-primary">{isNoc ? "On the sponsor's letterhead" : "On the company letterhead"}</span>
+              <span className="font-medium text-primary">{isNoc ? "On the sponsor's letterhead" : issuer ? "On our company's letterhead" : "On the company letterhead"}</span>
               <span className="block text-xs text-muted">
-                {isNoc ? `One letter per sponsor (${groups.length}), each on that sponsor's letterhead.` : `One letter from ${company.name}, on the letterhead in Company profile.`}
+                {isNoc ? `One letter per sponsor (${groups.length}), each on that sponsor's letterhead.` : issuer ? `One letter from ${issuer.name}, on its own letterhead.` : `One letter from ${company.name}, on the letterhead in Company profile.`}
               </span>
             </span>
           </label>
           {onLetterhead && missing.length > 0 && (
             <p className="rounded-card border border-[var(--warning-border)] bg-[var(--warning-soft)] px-3 py-2 text-xs text-[var(--warning)]">
               No letterhead on file for {missing.join(", ")}, so {missing.length === 1 && !isNoc ? "this letter" : "that letter"} prints plain.{" "}
-              {isNoc ? "Upload one on the sponsor supplier's Documents tab." : "Upload one in Settings → Company profile → Letters."}
+              {isNoc || issuer ? "Upload one on the company's Documents tab (Suppliers)." : "Upload one in Settings → Company profile → Letters."}
             </p>
           )}
 
@@ -375,9 +380,9 @@ function LetterBuilder({
                 workers={g.workers}
                 columns={columns}
                 onLetterhead={onLetterhead}
-                letterheadUrl={isNoc ? (g.id && sponsors[g.id]?.hasLetterhead ? `/api/suppliers/${g.id}/letterhead` : null) : company.letterheadUrl}
-                topMm={isNoc ? (g.id ? sponsors[g.id]?.topMm : undefined) ?? 65 : company.topMm}
-                bottomMm={isNoc ? (g.id ? sponsors[g.id]?.bottomMm : undefined) ?? 35 : company.bottomMm}
+                letterheadUrl={isNoc ? (g.id && sponsors[g.id]?.hasLetterhead ? `/api/suppliers/${g.id}/letterhead` : null) : issuer ? (sponsors[issuer.id]?.hasLetterhead ? `/api/suppliers/${issuer.id}/letterhead` : null) : company.letterheadUrl}
+                topMm={isNoc ? (g.id ? sponsors[g.id]?.topMm : undefined) ?? 65 : issuer ? sponsors[issuer.id]?.topMm ?? 65 : company.topMm}
+                bottomMm={isNoc ? (g.id ? sponsors[g.id]?.bottomMm : undefined) ?? 35 : issuer ? sponsors[issuer.id]?.bottomMm ?? 35 : company.bottomMm}
                 margins={company.margins}
                 signing={isNoc ? { name: g.id ? sponsors[g.id]?.contactPerson ?? null : null, title: null, phone: g.id ? sponsors[g.id]?.contactPhone ?? null : null, email: g.id ? sponsors[g.id]?.contactEmail ?? null : null, signatureUrl: null, stampUrl: null } : { name: signatoryName.trim() || null, title: signatoryTitle.trim() || null, phone: company.phone, email: company.email, signatureUrl: showSignature ? company.signatureUrl : null, stampUrl: showStamp ? company.stampUrl : null }}
                 mobilizeDate={mobilizeDate}

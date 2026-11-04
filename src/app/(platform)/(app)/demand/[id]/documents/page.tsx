@@ -57,7 +57,9 @@ export default async function DemandDocumentsPage({
 
   // NOCs are issued by each worker's visa sponsor (their own company when none is set), on that
   // sponsor's letterhead, so the screen needs to know which sponsors have one and what margins to use.
-  const issuerIds = [...new Set(workers.map((w) => w.sponsorSupplierId ?? w.supplierId).filter((x): x is string => !!x))];
+  const ownCompanies = await loadOwnCompanies(branchId);
+  // Our own companies are included too: an undertaking is issued by whichever one is chosen, on its own letterhead.
+  const issuerIds = [...new Set([...workers.map((w) => w.sponsorSupplierId ?? w.supplierId).filter((x): x is string => !!x), ...ownCompanies.map((c) => c.id)])];
   const [letterheads, issuers] = await Promise.all([
     issuerIds.length
       ? prisma.attachment.findMany({ where: { entityType: "SUPPLIER", entityId: { in: issuerIds }, docType: "LETTERHEAD" }, select: { entityId: true }, distinct: ["entityId"] })
@@ -82,7 +84,6 @@ export default async function DemandDocumentsPage({
     ])
   );
 
-  const ownCompanies = await loadOwnCompanies(branchId);
   const b = demand.branch;
   const asOption = (t: (typeof templates)[number]) => ({ id: t.id, name: t.name, title: t.title || t.category || t.name, html: templateHtml(t) });
 
