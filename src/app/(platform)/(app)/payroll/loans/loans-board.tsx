@@ -1,13 +1,15 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useActionState, useState, useTransition } from "react";
 import { Check, FileText, Plus, Upload, X, Banknote } from "lucide-react";
 import { ExportButton } from "@/components/ExportButton";
 import { Dialog, DialogContent } from "@/components/ui/Dialog";
 import { Select } from "@/components/ui/Select";
 import { Badge, type BadgeColor } from "@/components/Badge";
-import { approveAdvanceAction, cancelLoanAction, createLoanAction, markAdvanceGivenAction, rejectAdvanceAction, setLoanPlanAction } from "../pay-items-actions";
+import { approveAdvanceAction, cancelLoanAction, createLoanAction, deleteLoanAction, markAdvanceGivenAction, rejectAdvanceAction, setLoanPlanAction } from "../pay-items-actions";
 import { MonthInput } from "@/components/ui/MonthInput";
 import { NumberInput } from "@/components/ui/NumberInput";
 import { readOtherDoc } from "@/components/otherDocRead";
@@ -175,7 +177,8 @@ function SetPlanForm({ row, onDone }: { row: LoanRow; onDone: () => void }) {
   );
 }
 
-export function LoansBoard({ rows, employees, canCreate, canEdit, canApprove, canImport }: { rows: LoanRow[]; employees: { id: string; label: string }[]; canCreate: boolean; canEdit: boolean; canApprove: boolean; canImport: boolean }) {
+export function LoansBoard({ rows, employees, canCreate, canEdit, canDelete, canApprove, canImport }: { rows: LoanRow[]; employees: { id: string; label: string }[]; canCreate: boolean; canEdit: boolean; canDelete: boolean; canApprove: boolean; canImport: boolean }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [giving, setGiving] = useState<LoanRow | null>(null);
   const [planning, setPlanning] = useState<LoanRow | null>(null);
@@ -288,6 +291,21 @@ export function LoansBoard({ rows, employees, canCreate, canEdit, canApprove, ca
                           >
                             {r.stateKey === "RECOVERING" ? "Stop recovery" : "Cancel"}
                           </button>
+                        )}
+                        {canDelete && !r.repaidAny && (
+                          <ConfirmDialog
+                            title={`Delete this ${r.type === "ADVANCE" ? "advance" : "loan"}?`}
+                            description={`${r.ref} · AED ${aed(r.principal)} for ${r.employee} is removed for good, with its files.${r.givenDate ? " It is recorded as handed over, so check the money is accounted for elsewhere." : ""} If a payroll run in draft already includes it, recalculate that run.`}
+                            confirmLabel="Delete"
+                            onConfirm={async () => {
+                              const fd = new FormData();
+                              fd.set("id", r.id);
+                              const res = await deleteLoanAction(fd);
+                              if (res.error) return { error: res.error };
+                              router.refresh();
+                            }}
+                            trigger={(open) => <button type="button" disabled={pending} className="text-[var(--error)] hover:underline" onClick={open}>Delete</button>}
+                          />
                         )}
                       </div>
                     </td>
