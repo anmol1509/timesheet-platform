@@ -18,6 +18,15 @@ test("overtime is paid on basic only: basic / 30 / 8 times the multiplier", () =
   assert.equal(r.overtimePay, round2(10 * (1500 / 30 / 8) * 1.25)); // 78.13
 });
 
+test("a fixed AED rate per overtime hour replaces the multipliers, for working-day and rest-day hours alike", () => {
+  const fixed = { ...base, otHourlyRate: 5 };
+  assert.equal(computePay(fixed, { ...facts, otHours: 10 }).overtimePay, 50);
+  assert.equal(computePay(fixed, { ...facts, otHours: 10, restHours: 8 }).overtimePay, 90); // 18 hours x 5, no 1.5 on the rest-day hours
+  assert.equal(computePay({ ...fixed, otMultiplier: 4.17 }, { ...facts, otHours: 4 }).overtimePay, 20); // the multiplier is not used
+  assert.equal(computePay({ ...base, otHourlyRate: 0 }, { ...facts, otHours: 10 }).overtimePay, round2(10 * (1500 / 30 / 8) * 1.25)); // 0 means not set
+  assert.equal(computePay({ ...fixed, paysOvertime: false }, { ...facts, otHours: 10 }).overtimePay, 0);
+});
+
 test("absence: the free days cost nothing, then the per-day amount", () => {
   const rule = { ...base, absenceFreeDays: 2, absencePerDay: 30 };
   assert.equal(computePay(rule, { ...facts, absentDays: 2 }).deductions, 0);

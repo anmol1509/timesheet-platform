@@ -159,6 +159,7 @@ export type PayFormValues = {
   flatMonthlyRate: string;
   hourlyRate: string;
   otMultiplier: string;
+  otHourlyRate: string;
   dailyHours: string;
   leaveDaysPerYear: string;
   airTicketAmount: string;
@@ -773,8 +774,8 @@ export function EditForm({
                   <Field label="Standard hours per day">
                     <NumberInput name="dailyHours" defaultValue={pay.dailyHours} min={1} max={16} step={0.25} className="w-full" />
                   </Field>
-                  <Field label="Overtime pays this many times the normal hourly rate">
-                    <OvertimeMultiplierField defaultValue={pay.otMultiplier} payStructure={payStructure} />
+                  <Field label="How overtime is paid">
+                    <OvertimeMultiplierField defaultValue={pay.otMultiplier} defaultFixed={pay.otHourlyRate} payStructure={payStructure} />
                   </Field>
                   <p className="text-xs text-muted sm:col-span-2">Contract terms the books can set aside each month. Leave a box blank to use the company default (Accounting › Settings), or enter 0 for none.</p>
                   <Field label="Paid leave (days a year)">

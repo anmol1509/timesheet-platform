@@ -107,6 +107,10 @@ test("working terms are read with the same limits as the employee form", () => {
   assert.match((parseWorkTerms({ otMultiplier: "4.17" }) as { error: string }).error, /1 to 3/);
   assert.match((parseWorkTerms({ otMultiplier: "11" }) as { error: string }).error, /1 to 3/);
   assert.match((parseWorkTerms({ restOtMultiplier: "0.5" }) as { error: string }).error, /1 to 3/);
+  // A fixed AED amount per overtime hour: blank leaves it alone, a number sets it, 0 clears it, nonsense is refused.
+  assert.deepEqual(parseWorkTerms({ otHourlyRate: "5.5" }), { terms: { otHourlyRate: 5.5 } });
+  assert.deepEqual(parseWorkTerms({ otHourlyRate: "0" }), { terms: { otHourlyRate: null } });
+  assert.match((parseWorkTerms({ otHourlyRate: "900" }) as { error: string }).error, /0 to 500/);
   assert.match((parseWorkTerms({ overtime: "sometimes" }) as { error: string }).error, /Yes or No/);
   assert.match((parseWorkTerms({ gasWaived: "x" }) as { error: string }).error, /Yes or No/);
 });

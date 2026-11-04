@@ -49,7 +49,7 @@ type EmployeeRow = {
   nextExpiry: { doc: string; days: number } | null;
   docCounts: { valid: number; expiring: number; expired: number };
   /** Only present for people allowed to see pay. */
-  pay?: { structure: string; rate: number | null; housing: number | null; food: number | null; transport: number | null; other: number | null; dailyHours: number | null; overtime: string; otMultiplier: number | null; restOtMultiplier: number | null; gasWaived: string };
+  pay?: { structure: string; rate: number | null; housing: number | null; food: number | null; transport: number | null; other: number | null; dailyHours: number | null; overtime: string; otMultiplier: number | null; restOtMultiplier: number | null; otHourlyRate: number | null; gasWaived: string };
 };
 
 /**
@@ -487,6 +487,7 @@ export function EmployeeList({
           { key: "payOvertime", header: "Overtime", csvHeader: "Overtime", get: (e: EmployeeRow) => e.pay?.overtime ?? "" },
           { key: "payOtMultiplier", header: "Overtime multiplier", csvHeader: "Overtime multiplier", get: (e: EmployeeRow) => e.pay?.otMultiplier ?? "" },
           { key: "payRestOt", header: "Rest-day overtime multiplier", csvHeader: "Rest-day overtime multiplier", get: (e: EmployeeRow) => e.pay?.restOtMultiplier ?? "" },
+          { key: "payOtHourlyRate", header: "Overtime hourly rate (AED)", csvHeader: "Overtime hourly rate (AED)", get: (e: EmployeeRow) => e.pay?.otHourlyRate ?? "" },
           { key: "payGasWaived", header: "Gas charge waived", csvHeader: "Gas charge waived", get: (e: EmployeeRow) => e.pay?.gasWaived ?? "" },
         ].map(
           (c): DataTableColumn<EmployeeRow> => ({

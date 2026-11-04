@@ -26,6 +26,8 @@ export type DayPlan = {
   /** Fixed pay for the days employed, as it appears on the run line (basic + allowances). */
   fixedPaid: number;
   paysOvertime: boolean; otMultiplier: number; restMultiplier: number;
+  /** A fixed AED amount for every overtime hour; replaces the multipliers when set. */
+  otFixedRate?: number;
   /** basic ÷ 30 ÷ standard hours */
   otHourlyBase: number;
   absence: { freeDays: number; perDay: number | null; dailyRate: number };
@@ -75,7 +77,7 @@ export function buildDays(plan: DayPlan): { rows: DayRow[]; totals: { salary: nu
     let salary = round2(share);
     spent = round2(spent + salary);
     if (d.date === lastEmployed) salary = round2(salary + (plan.fixedPaid - spent)); // rounding goes on the last day so the month adds up exactly
-    const otPay = plan.paysOvertime ? round2(split.ot * plan.otHourlyBase * plan.otMultiplier + split.rest * plan.otHourlyBase * plan.restMultiplier) : 0;
+    const otPay = !plan.paysOvertime ? 0 : plan.otFixedRate && plan.otFixedRate > 0 ? round2((split.ot + split.rest) * plan.otFixedRate) : round2(split.ot * plan.otHourlyBase * plan.otMultiplier + split.rest * plan.otHourlyBase * plan.restMultiplier);
     let deduction = 0;
     if (kind === "absent") {
       absentSeen += 1;

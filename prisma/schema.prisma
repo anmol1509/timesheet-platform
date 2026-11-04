@@ -774,6 +774,8 @@ model Employee {
   dailyHours         Decimal             @default(8) @db.Decimal(4, 2)
   weeklyOffDays      Int[]               @default([]) // empty = follow the client's off days
   restOtMultiplier   Decimal             @default(1.5) @db.Decimal(4, 2)
+  // A fixed AED amount for every overtime hour (working-day overtime and rest-day hours alike). When set it is used instead of otMultiplier.
+  otHourlyRate       Decimal?            @db.Decimal(8, 2)
   payrollLines       PayrollLine[]
   loans              EmployeeLoan[]
   salaryRevisions    SalaryRevision[]

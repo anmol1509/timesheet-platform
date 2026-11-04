@@ -117,8 +117,18 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
     }
     if (structure === "ITEMISED" && !parsed.basicSalary) return { error: "Enter a basic salary for an itemised pay structure." };
     if (structure === "FLAT" && !parsed.flatMonthlyRate) return { error: "Enter the monthly rate for a flat pay structure." };
-    const mult = numberOrNull(formData.get("otMultiplier")) ?? 1.25;
-    if (mult < 1 || mult > MAX_OT_MULTIPLIER) return { error: `Overtime multiplier must be between 1 and ${MAX_OT_MULTIPLIER}. It is how many times the hourly rate overtime pays (1.25 is usual), not an hourly rate.` };
+    // Overtime is paid either as a multiple of the normal hourly rate or as a fixed AED amount for every overtime hour.
+    const otFixedMode = formData.get("otMode") === "FIXED";
+    let mult: number | undefined;
+    let otFixed: number | null = null;
+    if (otFixedMode) {
+      const fx = numberOrNull(formData.get("otHourlyRate"));
+      if (fx === null || !(fx > 0) || fx > 500) return { error: "Enter the AED amount paid for each overtime hour (more than 0, up to 500)." };
+      otFixed = fx; // the multiplier stays as it was
+    } else {
+      mult = numberOrNull(formData.get("otMultiplier")) ?? 1.25;
+      if (mult < 1 || mult > MAX_OT_MULTIPLIER) return { error: `Overtime multiplier must be between 1 and ${MAX_OT_MULTIPLIER}. It is how many times the hourly rate overtime pays (1.25 is usual), not an hourly rate. For a fixed AED amount per overtime hour, choose "Fixed AED per overtime hour".` };
+    }
     const whole = (k: string, max: number) => {
       const v = numberOrNull(formData.get(k));
       return v === null ? null : v >= 0 && v <= max && Number.isInteger(v) ? v : "bad";
@@ -148,6 +158,7 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
       hourlyRate: structure === "HOURLY" ? (formData.has("hourlyRate") ? parsed.hourlyRate : undefined) : null,
       paysOvertime: formData.get("paysOvertime") === "on",
       otMultiplier: mult,
+      otHourlyRate: otFixed,
       leaveDaysPerYear: leaveDays,
       airTicketAmount: ticketAmount,
       airTicketEveryMonths: ticketMonths,
@@ -414,13 +425,13 @@ export async function bulkImportEmployeesAction(rows: Record<string, string>[]) 
         }
       }
       // Working terms: daily hours, overtime and its multiples, gas waived. Blank cells leave the saved values alone.
-      const termCells = parseWorkTerms({ dailyHours: r["Daily hours"], overtime: r["Overtime"], otMultiplier: r["Overtime multiplier"], restOtMultiplier: r["Rest-day overtime multiplier"], gasWaived: r["Gas charge waived"] });
+      const termCells = parseWorkTerms({ dailyHours: r["Daily hours"], overtime: r["Overtime"], otMultiplier: r["Overtime multiplier"], restOtMultiplier: r["Rest-day overtime multiplier"], otHourlyRate: r["Overtime hourly rate (AED)"], gasWaived: r["Gas charge waived"] });
       let terms: WorkTerms = {};
       if (mayEditPay) {
         if ("error" in termCells) { results.push({ row: i + 2, status: "error", message: termCells.error }); continue; }
         if ("terms" in termCells) terms = termCells.terms;
       }
-      const hourlyOvertime = payData?.payStructure === "HOURLY" && ("paysOvertime" in terms || "otMultiplier" in terms || "restOtMultiplier" in terms);
+      const hourlyOvertime = payData?.payStructure === "HOURLY" && ("paysOvertime" in terms || "otMultiplier" in terms || "restOtMultiplier" in terms || "otHourlyRate" in terms);
       const payNote = !mayEditPay && (!("skip" in payCells) || !("skip" in termCells)) ? "Pay columns ignored: setting pay needs payroll access." : hourlyOvertime ? "Overtime doesn't apply to hourly pay: every hour is paid at the hourly rate." : undefined;
       const payWrite = { ...(payData ? { ...payData, payOverride: true } : {}), ...terms };
       if (existing) {

@@ -19,7 +19,7 @@ export type PayDaysView = {
   shortRule: { mode: ShortfallMode; halfDayUnder: number };
   other: number; lineNet: number;
   /** What one overtime hour is worked out from, so the overtime figure can be checked: the normal hourly rate and the multiplier. */
-  otBasis: { hourly: number; multiplier: number } | null;
+  otBasis: { hourly: number; multiplier: number; fixed: number | null } | null;
   /** The trade and the hourly rate this person is paid at, and where the rate comes from, so the days can be checked against the profile. */
   rateInfo: { /** Hourly workers: hours, rate and pay for each trade worked this month. */ byTrade: { trade: string; hours: number; rate: number; pay: number; fromTrade: boolean }[]; trade: string | null; hourlyRate: number; source: "EMPLOYEE" | "TRADE" | "NONE"; rateTrade: string | null; monthlyBasic: number; /** Other trades with a rate that are not being paid. */ others: { trade: string; rate: number }[] };
   /** What the "other items" figure is made of, signed (+ adds to pay, − takes off). */
@@ -115,7 +115,7 @@ export async function loadPayDays(runId: string, employeeId: string, opts: { can
     from: iso(window.from), to: iso(window.to), days, hasTimesheet: !!entry,
     pattern: { dailyHours, weeklyOffDays: e.project?.weeklyOffDays ?? [0] },
     hourly, hourlyRate: pf.hourlyRate, fixedPaid: hourly ? 0 : round2(num(line.basic) + num(line.allowances)),
-    paysOvertime: hourly ? false : pf.paysOvertime, otMultiplier: pf.otMultiplier, restMultiplier: pf.otMultiplier, otHourlyBase: basic / 30 / dailyHours,
+    paysOvertime: hourly ? false : pf.paysOvertime, otMultiplier: pf.otMultiplier, restMultiplier: pf.otMultiplier, otFixedRate: pf.otHourlyRate, otHourlyBase: basic / 30 / dailyHours,
     absence: { freeDays: e.supplier?.absentFreeDays ?? 2, perDay: e.supplier ? num(e.supplier.absentDeductionPerDay) : 30, dailyRate: monthlyFixed / 30 },
     shortfall: hourly ? undefined : { rule: shortRule, rates: { hourly: basic / 30 / dailyHours, day: monthlyFixed / 30 } },
   });
@@ -147,7 +147,7 @@ export async function loadPayDays(runId: string, employeeId: string, opts: { can
       hasTimesheet: !!entry, timesheetStatus: entry?.status ?? null, dailyHours, rows, totals,
       edits, shortRule,
       mismatches: rows.filter((r) => r.kind !== "outside" && r.sync === "differs").map((r) => ({ date: r.date, weekday: r.weekday, attendance: r.hasAttendance ? `${r.label}${r.hours > 0 ? ` ${r.hours} h` : ""}` : "No record", sheet: r.ts?.trim() ? r.ts : "blank" })),
-      other, lineNet: num(line.net), otBasis: !hourly && pf.paysOvertime ? { hourly: round2(basic / 30 / dailyHours), multiplier: pf.otMultiplier } : null, parts, unexplained, canAdjust: draft && (opts.canEditPayroll ?? opts.canEditAttendance),
+      other, lineNet: num(line.net), otBasis: !hourly && pf.paysOvertime ? { hourly: round2(basic / 30 / dailyHours), multiplier: pf.otMultiplier, fixed: pf.otHourlyRate && pf.otHourlyRate > 0 ? pf.otHourlyRate : null } : null, parts, unexplained, canAdjust: draft && (opts.canEditPayroll ?? opts.canEditAttendance),
       adjust: { lineId: line.id, deductionItems: typed ?? (num(line.manualDeduction) > 0 ? [{ label: line.deductionNote ?? "", amount: num(line.manualDeduction), show: true }] : []), deduction: num(line.manualDeduction), deductionNote: line.deductionNote ?? "", advance: num(line.loanDeduction), advanceNote: line.advanceNote ?? "", adjustment: num(line.adjustment), adjustmentNote: line.adjustmentNote ?? "", bankCharge: num(line.bankCharge), bankChargeWaived: line.bankChargeWaived },
     },
   };

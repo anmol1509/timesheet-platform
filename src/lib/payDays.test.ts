@@ -78,3 +78,13 @@ test("short hours: counted days come off the day's net, and an unticked day does
   assert.equal(totals.shortHours, 3);
   assert.equal(totals.net, Math.round((totals.salary + totals.otPay - totals.deduction - 37.5) * 100) / 100);
 });
+
+test("a fixed overtime rate is what the days add up to, matching the run's total", () => {
+  // The weekly off is Friday: the 4th, 18th and 25th are off, the 11th is worked for 8 hours (rest-day hours), and the
+  // 1st and 2nd are 10-hour days (2 overtime hours each). At AED 5 for every overtime hour that is (2 + 2 + 8) x 5.
+  const off = { status: "OFF", normalHours: 0, ts: "OFF" };
+  const d = days(30, { 1: { normalHours: 10 }, 2: { normalHours: 10 }, 4: off, 18: off, 25: off });
+  const { totals } = buildDays(plan({ days: d, otFixedRate: 5, otMultiplier: 4.17 }));
+  assert.equal(totals.otPay, 60);
+  assert.notEqual(buildDays(plan({ days: d })).totals.otPay, totals.otPay); // without it the multipliers apply
+});
