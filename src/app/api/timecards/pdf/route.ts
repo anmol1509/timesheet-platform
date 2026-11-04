@@ -21,6 +21,7 @@ function problem(message: string, status = 400) {
  *   ?fill=header|full                            ?inout=blank|standard
  *   ?pay=1                                       pay figures (needs payroll access)
  *   ?preview=1                                   a made-up worker, for the template editor
+ *   ?companyId=...                               with preview: that company's own header, card and template
  */
 export async function GET(request: Request) {
   const { user, branchId } = await requireUserWithBranch();
@@ -36,7 +37,7 @@ export async function GET(request: Request) {
 
   const branch = branchId ? await prisma.branch.findUnique({ where: { id: branchId } }) : null;
   if (!branch) return problem("Choose a company first.");
-  const spec = readTimeCardSpec(branch.timeCardSpec);
+  const sharedSpec = readTimeCardSpec(branch.timeCardSpec);
 
   // The company profile's own header and card: used for the preview, and for a worker who has no company of ours.
   const profileLetterhead = await buildLetterhead({ name: branch.name, address: branch.address, emirate: branch.emirate, country: branch.country, phone: branch.phone, fax: branch.fax, email: branch.email, poBox: branch.poBox, trn: branch.trn, logoId: branch.logoId });
@@ -48,15 +49,21 @@ export async function GET(request: Request) {
 
   let pages: TimeCardPage[];
   if (preview) {
-    const sample = sampleCardWorker(month, spec);
-    if (!filled) Object.assign(sample, { days: sample.days.map((d) => ({ ...d, in: "", out: "", overtime: "", total: "" })), totals: { days: 0, hours: "0", overtimeHours: "0" }, money: null });
-    if (mode === "artwork" && !profileArtwork) return problem("Upload the default time card first (Settings → Company profile → Time card).");
-    pages = [{ worker: sample, artwork: profileArtwork, letterhead: profileLetterhead }];
+    // A company's own preview uses its header, its card and its own template (or the shared one).
+    const companyId = q.get("companyId");
+    const company = companyId ? (await loadCompanyCards([companyId], mode === "artwork", sharedSpec)).get(companyId) : null;
+    if (companyId && !company) return problem("Company not found.");
+    const spec = company?.spec ?? sharedSpec;
+    const sample = sampleCardWorker(month);
+    if (!filled) Object.assign(sample, { days: sample.days.map((d) => ({ ...d, shift: false, overtime: "", total: "" })), totals: { days: 0, hours: "0", overtimeHours: "0" }, money: null });
+    const artwork = company ? company.artwork : profileArtwork;
+    if (mode === "artwork" && !artwork) return problem(company ? `${company.name} has no usable time card yet (a JPG or PNG on its company page, under "Letterhead and time card").` : "Upload the default time card first (Settings → Company profile → Time card).");
+    pages = [{ worker: sample, artwork, letterhead: company?.letterhead ?? profileLetterhead, spec }];
   } else {
     const idNos = (q.get("idNos") ?? "").split(",").map((s) => s.trim()).filter(Boolean).slice(0, 300);
-    const workers = await loadCardWorkers({ branchId, idNos, month, filled, inOut, shiftIn: spec.shiftIn, shiftOut: spec.shiftOut, showPay });
+    const workers = await loadCardWorkers({ branchId, idNos, month, filled, inOut, showPay });
     if (workers.length === 0) return problem("Choose at least one worker.");
-    const cards = await loadCompanyCards(workers.map((w) => w.companyId).filter((x): x is string => !!x), mode === "artwork");
+    const cards = await loadCompanyCards(workers.map((w) => w.companyId).filter((x): x is string => !!x), mode === "artwork", sharedSpec);
     if (mode === "artwork") {
       // A card is only printed from its own company's picture: another company's card under their name would be wrong.
       const missing = new Set<string>();
@@ -66,16 +73,16 @@ export async function GET(request: Request) {
         else if (!profileArtwork) noCompanyWithoutDefault = true;
       }
       if (missing.size > 0 || noCompanyWithoutDefault) {
-        return problem(`No usable time card is on file for: ${[...missing, ...(noCompanyWithoutDefault ? ["workers with no company of their own (the default card in Settings → Company profile → Time card)"] : [])].join("; ")}. Upload each company's blank card as a JPG or PNG under its Documents → Time card, or choose another way to print.`);
+        return problem(`No usable time card is on file for: ${[...missing, ...(noCompanyWithoutDefault ? ["workers with no company of their own (the default card in Settings → Company profile → Time card)"] : [])].join("; ")}. Upload each company's blank card as a JPG or PNG on its company page, under "Letterhead and time card", or choose another way to print.`);
       }
     }
     pages = workers.map((w) => {
       const c = w.companyId ? cards.get(w.companyId) : null;
-      return { worker: w, artwork: c?.artwork ?? profileArtwork, letterhead: c?.letterhead ?? profileLetterhead };
+      return { worker: w, artwork: c?.artwork ?? profileArtwork, letterhead: c?.letterhead ?? profileLetterhead, spec: c?.spec ?? sharedSpec };
     });
   }
 
-  const buffer = await generateTimeCardPdf({ mode, paper, spec, pages });
+  const buffer = await generateTimeCardPdf({ mode, paper, pages });
   return new NextResponse(new Uint8Array(buffer), {
     headers: { "Content-Type": "application/pdf", "Content-Disposition": `inline; filename="time-cards-${month}.pdf"`, "Cache-Control": "private, no-store" },
   });

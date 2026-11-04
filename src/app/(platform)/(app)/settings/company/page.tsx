@@ -42,10 +42,10 @@ export default async function CompanyProfilePage({
 
 
   // Each own company keeps its own blank time card under its Documents; list who has one.
-  const ownCompanies = await prisma.supplier.findMany({ where: { branchId: branch.id, isOwnCompany: true }, select: { id: true, name: true, fullName: true }, orderBy: { name: "asc" } });
-  const cardsOnFile = ownCompanies.length ? await prisma.attachment.findMany({ where: { entityType: "SUPPLIER", entityId: { in: ownCompanies.map((c) => c.id) }, docType: "TIME_CARD" }, select: { entityId: true }, distinct: ["entityId"] }) : [];
-  const cardIds = new Set(cardsOnFile.map((c) => c.entityId));
-  const companyCards = ownCompanies.map((c) => ({ id: c.id, name: c.fullName || c.name, hasCard: cardIds.has(c.id) }));
+  const ownCompanies = await prisma.supplier.findMany({ where: { branchId: branch.id, isOwnCompany: true }, select: { id: true, name: true, fullName: true, timeCardSpec: true }, orderBy: { name: "asc" } });
+  const filesOnFile = ownCompanies.length ? await prisma.attachment.findMany({ where: { entityType: "SUPPLIER", entityId: { in: ownCompanies.map((c) => c.id) }, docType: { in: ["TIME_CARD", "LETTERHEAD"] } }, select: { entityId: true, docType: true } }) : [];
+  const has = (id: string, type: string) => filesOnFile.some((f) => f.entityId === id && f.docType === type);
+  const companyCards = ownCompanies.map((c) => ({ id: c.id, name: c.fullName || c.name, hasCard: has(c.id, "TIME_CARD"), hasLetterhead: has(c.id, "LETTERHEAD"), ownTemplate: !!c.timeCardSpec }));
 
   const todo = [
     { label: "Company TRN", done: !!branch.trn },

@@ -43,7 +43,7 @@ export function PrintTimeCards({ month, idNos, info, count }: { month: string; i
                 { value: "template", label: "The whole card drawn by the app from the template (plain paper)" },
               ]}
             />
-            <p className="mt-2 text-xs text-muted">Each worker&apos;s card carries their own company&apos;s name and logo. For the first option, upload each company&apos;s blank card under its Documents → Time card.</p>
+            <p className="mt-2 text-xs text-muted">Each worker&apos;s card carries their own company&apos;s name and logo. For the first option, upload each company&apos;s blank card on its company page, under &ldquo;Letterhead and time card&rdquo;.</p>
           </div>
 
           <div>

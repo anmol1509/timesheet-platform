@@ -4,13 +4,13 @@ import { DEFAULT_SPEC, GEOM, buildCardDays, dayOfRow, readTimeCardSpec, type Raw
 import { rawDaysFromSheets } from "./timeCardData";
 
 const present = (date: string, normalHours: number | null = 8): RawDay => ({ date, status: "PRESENT", normalHours, otHours: null });
-const base = { month: "2026-10", dailyHours: 8, weeklyOffDays: [5], inOut: "blank" as const, shiftIn: "07:00", shiftOut: "16:00" };
+const base = { month: "2026-10", dailyHours: 8, weeklyOffDays: [5], inOut: "blank" as const };
 
 test("a day over the standard day shows its overtime, and a weekly off day worked is all overtime", () => {
   const r = buildCardDays({ ...base, days: [present("2026-10-01", 8), present("2026-10-02", 10), present("2026-10-03", 8), present("2026-10-09", 6)] });
   // 2026-10-02 is a Friday: the weekly off day, so its 10 hours are all overtime
-  assert.deepEqual(r.days.find((d) => d.day === 1), { day: 1, in: "", out: "", overtime: "", total: "8" });
-  assert.deepEqual(r.days.find((d) => d.day === 2), { day: 2, in: "", out: "", overtime: "10", total: "10" });
+  assert.deepEqual(r.days.find((d) => d.day === 1), { day: 1, shift: false, overtime: "", total: "8" });
+  assert.deepEqual(r.days.find((d) => d.day === 2), { day: 2, shift: false, overtime: "10", total: "10" });
   assert.equal(r.totals.days, 4);
   // the 9th is a Friday too: its 6 hours are overtime as well
   assert.equal(r.totals.overtimeHours, "16");
@@ -18,9 +18,9 @@ test("a day over the standard day shows its overtime, and a weekly off day worke
 
 test("absent and off days are marked and not counted; the standard shift prints only on days worked", () => {
   const r = buildCardDays({ ...base, inOut: "standard", days: [present("2026-10-05", 9), { date: "2026-10-06", status: "ABSENT", normalHours: null, otHours: null }, { date: "2026-10-07", status: "OFF", normalHours: null, otHours: null }] });
-  assert.deepEqual(r.days.find((d) => d.day === 5), { day: 5, in: "07:00", out: "16:00", overtime: "1", total: "9" });
+  assert.deepEqual(r.days.find((d) => d.day === 5), { day: 5, shift: true, overtime: "1", total: "9" });
   assert.equal(r.days.find((d) => d.day === 6)?.total, "A");
-  assert.equal(r.days.find((d) => d.day === 6)?.in, "");
+  assert.equal(r.days.find((d) => d.day === 6)?.shift, false);
   assert.equal(r.days.find((d) => d.day === 7)?.total, "OFF");
   assert.equal(r.totals.days, 1);
   assert.equal(r.days.length, 31);

@@ -131,7 +131,7 @@ export function readTimeCardSpec(raw: unknown): TimeCardSpec {
 
 // ---- One worker's card -------------------------------------------------------------------
 /** A day on the card: what to print in each box ("" leaves it blank). */
-export type CardDay = { day: number; in: string; out: string; overtime: string; total: string };
+export type CardDay = { day: number; /** Print the company's standard shift in the IN and OUT boxes. */ shift: boolean; overtime: string; total: string };
 
 export type CardWorker = {
   /** The own company whose card this is: the worker's employer if it is one of ours, else the company that sponsors their visa; null for neither. */
@@ -159,9 +159,9 @@ const fmt = (n: number) => (Math.round(n * 100) / 100).toString();
 /**
  * The card's day boxes for a month from the worker's raw days, using the same split into normal and overtime hours as payroll:
  * hours beyond the standard day are overtime, and everything worked on a weekly off day or holiday is overtime.
- * `inOut: "standard"` prints the shift times on days worked; "blank" leaves IN and OUT for the foreman to write.
+ * `inOut: "standard"` marks days worked to print the company's standard shift times; "blank" leaves IN and OUT for the foreman to write.
  */
-export function buildCardDays(opts: { month: string; days: RawDay[]; dailyHours: number; weeklyOffDays: number[]; inOut: "blank" | "standard"; shiftIn: string; shiftOut: string }): { days: CardDay[]; totals: CardWorker["totals"] } {
+export function buildCardDays(opts: { month: string; days: RawDay[]; dailyHours: number; weeklyOffDays: number[]; inOut: "blank" | "standard" }): { days: CardDay[]; totals: CardWorker["totals"] } {
   const [y, m] = opts.month.split("-").map(Number);
   const count = new Date(Date.UTC(y, m, 0)).getUTCDate();
   const byDate = new Map(opts.days.map((d) => [d.date, d]));
@@ -171,7 +171,7 @@ export function buildCardDays(opts: { month: string; days: RawDay[]; dailyHours:
     const date = `${opts.month}-${String(day).padStart(2, "0")}`;
     const raw = byDate.get(date);
     const when = new Date(Date.UTC(y, m - 1, day));
-    const cell: CardDay = { day, in: "", out: "", overtime: "", total: "" };
+    const cell: CardDay = { day, shift: false, overtime: "", total: "" };
     if (!raw) { out.push(cell); continue; }
     if (raw.status === "ABSENT") { cell.total = "A"; out.push(cell); continue; }
     if (raw.status === "OFF") { cell.total = "OFF"; out.push(cell); continue; }
@@ -181,7 +181,7 @@ export function buildCardDays(opts: { month: string; days: RawDay[]; dailyHours:
     const ot = split.ot + split.rest;
     cell.total = fmt(total);
     if (ot > 0) cell.overtime = fmt(ot);
-    if (opts.inOut === "standard") { cell.in = opts.shiftIn; cell.out = opts.shiftOut; }
+    if (opts.inOut === "standard") cell.shift = true;
     worked += 1; normal += split.normal; overtime += ot;
     out.push(cell);
   }
@@ -196,4 +196,18 @@ export function cardCompanyOf(e: { supplier?: { id: string; isOwnCompany: boolea
   if (e.supplier?.isOwnCompany) return e.supplier.id;
   if (e.sponsorSupplier?.isOwnCompany) return e.sponsorSupplier.id;
   return null;
+}
+
+/** The template as typed into the time card form. */
+export function timeCardSpecFromForm(fd: FormData): TimeCardSpec {
+  const text = (k: string) => String(fd.get(k) ?? "");
+  return readTimeCardSpec({
+    shiftIn: text("shiftIn"), shiftOut: text("shiftOut"), offsetXmm: text("offsetXmm"), offsetYmm: text("offsetYmm"),
+    showLogo: fd.get("showLogo") === "on", companyName: text("companyName"), contactLine: text("contactLine"), title: text("title"),
+    labels: Object.fromEntries(Object.keys(DEFAULT_SPEC.labels).map((k) => [k, text(`labels.${k}`)])),
+    headings: Object.fromEntries(Object.keys(DEFAULT_SPEC.headings).map((k) => [k, text(`headings.${k}`)])),
+    totals: Object.fromEntries(Object.keys(DEFAULT_SPEC.totals).map((k) => [k, text(`totals.${k}`)])),
+    signatures: [text("signatures.0"), text("signatures.1"), text("signatures.2")],
+    ink: text("ink"), tint: text("tint"),
+  });
 }

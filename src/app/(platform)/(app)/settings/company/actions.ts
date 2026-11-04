@@ -8,7 +8,7 @@ import { requireAdmin } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { deleteImage, storeImage } from "@/lib/storedImage";
 import { assertContactsValid, contactsError } from "@/lib/validators";
-import { DEFAULT_SPEC, readTimeCardSpec } from "@/lib/timeCard";
+import { timeCardSpecFromForm } from "@/lib/timeCard";
 import { Prisma } from "@/generated/prisma/client";
 
 type State = { error: string | null; ok?: boolean };
@@ -233,17 +233,7 @@ export async function saveTimeCardSpecAction(_prev: State, formData: FormData): 
   { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
   const { admin, branch } = await loadEditableBranch(String(formData.get("branchId") || ""));
   if (!branch) return { error: "You can't edit that company." };
-  const text = (k: string) => String(formData.get(k) ?? "");
-  const raw = {
-    shiftIn: text("shiftIn"), shiftOut: text("shiftOut"), offsetXmm: text("offsetXmm"), offsetYmm: text("offsetYmm"),
-    showLogo: formData.get("showLogo") === "on", companyName: text("companyName"), contactLine: text("contactLine"), title: text("title"),
-    labels: Object.fromEntries(Object.keys(DEFAULT_SPEC.labels).map((k) => [k, text(`labels.${k}`)])),
-    headings: Object.fromEntries(Object.keys(DEFAULT_SPEC.headings).map((k) => [k, text(`headings.${k}`)])),
-    totals: Object.fromEntries(Object.keys(DEFAULT_SPEC.totals).map((k) => [k, text(`totals.${k}`)])),
-    signatures: [text("signatures.0"), text("signatures.1"), text("signatures.2")],
-    ink: text("ink"), tint: text("tint"),
-  };
-  const spec = readTimeCardSpec(raw);
+  const spec = timeCardSpecFromForm(formData);
   const before = branch.timeCardSpec ? "(custom)" : "(default)";
   await prisma.branch.update({ where: { id: branch.id }, data: { timeCardSpec: spec } });
   await logAudit({ entityType: "BRANCH", entityId: branch.id, action: "UPDATE", before: { timeCard: before }, after: { timeCard: "(template saved)" }, userId: admin.id, userName: admin.name, branchId: branch.id });
