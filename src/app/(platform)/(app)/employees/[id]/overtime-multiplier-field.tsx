@@ -73,7 +73,7 @@ export function OvertimeMultiplierField({ defaultValue, defaultFixed, payStructu
         </>
       ) : (
         <>
-          <NumberInput name="otHourlyRate" value={fixed} onChange={(v) => setFixed(v === "" ? "" : String(v))} min={0} step={0.25} placeholder="e.g. 5.00" className="w-full" />
+          <NumberInput name="otHourlyRate" value={fixed} onChange={(v) => setFixed(v === "" ? "" : String(v))} min={0} step={0.01} placeholder="e.g. 5.00" className="w-full" />
           {Number(fixed) > 0 ? (
             <p className="text-xs text-muted">Every overtime hour pays <span className="font-medium text-primary">AED {money(Number(fixed))}</span>{hourly > 0 ? <>, which is {(Number(fixed) / hourly).toFixed(2)}× the normal hour (AED {money(hourly)}).</> : "."}</p>
           ) : null}
