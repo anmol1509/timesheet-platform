@@ -12,6 +12,7 @@ import { AlertTriangle, FileSearch, Plus } from "lucide-react";
 import { ClientTimesheetGrid } from "./client-timesheet-grid";
 import { BulkSaves } from "./bulk-saves";
 import { loadBulkSaves } from "@/lib/bulkSaves";
+import { payrollLockedEmployees } from "@/lib/payrollControls";
 
 export const metadata = { title: "Client timesheets" };
 
@@ -121,6 +122,15 @@ export default async function ClientTimesheetPage({
       ? (await findDivergences({ branchId, month: selectedMonth })).length
       : 0;
 
+  // Locked rows can be corrected by approvers, except for workers whose pay for the month is already approved or paid.
+  const lockedIdNos = [...new Set(entries.filter((e) => e.status === "LOCKED").map((e) => e.employeeIdNo))];
+  const lockedWorkers = lockedIdNos.length && branchId && selectedMonth
+    ? await prisma.employee.findMany({ where: { branchId, employeeIdNo: { in: lockedIdNos } }, select: { id: true, employeeIdNo: true } })
+    : [];
+  const frozenWorkers = selectedMonth ? await payrollLockedEmployees(lockedWorkers.map((w) => w.id), selectedMonth) : new Set<string>();
+  const frozenIdNos = new Set(lockedWorkers.filter((w) => frozenWorkers.has(w.id)).map((w) => w.employeeIdNo));
+  const gridEntries = entries.map((e) => ({ ...e, payrollFrozen: e.status === "LOCKED" && frozenIdNos.has(e.employeeIdNo) }));
+
   return (
     <div className="space-y-5">
       <BulkSaves saves={justSaved} heading="Saved. You can undo this save" highlight={params.saved} />
@@ -202,7 +212,7 @@ export default async function ClientTimesheetPage({
           )}
         </div>
       ) : (
-        <ClientTimesheetGrid month={selectedMonth!} entries={entries} showClient={allClients} />
+        <ClientTimesheetGrid month={selectedMonth!} entries={gridEntries} showClient={allClients} />
       )}
     </div>
   );
