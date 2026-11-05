@@ -15,7 +15,7 @@ import { useLetterheadImage } from "@/components/useLetterheadImage";
 import { cn } from "@/lib/cn";
 import { SPRING } from "@/lib/motion";
 import { PACK_SECTIONS } from "@/lib/mobilisationPack";
-import { substituteInHtml } from "@/lib/letterHtml";
+import { substituteInHtml, withoutSummaryTable } from "@/lib/letterHtml";
 import { NOC_DISPLAY_FIELDS, DEFAULT_NOC_DISPLAY_FIELDS } from "@/lib/nocDisplayFields";
 import {
   DEFAULT_LETTER_COLUMNS,
@@ -126,6 +126,8 @@ function LetterBuilder({
   const [signatoryTitle, setSignatoryTitle] = useState(company.signatoryTitle);
   const [showSignature, setShowSignature] = useState(false);
   const [showStamp, setShowStamp] = useState(false);
+  // The box under the heading (Supplied to / Project / Number of workers) can be left off the undertaking.
+  const [showSummary, setShowSummary] = useState(true);
   const [issuing, startIssue] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -143,7 +145,8 @@ function LetterBuilder({
   }, [overrideScope, overrideTick, isNoc, templateId]);
   const baseTemplate = templates.find((t) => t.id === templateId);
   const edited = override && override.scope === overrideScope ? override.html : null;
-  const template = baseTemplate && edited && override ? { ...baseTemplate, html: edited, title: override.title || baseTemplate.title } : baseTemplate;
+  const editedTemplate = baseTemplate && edited && override ? { ...baseTemplate, html: edited, title: override.title || baseTemplate.title } : baseTemplate;
+  const template = editedTemplate && !isNoc && !showSummary ? { ...editedTemplate, html: withoutSummaryTable(editedTemplate.html) } : editedTemplate;
   const picked = workers.filter((w) => chosen.has(w.id));
   const columns = useMemo(() => {
     const keys = columnsFromNocFields([...fields]);
@@ -176,6 +179,7 @@ function LetterBuilder({
     if (showSignature) q.set("signature", "1");
     if (showStamp) q.set("stamp", "1");
     if (letterDate) q.set("letterDate", letterDate);
+    if (!showSummary) q.set("summary", "0");
     if (issuer) q.set("issuerId", issuer.id);
     q.set("fields", [...fields].join(","));
     return `/api/demand-requests/${demand.id}/undertaking?${q.toString()}`;
@@ -259,6 +263,12 @@ function LetterBuilder({
             <span className="mb-1 block text-xs font-medium text-muted">Letter date <span className="font-normal">(blank = today)</span></span>
             <DatePicker value={letterDate} onChange={setLetterDate} className="w-full" />
           </label>
+          {!isNoc && (
+            <label className="flex cursor-pointer items-start gap-2 text-sm text-secondary">
+              <input type="checkbox" checked={showSummary} onChange={(e) => setShowSummary(e.target.checked)} className="mt-0.5" />
+              <span>Show the details box<span className="block text-xs text-muted">Supplied to, Project and Number of workers, under the heading. Untick to leave it off.</span></span>
+            </label>
+          )}
           <details className="rounded-card border border-default">
             <summary className="cursor-pointer px-3 py-2 text-sm font-medium text-secondary">Table columns</summary>
             <div className="grid grid-cols-2 gap-1 border-t border-default p-2">
