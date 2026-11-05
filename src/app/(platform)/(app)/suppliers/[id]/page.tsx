@@ -23,6 +23,8 @@ import { WorkmenCompSection } from "./workmen-comp-section";
 import { SubsidiaryTabs } from "./subsidiary-tabs";
 import { SupplierHierarchyCard } from "./hierarchy-card";
 import { CompanyDocsTable, type DocRow } from "./company-docs-table";
+import { PrintSet } from "./print-set";
+import { readTimeCardSpec } from "@/lib/timeCard";
 import { SupplierPartiesSection } from "./parties-section";
 import { CompanyHeaderPreview } from "./header-preview";
 import { StatusRow, type StatusItem } from "@/components/StatusRow";
@@ -66,6 +68,8 @@ export default async function SupplierDetailPage({
   });
   if (!supplier || isOutsideBranch(supplier.branchId, branchId, isSuperAdmin)) notFound();
 
+  // The shared time card template, for an own company that has none of its own.
+  const sharedCardSpec = supplier.isOwnCompany && !supplier.timeCardSpec && supplier.branchId ? (await prisma.branch.findUnique({ where: { id: supplier.branchId }, select: { timeCardSpec: true } }))?.timeCardSpec ?? null : null;
   const tradePayRows = supplier.isOwnCompany ? [] : await prisma.tradePay.findMany({ where: { supplierId: supplier.id, hourlyRate: { not: null } }, orderBy: { trade: "asc" }, select: { id: true, trade: true, hourlyRate: true } });
   const root = supplier.parent ?? { id: supplier.id, name: supplier.name };
   const siblings = supplier.parent ? supplier.parent.subsidiaries : supplier.subsidiaries;
@@ -238,6 +242,27 @@ export default async function SupplierDetailPage({
             label: "Documents",
             content: (
               <div className="space-y-6">
+                {supplier.isOwnCompany && (
+                  <section id="print">
+                    <h2 className="mb-1 text-sm font-semibold text-primary">Letterhead and time card</h2>
+                    <p className="mb-3 text-sm text-muted">What prints as this company: its blank letterhead for letters and NOCs, and its blank time card with the template the cards are drawn from.</p>
+                    <PrintSet
+                      supplierId={supplier.id}
+                      canEdit={canEdit}
+                      hasLetterhead={attachments.some((a) => a.docType === "LETTERHEAD")}
+                      hasCard={attachments.some((a) => a.docType === "TIME_CARD")}
+                      spec={readTimeCardSpec(supplier.timeCardSpec ?? sharedCardSpec)}
+                      ownTemplate={!!supplier.timeCardSpec}
+                      margins={
+                        <div>
+                          <h3 className="mb-1 text-sm font-semibold text-primary">Letterhead margins</h3>
+                          <p className="mb-3 text-sm text-muted">Set how much space to keep clear for the header and footer when letters are printed on this letterhead.</p>
+                          <LetterheadMargins letterheadUrl={`/api/suppliers/${supplier.id}/letterhead`} topMm={supplier.letterheadTopMm ?? 65} bottomMm={supplier.letterheadBottomMm ?? 35} action={saveSupplierLetterheadMarginsAction} extraFields={{ supplierId: supplier.id }} />
+                        </div>
+                      }
+                    />
+                  </section>
+                )}
                 <section>
                   <h2 className="mb-1 text-sm font-semibold text-primary">Workmen compensation</h2>
                   <WorkmenCompSection supplierId={supplier.id} policies={wcPolicies} workers={workerCount} canEdit={can(subjectOf(user), "partners.suppliers", "edit")} />
@@ -287,7 +312,7 @@ export default async function SupplierDetailPage({
                     showLogo={supplier.isOwnCompany}
                   />
                 </section>
-                {attachments.some((a) => a.docType === "LETTERHEAD") && (
+                {attachments.some((a) => a.docType === "LETTERHEAD") && !supplier.isOwnCompany && (
                   <section>
                     <h2 className="mb-1 text-sm font-semibold text-primary">Letterhead margins</h2>
                     <p className="mb-3 text-sm text-muted">NOCs for workers this supplier sponsors are printed on its letterhead. Set how much space to keep clear for the header and footer.</p>

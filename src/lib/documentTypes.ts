@@ -45,6 +45,7 @@ const COMPANY: Seed[] = [
   ["SPONSORSHIP_AGREEMENT", "Sponsorship agreement", true],
   ["CONTRACT", "Contract", true],
   ["LETTERHEAD", "Letterhead (blank, for letters)", false],
+  ["TIME_CARD", "Time card (the blank pre-printed card, JPG or PNG)", false],
   ["OTHER", "Other", true],
 ];
 

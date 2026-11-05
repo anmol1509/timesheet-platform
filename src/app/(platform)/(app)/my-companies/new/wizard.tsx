@@ -479,7 +479,7 @@ export function CompanyWizard({ companyTypes, requiredCompanyTypes, partyTypes, 
           <details id="company-separate-uploads" className="rounded-card border border-default">
             <summary className="cursor-pointer px-4 py-2.5 text-sm font-medium text-secondary">Upload documents individually</summary>
             <div className="grid grid-cols-1 gap-4 border-t border-default p-4 sm:grid-cols-2">
-              {companyTypes.filter((t) => t.key !== "OTHER" && t.key !== "LETTERHEAD").map((t) => (
+              {companyTypes.filter((t) => t.key !== "OTHER" && t.key !== "LETTERHEAD" && t.key !== "TIME_CARD").map((t) => (
                 <UploadSlot
                   key={t.key}
                   id={`company-doc-${t.key}`}

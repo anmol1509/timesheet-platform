@@ -11,14 +11,13 @@ import { CARD_HEIGHT_MM, CARD_WIDTH_MM, GEOM, dayOfRow, type CardWorker, type Ti
  */
 export type TimeCardMode = "artwork" | "overprint" | "template";
 
+/** One card: the worker, the picture of their company's card (artwork mode) and the header of their company (template mode). */
+export type TimeCardPage = { worker: CardWorker; artwork: string | null; letterhead: Letterhead; spec: TimeCardSpec };
+
 export type TimeCardPdfInput = {
   mode: TimeCardMode;
   paper: "card" | "a4";
-  spec: TimeCardSpec;
-  /** The uploaded artwork as a data URI (PNG or JPEG), for the artwork mode. */
-  artwork: string | null;
-  letterhead: Letterhead;
-  workers: CardWorker[];
+  pages: TimeCardPage[];
 };
 
 const PT = 72 / 25.4;
@@ -36,7 +35,7 @@ const fit = (s: string, widthMm: number, fontPt: number) => {
   return s.length > max ? `${s.slice(0, Math.max(1, max - 1))}…` : s;
 };
 
-function Values({ w, offset }: { w: CardWorker; offset: { x: number; y: number } }) {
+function Values({ w, offset, spec }: { w: CardWorker; offset: { x: number; y: number }; spec: TimeCardSpec }) {
   const g = GEOM;
   const F = 9;
   const header: [keyof typeof g.fields, string][] = [["name", w.name], ["date", w.monthLabel], ["profession", w.profession], ["site", w.site], ["wage", w.wage], ["no", w.idNo]];
@@ -53,7 +52,7 @@ function Values({ w, offset }: { w: CardWorker; offset: { x: number; y: number }
     <View style={{ position: "absolute", left: 0, top: 0, width: pt(CARD_WIDTH_MM), height: pt(CARD_HEIGHT_MM) }}>
       {header.map(([k, v]) =>
         v ? (
-          <Text key={k} style={{ ...box(g.fields[k].x + 1 + offset.x, g.fields[k].line - 4.3 + offset.y, g.fields[k].w - 1, 4.2), fontSize: F, fontFamily: "Helvetica-Bold", color: BLACK }}>
+          <Text key={k} style={{ ...box(g.fields[k].x + 1 + offset.x, g.fields[k].line - 3.6 + offset.y, g.fields[k].w - 1, 4.2), fontSize: F, fontFamily: "Helvetica-Bold", color: BLACK }}>
             {fit(v, g.fields[k].w - 1, F)}
           </Text>
         ) : null
@@ -68,8 +67,8 @@ function Values({ w, offset }: { w: CardWorker; offset: { x: number; y: number }
           const y1 = g.grid.rowsY[row + 1];
           return (
             <View key={`${half}-${row}`}>
-              {cell(c[1], c[2], y0, y1, d.in, false, 7.5)}
-              {cell(c[2], c[3], y0, y1, d.out, false, 7.5)}
+              {cell(c[1], c[2], y0, y1, d.shift ? spec.shiftIn : "", false, 7.5)}
+              {cell(c[2], c[3], y0, y1, d.shift ? spec.shiftOut : "", false, 7.5)}
               {cell(c[3], c[4], y0, y1, d.overtime, false, 8)}
               {cell(c[4], c[5], y0, y1, d.total, d.total === "A" || d.total === "OFF", 8)}
             </View>
@@ -176,7 +175,8 @@ function Template({ spec, letterhead }: { spec: TimeCardSpec; letterhead: Letter
             <View style={{ ...box(x0, y0, x1 - x0, y1 - y0), borderWidth: 0.8, borderColor: ink }} />
             {line(x0, t.headY[1], t.cols[4] - x0, 0.4, ink)}
             {t.rowsY.slice(1, 5).map((y) => line(x0, y, t.cols[4] - x0, 0.4, ink))}
-            {[t.cols[1], t.cols[2], t.cols[3], t.cols[4]].map((x) => line(x, t.headY[1], 0.4, y1 - t.headY[1], ink, { key: x }))}
+            {[t.cols[1], t.cols[2], t.cols[4]].map((x) => line(x, t.headY[0], 0.4, y1 - t.headY[0], ink, { key: x }))}
+            {line(t.cols[3], t.headY[1], 0.4, y1 - t.headY[1], ink)}
             {head(spec.totals.header, t.cols[2], t.cols[4], y0, t.headY[1])}
             {labels.map((txt, i) => (
               <View key={i} style={{ ...box(x0 + 1, t.rowsY[i], t.cols[1] - x0 - 1, t.rowsY[i + 1] - t.rowsY[i]), justifyContent: "center" }}>
@@ -203,8 +203,8 @@ function Template({ spec, letterhead }: { spec: TimeCardSpec; letterhead: Letter
 function CornerMarks() {
   const m = (x: number, y: number, i: number) => (
     <View key={i}>
-      {line(x - 3, y, 6, 0.2, "#9CA3AF")}
-      {line(x, y - 3, 0.2, 6, "#9CA3AF")}
+      {line(x - 4, y - 0.15, 8, 0.3, "#6B7280")}
+      {line(x - 0.15, y - 4, 0.3, 8, "#6B7280")}
     </View>
   );
   const o = A4_ORIGIN_MM;
@@ -212,23 +212,21 @@ function CornerMarks() {
 }
 
 export async function generateTimeCardPdf(input: TimeCardPdfInput): Promise<Buffer> {
-  const { mode, paper, spec } = input;
+  const { mode, paper } = input;
   const size = paper === "a4" ? "A4" : ([pt(CARD_WIDTH_MM), pt(CARD_HEIGHT_MM)] as [number, number]);
   const origin = paper === "a4" ? A4_ORIGIN_MM : 0;
-  // The printer offset only matters when printing on the physical card.
-  const offset = mode === "overprint" ? { x: spec.offsetXmm, y: spec.offsetYmm } : { x: 0, y: 0 };
   const doc = (
     <Document title="Time cards">
-      {input.workers.map((w, i) => (
+      {input.pages.map(({ worker: w, artwork, letterhead, spec }, i) => (
         <Page key={i} size={size} style={{ backgroundColor: "#FFFFFF", fontFamily: "Helvetica" }}>
           {paper === "a4" && mode === "overprint" && <CornerMarks />}
           <View style={{ position: "absolute", left: pt(origin), top: pt(origin), width: pt(CARD_WIDTH_MM), height: pt(CARD_HEIGHT_MM) }}>
-            {mode === "artwork" && input.artwork && (
+            {mode === "artwork" && artwork && (
               // eslint-disable-next-line jsx-a11y/alt-text -- react-pdf Image has no alt prop
-              <Image src={input.artwork} style={{ position: "absolute", left: 0, top: 0, width: pt(CARD_WIDTH_MM), height: pt(CARD_HEIGHT_MM) }} />
+              <Image src={artwork} style={{ position: "absolute", left: 0, top: 0, width: pt(CARD_WIDTH_MM), height: pt(CARD_HEIGHT_MM) }} />
             )}
-            {mode === "template" && <Template spec={spec} letterhead={input.letterhead} />}
-            <Values w={w} offset={offset} />
+            {mode === "template" && <Template spec={spec} letterhead={letterhead} />}
+            <Values w={w} spec={spec} offset={mode === "overprint" ? { x: spec.offsetXmm, y: spec.offsetYmm } : { x: 0, y: 0 }} />
           </View>
         </Page>
       ))}

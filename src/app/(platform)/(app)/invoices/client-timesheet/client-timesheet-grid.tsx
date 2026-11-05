@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { useRouter } from "next/navigation";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { PrintTimeCards, type TimeCardPrintInfo } from "./print-time-cards";
 import {
   deleteTimesheetEntryAction,
   updateDailyHoursAction,
@@ -50,7 +51,7 @@ function badgeClass(value: string) {
   return "bg-[var(--success-soft)] text-[var(--success)]"; // numeric hours entered
 }
 
-export function ClientTimesheetGrid({ month, entries, showClient = false }: { month: string; entries: Entry[]; showClient?: boolean }) {
+export function ClientTimesheetGrid({ month, entries, showClient = false, timeCard }: { month: string; entries: Entry[]; showClient?: boolean; timeCard?: TimeCardPrintInfo }) {
   const canDelete = useCanHere("delete");
   const canEditLocked = useCanHere("approve");
   const router = useRouter();
@@ -199,8 +200,14 @@ export function ClientTimesheetGrid({ month, entries, showClient = false }: { mo
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-muted">{entries.length} {entries.length === 1 ? "row" : "rows"} · {month}{showClient ? ` · ${new Set(entries.map((e) => e.clientName)).size} clients` : ""}</p>
-        {selected.size > 0 && (
         <div className="flex flex-wrap items-center gap-2">
+        {timeCard && (() => {
+          const chosen = selected.size > 0 ? entries.filter((e) => selected.has(e.id)) : entries;
+          const idNos = [...new Set(chosen.map((e) => e.employeeIdNo))];
+          return <PrintTimeCards month={month} idNos={idNos} info={timeCard} count={idNos.length} />;
+        })()}
+        {selected.size > 0 && (
+        <>
           <button
             type="button"
             disabled={selected.size === 0 || pending}
@@ -233,8 +240,9 @@ export function ClientTimesheetGrid({ month, entries, showClient = false }: { mo
           >
             Edit Common Details ({selected.size})
           </button>
-        </div>
+        </>
         )}
+        </div>
       </div>
       {statusResult && <p className="text-xs text-muted">{statusResult}</p>}
 

@@ -10,6 +10,8 @@ import { CompanyForm } from "./company-form";
 import { WpsForm } from "./wps-form";
 import { PrintPreview } from "./print-preview";
 import { LettersSection } from "./letters-section";
+import { TimeCardSection } from "./time-card-section";
+import { readTimeCardSpec } from "@/lib/timeCard";
 import { removeLogoAction, uploadLogoAction } from "./actions";
 
 export const metadata = { title: "Company profile" };
@@ -38,6 +40,12 @@ export default async function CompanyProfilePage({
     return <p className="text-sm text-muted">No company to edit: this account isn&apos;t attached to a company.</p>;
   }
 
+
+  // Each own company keeps its own blank time card under its Documents; list who has one.
+  const ownCompanies = await prisma.supplier.findMany({ where: { branchId: branch.id, isOwnCompany: true }, select: { id: true, name: true, fullName: true, timeCardSpec: true }, orderBy: { name: "asc" } });
+  const filesOnFile = ownCompanies.length ? await prisma.attachment.findMany({ where: { entityType: "SUPPLIER", entityId: { in: ownCompanies.map((c) => c.id) }, docType: { in: ["TIME_CARD", "LETTERHEAD"] } }, select: { entityId: true, docType: true } }) : [];
+  const has = (id: string, type: string) => filesOnFile.some((f) => f.entityId === id && f.docType === type);
+  const companyCards = ownCompanies.map((c) => ({ id: c.id, name: c.fullName || c.name, hasCard: has(c.id, "TIME_CARD"), hasLetterhead: has(c.id, "LETTERHEAD"), ownTemplate: !!c.timeCardSpec }));
 
   const todo = [
     { label: "Company TRN", done: !!branch.trn },
@@ -118,6 +126,14 @@ export default async function CompanyProfilePage({
           plain={marginsOfBranch(branch).plain}
           letterhead={{ top: branch.letterheadTopMm, bottom: branch.letterheadBottomMm, ...marginsOfBranch(branch).letterheadSides }}
         />
+      </section>
+
+      <section className="card space-y-4 p-5">
+        <div>
+          <h2 className="text-base font-semibold text-primary">Time card</h2>
+          <p className="mt-1 text-xs text-muted">Print each worker&apos;s time card (11.5 × 22 cm) with their own company&apos;s name and logo: on top of that company&apos;s uploaded card, onto the physical card, or as a card the app draws from the template below. Printing is from Client Timesheet.</p>
+        </div>
+        <TimeCardSection key={branch.id} branchId={branch.id} artworkUrl={branch.timeCardImageId ? `/api/images/${branch.timeCardImageId}` : null} spec={readTimeCardSpec(branch.timeCardSpec)} custom={!!branch.timeCardSpec} companies={companyCards} />
       </section>
 
       <section className="card space-y-4 p-5">

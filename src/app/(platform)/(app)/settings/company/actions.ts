@@ -8,6 +8,8 @@ import { requireAdmin } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { deleteImage, storeImage } from "@/lib/storedImage";
 import { assertContactsValid, contactsError } from "@/lib/validators";
+import { timeCardSpecFromForm } from "@/lib/timeCard";
+import { Prisma } from "@/generated/prisma/client";
 
 type State = { error: string | null; ok?: boolean };
 
@@ -137,6 +139,7 @@ const LETTER_IMAGES = {
   signature: { column: "signatureId", label: "signature" },
   stamp: { column: "stampId", label: "stamp" },
   letterhead: { column: "letterheadImageId", label: "letterhead" },
+  timecard: { column: "timeCardImageId", label: "time card" },
 } as const;
 type LetterImageKind = keyof typeof LETTER_IMAGES;
 const asKind = (v: FormDataEntryValue | null): LetterImageKind | null => (typeof v === "string" && v in LETTER_IMAGES ? (v as LetterImageKind) : null);
@@ -224,3 +227,26 @@ export async function savePlainMarginsAction(formData: FormData) {
   revalidatePath("/letters");
   return { error: null };
 }
+
+// ---- Time card: the editable template and the printer offset --------------------------
+export async function saveTimeCardSpecAction(_prev: State, formData: FormData): Promise<State> {
+  { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
+  const { admin, branch } = await loadEditableBranch(String(formData.get("branchId") || ""));
+  if (!branch) return { error: "You can't edit that company." };
+  const spec = timeCardSpecFromForm(formData);
+  const before = branch.timeCardSpec ? "(custom)" : "(default)";
+  await prisma.branch.update({ where: { id: branch.id }, data: { timeCardSpec: spec } });
+  await logAudit({ entityType: "BRANCH", entityId: branch.id, action: "UPDATE", before: { timeCard: before }, after: { timeCard: "(template saved)" }, userId: admin.id, userName: admin.name, branchId: branch.id });
+  revalidatePath("/settings/company");
+  return { error: null, ok: true };
+}
+
+export async function resetTimeCardSpecAction(formData: FormData) {
+  const { admin, branch } = await loadEditableBranch(String(formData.get("branchId") || ""));
+  if (!branch) return { error: "You can't edit that company." };
+  await prisma.branch.update({ where: { id: branch.id }, data: { timeCardSpec: Prisma.DbNull } });
+  await logAudit({ entityType: "BRANCH", entityId: branch.id, action: "UPDATE", before: { timeCard: "(custom)" }, after: { timeCard: "(default)" }, userId: admin.id, userName: admin.name, branchId: branch.id });
+  revalidatePath("/settings/company");
+  return { error: null };
+}
+

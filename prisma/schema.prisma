@@ -416,6 +416,8 @@ model Supplier {
   logoId                String?
   // Timesheets generated for this supplier, and the ones issued on this own company's header.
   issuedSheets          GeneratedSheet[] @relation("SheetIssuer")
+  // This own company's own time card template (texts, colours, shift, printer offset); blank = the company profile's shared one.
+  timeCardSpec          Json?
   // Pay rules for this company's own workers. Absences up to absentFreeDays a
   // month cost nothing; every day after that deducts absentDeductionPerDay.
   // Gas is charged per day from the worker's check-in date, up to a monthly cap.

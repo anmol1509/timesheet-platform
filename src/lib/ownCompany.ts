@@ -4,7 +4,7 @@
  * Every other company file (trade licence, tenancy, establishment card, contracts...) opens only for admins and roles
  * granted My Companies.
  */
-const OPEN_TO_ALL = new Set(["LETTERHEAD", "WORKMEN_COMPENSATION_INSURANCE", "WORKMEN_COMPENSATION"]);
+const OPEN_TO_ALL = new Set(["LETTERHEAD", "TIME_CARD", "WORKMEN_COMPENSATION_INSURANCE", "WORKMEN_COMPENSATION"]);
 
 export function ownDocIsConfidential(docType: string): boolean {
   return !OPEN_TO_ALL.has(docType);
