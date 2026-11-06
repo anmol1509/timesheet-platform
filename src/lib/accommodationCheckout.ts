@@ -57,3 +57,22 @@ export async function settleDueCheckouts(branchId: string | null, actor?: { id: 
   }
   return done;
 }
+
+/**
+ * Unlinks check-ins still pointing at a bed that nobody holds.
+ *
+ * A bed can be linked to only one check-in, so a leftover link (the bed was freed but the worker's check-in kept it,
+ * e.g. when someone was taken off the books) makes the next assignment of that bed fail. Call this with the bed
+ * known to be vacant, inside the same transaction that assigns it. Workers still on the books go back to waiting for
+ * a bed; others are closed.
+ */
+export async function releaseStaleBedLinks(tx: Tx, bedId: string): Promise<number> {
+  const stale = await tx.campCheckIn.findMany({ where: { bedId }, select: { id: true, employee: { select: { active: true } } } });
+  for (const c of stale) {
+    await tx.campCheckIn.update({
+      where: { id: c.id },
+      data: c.employee.active ? { bedId: null, status: "CHECKED_IN" } : { bedId: null, status: "CHECKED_OUT", checkOutDate: new Date(), checkOutReason: "Bed already released" },
+    });
+  }
+  return stale.length;
+}

@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/PageHeader";
+import { effectiveLicenceExpiry, licenceFileExpiries } from "@/lib/supplierLicence";
 import Link from "next/link";
 import { Truck, Plus } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -84,7 +85,8 @@ export default async function SuppliersPage({
     orderBy: { name: "asc" },
   });
 
-  const rows = suppliers.map((s) => ({
+  const licenceFiles = await licenceFileExpiries(suppliers.map((s) => s.id));
+  const rows = suppliers.map((s0) => { const s = { ...s0, tradeLicenseExpiry: effectiveLicenceExpiry(s0.tradeLicenseExpiry, licenceFiles.get(s0.id)) }; return {
     id: s.id,
     name: s.name,
     code: s.code,
@@ -107,7 +109,7 @@ export default async function SuppliersPage({
     category: s.category,
     approvals: { project: s.approvalStatus, labour: s.labourApprovalStatus, invoicing: s.invoiceApprovalStatus },
     ...outstanding(s.bills),
-  }));
+  }; });
 
   return (
     <div className="space-y-5">

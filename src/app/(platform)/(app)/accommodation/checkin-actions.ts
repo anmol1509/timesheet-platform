@@ -1,6 +1,6 @@
 "use server";
 
-import { settleDueCheckouts } from "@/lib/accommodationCheckout";
+import { releaseStaleBedLinks, settleDueCheckouts } from "@/lib/accommodationCheckout";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch, requireWrite, subjectOf } from "@/lib/auth";
@@ -352,11 +352,8 @@ export async function allocateBedAction(formData: FormData) {
   if (bed.employeeId && bed.employeeId !== checkIn.employeeId) return; // occupied by someone else
   // A bed can be linked to only one check-in. One that looks free but is still linked to another worker's check-in
   // (left over from an earlier move) used to reach the database and fail with an error page: say who holds it instead.
-  const holder = await prisma.campCheckIn.findFirst({
-    where: { bedId, id: { not: checkInId } },
-    select: { employee: { select: { name: true } } },
-  });
-  if (holder) return failBack(`That bed is still linked to ${holder.employee.name}'s check-in. Free it from that check-in first, or choose another bed.`);
+  // A bed nobody holds that is still linked to another check-in is a leftover link: it is released inside the
+  // transaction below. Only a bed somebody does hold (the check above) is refused.
 
   const employeeId = checkIn.employeeId;
 
@@ -373,6 +370,7 @@ export async function allocateBedAction(formData: FormData) {
         }
       }
 
+      if (!bed.employeeId) await releaseStaleBedLinks(tx, bedId);
       await tx.bed.update({ where: { id: bedId }, data: { employeeId } });
       await tx.accommodationHistory.create({
         data: {

@@ -1,7 +1,7 @@
 "use server";
 
 import { isUniqueClash } from "@/lib/uniqueGuard";
-import { checkOutNow, settleDueCheckouts } from "@/lib/accommodationCheckout";
+import { checkOutNow, releaseStaleBedLinks, settleDueCheckouts } from "@/lib/accommodationCheckout";
 import { checkoutKind, checkoutProblem, dayKey } from "@/lib/checkoutReasons";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -535,6 +535,8 @@ export async function placeWorkerInBedAction(employeeId: string, bedId: string):
 
   try {
     await prisma.$transaction(async (tx) => {
+      // The bed is vacant (checked above), so any check-in still linked to it is left over and would block this.
+      await releaseStaleBedLinks(tx, bedId);
       const current = await tx.bed.findUnique({ where: { employeeId } });
       if (current) {
         await tx.bed.update({ where: { id: current.id }, data: { employeeId: null } });

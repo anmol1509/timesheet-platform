@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { effectiveLicenceExpiry, licenceFileExpiries } from "@/lib/supplierLicence";
 import { branchWhere } from "@/lib/branch";
 import { daysUntil, COMPLIANCE_FIELDS } from "@/lib/compliance";
 import { EXPIRY_FIELD } from "@/lib/importer/documentRead";
@@ -133,8 +134,8 @@ export async function getRenewals(
   // A supplier's trade licence lapsing stops them being used at all, so it
   // belongs beside their insurance rather than only colouring a row on the
   // supplier list.
-  const licensed = await prisma.supplier.findMany({
-    where: { ...branchWhere(branchId), tradeLicenseExpiry: { not: null } },
+  const supplierRows = await prisma.supplier.findMany({
+    where: branchWhere(branchId),
     select: {
       id: true,
       name: true,
@@ -142,6 +143,11 @@ export async function getRenewals(
       _count: { select: { employees: true } },
     },
   });
+  // The renewed licence file counts too: uploading it used to leave the supplier's own date, and this queue, stale.
+  const fileExpiry = await licenceFileExpiries(supplierRows.map((r) => r.id));
+  const licensed = supplierRows
+    .map((r) => ({ ...r, tradeLicenseExpiry: effectiveLicenceExpiry(r.tradeLicenseExpiry, fileExpiry.get(r.id)) }))
+    .filter((r) => r.tradeLicenseExpiry);
 
   for (const supplier of licensed) {
     const days = daysUntil(supplier.tradeLicenseExpiry!);
