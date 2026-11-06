@@ -119,7 +119,7 @@ export async function loadPayDays(runId: string, employeeId: string, opts: { can
     pattern: { dailyHours, weeklyOffDays: e.project?.weeklyOffDays ?? [0] },
     hourly, hourlyRate: pf.hourlyRate, fixedPaid: hourly ? 0 : round2(num(line.basic) + num(line.allowances)),
     paysOvertime: hourly ? false : pf.paysOvertime, otMultiplier: pf.otMultiplier, restMultiplier: pf.otMultiplier, otFixedRate: pf.otHourlyRate, otHourlyBase: basic / 30 / dailyHours,
-    absence: { freeDays: absence.absenceFreeDays ?? 2, perDay: absenceDayAmount(absence as PayProfile, { basic, monthlyFixed, daysInMonth, hourlyDayPay: hourly ? pf.hourlyRate * dailyHours : undefined }), dailyRate: monthlyFixed / 30, capTotal: absenceCap(absence as PayProfile, hourly ? num(line.basic) : round2(num(line.basic) + num(line.allowances))) },
+    absence: { freeDays: absence.absenceFreeDays ?? 2, perDay: absenceDayAmount(absence as PayProfile, { basic, monthlyFixed, daysInMonth, hourlyDayPay: hourly ? pf.hourlyRate * dailyHours : undefined }), dailyRate: monthlyFixed / 30, extra: absence.absenceExtraAfterDays != null ? { afterDays: absence.absenceExtraAfterDays, percent: absence.absenceExtraPercent ?? 100 } : null, capTotal: absenceCap(absence as PayProfile, hourly ? num(line.basic) : round2(num(line.basic) + num(line.allowances))) },
     shortfall: hourly ? undefined : { rule: shortRule, rates: { hourly: basic / 30 / dailyHours, day: monthlyFixed / 30 } },
   });
 

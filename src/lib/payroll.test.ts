@@ -233,3 +233,16 @@ test("typed deductions are kept while they add up, and folded into one when the 
   assert.equal(reconcileDeductionItems(items, 0, null), null);
   assert.equal(reconcileDeductionItems(null, 30, "x"), null);
 });
+
+test("absence extra charge: after the set number of days off, each further day costs extra", () => {
+  // RKG monthly-salary rule: no free days, a day off costs a day's pay, and every day off beyond the 2nd costs one extra day.
+  const rule = { ...base, absenceFreeDays: 0, absencePerDay: 30, absenceMethod: "PERCENT" as const, absencePercent: 100, absenceBase: "GROSS" as const, absenceExtraAfterDays: 2, absenceExtraPercent: 100 };
+  const day = round2(2000 / 30);
+  const cut = (n: number) => computePay(rule, { ...facts, absentDays: n }).deductions;
+  assert.equal(cut(1), day);
+  assert.equal(cut(2), round2(2 * day));
+  assert.equal(cut(3), round2(3 * day + day));
+  assert.equal(cut(4), round2(4 * day + 2 * day));
+  // no extra when it is switched off
+  assert.equal(computePay({ ...rule, absenceExtraAfterDays: null }, { ...facts, absentDays: 4 }).deductions, round2(4 * day));
+});

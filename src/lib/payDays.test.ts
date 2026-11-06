@@ -99,3 +99,10 @@ test("a monthly limit on absence deductions stops the days adding up to more tha
   assert.deepEqual(capped.rows.slice(0, 4).map((r) => r.deduction), [60, 60, 30, 0]);
 });
 
+
+test("absence extra charge: the day-by-day rows charge the extra from the day past the set number", () => {
+  const d = days(30, { 2: { status: "ABSENT", ts: "A" }, 3: { status: "ABSENT", ts: "A" }, 4: { status: "ABSENT", ts: "A" }, 6: { status: "ABSENT", ts: "A" } });
+  const { rows, totals } = buildDays(plan({ days: d, absence: { freeDays: 0, perDay: 66.67, dailyRate: 66.67, extra: { afterDays: 2, percent: 100 } } }));
+  assert.deepEqual(rows.filter((r) => r.kind === "absent").map((r) => r.deduction), [66.67, 66.67, 133.34, 133.34]);
+  assert.equal(totals.deduction, 400.02);
+});

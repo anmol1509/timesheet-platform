@@ -237,6 +237,8 @@ export async function updateSupplierCompanyAction(formData: FormData): Promise<{
           absentMethodHourly: formData.get("absentMethodHourly") === "PERCENT" ? "PERCENT" : "FIXED",
           absentPercent: Math.min(500, Math.max(0, numberOrNull(formData.get("absentPercent")) ?? 100)),
           absentPercentHourly: Math.min(500, Math.max(0, numberOrNull(formData.get("absentPercentHourly")) ?? 100)),
+          absentExtraAfterDays: (() => { const c = numberOrNull(formData.get("absentExtraAfterDays")); return c !== null && c >= 0 ? Math.min(31, Math.trunc(c)) : null; })(),
+          absentExtraPercent: Math.min(1000, Math.max(0, numberOrNull(formData.get("absentExtraPercent")) ?? 100)),
           absentBase: formData.get("absentBase") === "BASIC" ? "BASIC" : "GROSS",
           absentDivisor: formData.get("absentDivisor") === "MONTH" ? "MONTH" : "30",
           absentCapPercent: (() => { const c = numberOrNull(formData.get("absentCapPercent")); return c !== null && c > 0 ? Math.min(100, c) : null; })(),

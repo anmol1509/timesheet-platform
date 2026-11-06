@@ -51,6 +51,8 @@ type Supplier = {
   absentBase: string;
   absentDivisor: string;
   absentCapPercent: number | null;
+  absentExtraAfterDays: number | null;
+  absentExtraPercent: number;
   gasPerDay: number;
   gasMonthlyCap: number;
   shortfallMode: string;
@@ -216,6 +218,8 @@ export function SupplierCompanyForm({
             base={supplier.absentBase}
             divisor={supplier.absentDivisor}
             capPercent={supplier.absentCapPercent}
+            extraAfterDays={supplier.absentExtraAfterDays}
+            extraPercent={supplier.absentExtraPercent}
           />
           <Field label="Timesheet gas charge per day from check-in (AED)">
             <NumberInput name="gasPerDay" defaultValue={supplier.gasPerDay} min={0} step={0.01} className="w-full" />
