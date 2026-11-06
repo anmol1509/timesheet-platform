@@ -94,6 +94,14 @@ export function splitAtWorkerTable(html: string): { before: string; after: strin
   return { before: html.slice(0, m.index), after: html.slice(m.index + m[0].length), hasTable: true };
 }
 
+/** The letter without its details box (Supplied to / Project / Number of workers): the table(s) before the worker list. */
+export function withoutSummaryTable(html: string): string {
+  const { before, after, hasTable } = splitAtWorkerTable(html);
+  if (!hasTable) return html;
+  const marker = html.slice(before.length, html.length - after.length);
+  return before.replace(/<table[\s\S]*?<\/table>/gi, "") + marker + after;
+}
+
 /** A blank whose question asks for a date ("From date", "Date of incident"), so it can offer a calendar instead of a text box. */
 export const isDateAsk = (label: string) => /\bdate\b/i.test(label) && !/\b(update|dated?\s+by)\b/i.test(label);
 

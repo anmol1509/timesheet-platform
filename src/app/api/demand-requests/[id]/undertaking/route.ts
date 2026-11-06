@@ -1,6 +1,6 @@
 import { findDocEdit } from "@/lib/documentEdit";
 import { NextResponse } from "next/server";
-import { templateHtml } from "@/lib/letterHtml";
+import { templateHtml, withoutSummaryTable } from "@/lib/letterHtml";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
@@ -81,7 +81,7 @@ export async function GET(
   const { sections, missingLetterheads } = await buildLetterSections({
     workers: workers.map(toLetterWorker),
     // Wording and heading changed for this undertaking alone win over the template's.
-    templateHtml: edit?.html ?? templateHtml(template),
+    templateHtml: url.searchParams.get("summary") === "0" ? withoutSummaryTable(edit?.html ?? templateHtml(template)) : (edit?.html ?? templateHtml(template)),
     onLetterhead,
     fallbackIssuerName: demand.branch.name,
     issuedBy: "COMPANY",

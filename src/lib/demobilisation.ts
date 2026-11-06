@@ -134,6 +134,11 @@ export async function demobiliseEmployees(
           data: { checkOutDate: opts.date, checkOutReason: "Demobilised" },
         });
       }
+      // Their check-in must let go of the bed too, or the bed looks free but cannot be given to anyone else.
+      await prisma.campCheckIn.updateMany({
+        where: { employeeId: employee.id, status: { in: ["CHECKED_IN", "BED_ALLOCATED"] } },
+        data: { status: "CHECKED_OUT", checkOutDate: opts.date, checkOutReason: "Demobilised", bedId: null },
+      });
       result.bedsReleased++;
     }
 

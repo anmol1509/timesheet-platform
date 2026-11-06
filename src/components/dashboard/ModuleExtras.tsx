@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { effectiveLicenceExpiry, licenceFileExpiries } from "@/lib/supplierLicence";
 import { AlertTriangle, BedDouble, Car, ClipboardList, FolderKanban, Receipt, Users } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { branchWhere } from "@/lib/branch";
@@ -318,17 +319,23 @@ export async function TimesheetsExtras({ branchId }: { branchId: string | null }
 
 // -------------------------------------------------------------- partners
 
+/** Active suppliers whose trade licence runs out by `soon`, counting a renewed licence file as well as the supplier's own date. */
+async function licencesDue(bw: ReturnType<typeof branchWhere>, soon: Date) {
+  const rows = await prisma.supplier.findMany({ where: { ...bw, status: "ACTIVE" }, select: { id: true, name: true, tradeLicenseExpiry: true } });
+  const files = await licenceFileExpiries(rows.map((r) => r.id));
+  return rows
+    .map((r) => ({ ...r, tradeLicenseExpiry: effectiveLicenceExpiry(r.tradeLicenseExpiry, files.get(r.id)) }))
+    .filter((r) => r.tradeLicenseExpiry && r.tradeLicenseExpiry.getTime() <= soon.getTime())
+    .sort((a, b) => a.tradeLicenseExpiry!.getTime() - b.tradeLicenseExpiry!.getTime())
+    .slice(0, 8);
+}
+
 export async function PartnersExtras({ branchId, canBills }: { branchId: string | null; canBills: boolean }) {
   const bw = branchWhere(branchId);
   const now = new Date();
   const soon = new Date(now.getTime() + 60 * DAY);
   const [licences, money] = await Promise.all([
-    prisma.supplier.findMany({
-      where: { ...bw, status: "ACTIVE", tradeLicenseExpiry: { not: null, lte: soon } },
-      select: { id: true, name: true, tradeLicenseExpiry: true },
-      orderBy: { tradeLicenseExpiry: "asc" },
-      take: 8,
-    }),
+    licencesDue(bw, soon),
     canBills ? getMoneySnapshot(branchId, { invoices: false, bills: true }) : null,
   ]);
   return (
