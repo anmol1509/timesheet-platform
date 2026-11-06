@@ -437,6 +437,10 @@ model Supplier {
   absentPercentHourly   Decimal      @default(100) @db.Decimal(6, 2)
   // The most the absence deductions may take in a month, as a percentage of the worker's pay for it; blank = no limit.
   absentCapPercent      Decimal?     @db.Decimal(5, 2)
+  // Monthly-salary workers only: once they have taken more than absentExtraAfterDays days off in a month, each further day off
+  // costs an extra absentExtraPercent of what that day would normally cost (100 = twice). Blank = no extra charge.
+  absentExtraAfterDays  Int?
+  absentExtraPercent    Decimal      @default(100) @db.Decimal(6, 2)
   gasPerDay             Decimal      @default(1) @db.Decimal(6, 2)
   gasMonthlyCap         Decimal      @default(30) @db.Decimal(8, 2)
   // Short hours on a present working day: OFF (no deduction), HOURLY (the missing hours at the

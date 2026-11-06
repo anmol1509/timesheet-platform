@@ -60,6 +60,7 @@ type SupplierAbsence = {
   absentFreeDays: number; absentFreeDaysHourly: number; absentDeductionPerDay: unknown; absentDeductionPerDayHourly: unknown;
   absentMethod: string; absentMethodHourly: string; absentPercent: unknown; absentPercentHourly: unknown;
   absentBase: string; absentDivisor: string; absentCapPercent: unknown;
+  absentExtraAfterDays: number | null; absentExtraPercent: unknown;
 };
 
 /**
@@ -67,7 +68,7 @@ type SupplierAbsence = {
  * days, method (a fixed AED amount per day, or a percentage of the day's pay) and amount; the pay the day is worked out from
  * and the monthly limit are shared. A worker with no company gets the old defaults (2 free days, AED 30 a day).
  */
-export function absenceRuleFields(s: SupplierAbsence | null | undefined, hourly: boolean): Pick<PayProfile, "absenceFreeDays" | "absencePerDay" | "absenceMethod" | "absencePercent" | "absenceBase" | "absenceDivisor" | "absenceCapPercent"> {
+export function absenceRuleFields(s: SupplierAbsence | null | undefined, hourly: boolean): Pick<PayProfile, "absenceFreeDays" | "absencePerDay" | "absenceMethod" | "absencePercent" | "absenceBase" | "absenceDivisor" | "absenceCapPercent" | "absenceExtraAfterDays" | "absenceExtraPercent"> {
   if (!s) return { absenceFreeDays: 2, absencePerDay: 30 };
   const cap = num(s.absentCapPercent as { toString(): string } | null);
   return {
@@ -78,12 +79,15 @@ export function absenceRuleFields(s: SupplierAbsence | null | undefined, hourly:
     absenceBase: s.absentBase === "BASIC" ? "BASIC" : "GROSS",
     absenceDivisor: s.absentDivisor === "MONTH" ? "MONTH" : "30",
     absenceCapPercent: cap > 0 ? cap : null,
+    // The extra charge is for monthly-salary workers only: an hourly worker is simply not paid for a day not worked.
+    absenceExtraAfterDays: hourly ? null : s.absentExtraAfterDays,
+    absenceExtraPercent: num(s.absentExtraPercent as { toString(): string } | null) || 100,
   };
 }
 
 /** What is read about an employee to work out their pay; shared with the day-by-day view. */
 export const PAY_EMPLOYEE_SELECT = {
-    id: true, name: true, employeeIdNo: true, active: true, joinDate: true, exitDate: true, projectId: true, supplierId: true, trade: true, position: true, payOverride: true, project: { select: { weeklyOffDays: true } }, supplier: { select: { absentFreeDays: true, absentFreeDaysHourly: true, absentDeductionPerDay: true, absentMethod: true, absentPercent: true, absentBase: true, absentDivisor: true, absentDeductionPerDayHourly: true, absentMethodHourly: true, absentPercentHourly: true, absentCapPercent: true, gasPerDay: true, gasMonthlyCap: true, shortfallMode: true, shortfallHalfDayUnder: true } }, gasWaived: true, siteArrivalDate: true, skills: { select: { rate: true, isActive: true, skill: { select: { name: true } } } }, payStructure: true, basicSalary: true, housingAllowance: true, foodAllowance: true, transportAllowance: true,
+    id: true, name: true, employeeIdNo: true, active: true, joinDate: true, exitDate: true, projectId: true, supplierId: true, trade: true, position: true, payOverride: true, project: { select: { weeklyOffDays: true } }, supplier: { select: { absentFreeDays: true, absentFreeDaysHourly: true, absentDeductionPerDay: true, absentMethod: true, absentPercent: true, absentBase: true, absentDivisor: true, absentDeductionPerDayHourly: true, absentMethodHourly: true, absentPercentHourly: true, absentCapPercent: true, absentExtraAfterDays: true, absentExtraPercent: true, gasPerDay: true, gasMonthlyCap: true, shortfallMode: true, shortfallHalfDayUnder: true } }, gasWaived: true, siteArrivalDate: true, skills: { select: { rate: true, isActive: true, skill: { select: { name: true } } } }, payStructure: true, basicSalary: true, housingAllowance: true, foodAllowance: true, transportAllowance: true,
     otherAllowance: true, flatMonthlyRate: true, hourlyRate: true, paysOvertime: true, otMultiplier: true, otHourlyRate: true, dailyHours: true, restOtMultiplier: true, molPersonCode: true, wpsPaymentMode: true, wpsBankName: true,
     wpsRoutingCode: true, wpsIban: true, wpsAccountNumber: true,
   } as const;

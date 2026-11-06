@@ -1,0 +1,2 @@
+ALTER TABLE "Supplier" ADD COLUMN "absentExtraAfterDays" INTEGER,
+ADD COLUMN "absentExtraPercent" DECIMAL(6,2) NOT NULL DEFAULT 100;

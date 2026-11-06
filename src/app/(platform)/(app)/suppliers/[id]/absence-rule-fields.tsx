@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { NumberInput } from "@/components/ui/NumberInput";
 import { Select } from "@/components/ui/Select";
-import { absenceCap, absenceDayAmount, round2, type PayProfile } from "@/lib/payroll";
+import { absenceCap, absenceDayAmount, extraDaysCharged, round2, type PayProfile } from "@/lib/payroll";
 
 export type AbsenceValues = {
   freeDays: number;
@@ -18,6 +18,8 @@ type Props = {
   base: string;
   divisor: string;
   capPercent: number | null;
+  extraAfterDays: number | null;
+  extraPercent: number;
 };
 
 const aed = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -37,23 +39,28 @@ export function AbsenceRuleFields(p: Props) {
   const [divisor, setDivisor] = useState(p.divisor === "MONTH" ? "MONTH" : "30");
   const [cap, setCap] = useState<string>(p.capPercent ? String(p.capPercent) : "");
   const capNum = Number(cap) > 0 ? Number(cap) : null;
+  const [extraAfter, setExtraAfter] = useState<string>(p.extraAfterDays == null ? "" : String(p.extraAfterDays));
+  const [extraPct, setExtraPct] = useState<number>(p.extraPercent);
+  const extraOn = extraAfter !== "" && Number(extraAfter) >= 0;
 
-  const profile = (v: AbsenceValues): PayProfile => ({
+  const profile = (v: AbsenceValues, hourlyW = false): PayProfile => ({
     payStructure: "ITEMISED", basic: 1500, housing: 500, food: 0, transport: 0, other: 0, flat: 0, hourly: 10, paysOvertime: false, otMultiplier: 1.25,
     absenceFreeDays: v.freeDays, absencePerDay: v.perDay, absenceMethod: v.method === "PERCENT" ? "PERCENT" : "FIXED", absencePercent: v.percent,
     absenceBase: base === "BASIC" ? "BASIC" : "GROSS", absenceDivisor: divisor === "MONTH" ? "MONTH" : "30", absenceCapPercent: capNum,
+    absenceExtraAfterDays: !hourlyW && extraOn ? Number(extraAfter) : null, absenceExtraPercent: extraPct,
   });
 
   // Examples: a monthly worker on 1,500 basic + 500 allowances with 5 days off in a 31-day month; an hourly worker on AED 10 an hour, 8 hours a day, 5 days off.
   const example = (v: AbsenceValues, hourlyWorker: boolean) => {
     const charged = Math.max(0, 5 - v.freeDays);
-    const pr = profile(v);
+    const pr = profile(v, hourlyWorker);
     const day = absenceDayAmount(pr, hourlyWorker ? { basic: 0, monthlyFixed: 0, daysInMonth: 31, hourlyDayPay: 80 } : { basic: 1500, monthlyFixed: 2000, daysInMonth: 31 });
     const pay = hourlyWorker ? 208 * 10 : 2000;
     const cappedTo = absenceCap(pr, pay);
-    const raw = round2(charged * day);
+    const extraDays = hourlyWorker ? 0 : extraDaysCharged(pr, 5, charged);
+    const raw = round2(charged * day + extraDays * day * (extraPct / 100));
     const who = hourlyWorker ? "an hourly worker on AED 10 an hour (8-hour days)" : "a worker on AED 1,500 basic + AED 500 allowances";
-    return `Example: ${who}, 5 days off in a month: ${v.freeDays} free, ${charged} charged at AED ${aed(day)} = AED ${aed(raw)}${cappedTo !== null && raw > cappedTo ? `, held to the limit of AED ${aed(cappedTo)}` : ""}.`;
+    return `Example: ${who}, 5 days off in a month: ${v.freeDays} free, ${charged} charged at AED ${aed(day)}${extraDays ? `, ${extraDays} of them with an extra ${extraPct}%` : ""} = AED ${aed(raw)}${cappedTo !== null && raw > cappedTo ? `, held to the limit of AED ${aed(cappedTo)}` : ""}.`;
   };
 
   const group = (title: string, v: AbsenceValues, set: (v: AbsenceValues) => void, names: { free: string; method: string; perDay: string; percent: string }, hourlyWorker: boolean) => (
@@ -96,6 +103,19 @@ export function AbsenceRuleFields(p: Props) {
       )}
       {!hourlyWorker && v.method !== "PERCENT" && (<><input type="hidden" name="absentBase" value={base} /><input type="hidden" name="absentDivisor" value={divisor} /></>)}
       {hourlyWorker && v.method === "PERCENT" && <p className="text-xs text-muted">For an hourly worker a day&apos;s pay is their standard hours in a day times their hourly rate.</p>}
+      {!hourlyWorker && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="block">
+            <span className="mb-1 block text-xs font-medium text-muted">Extra charge once more than this many days are off (blank = none)</span>
+            <NumberInput name="absentExtraAfterDays" value={extraAfter} onChange={(n) => setExtraAfter(n === "" ? "" : String(n))} min={0} max={31} step={1} className="w-full" />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-xs font-medium text-muted">Each further day off costs an extra (percent of its charge, 100 = double)</span>
+            <NumberInput name="absentExtraPercent" value={extraPct} onChange={(n) => setExtraPct(n === "" ? 0 : n)} min={0} max={1000} step={0.01} className="w-full" disabled={!extraOn} />
+            {!extraOn && <input type="hidden" name="absentExtraPercent" value={extraPct} />}
+          </label>
+        </div>
+      )}
       <p className="text-xs text-muted">{example(v, hourlyWorker)}</p>
     </div>
   );

@@ -390,6 +390,8 @@ export default async function SupplierDetailPage({
                   absentBase: supplier.absentBase,
                   absentDivisor: supplier.absentDivisor,
                   absentCapPercent: supplier.absentCapPercent == null ? null : Number(supplier.absentCapPercent),
+                  absentExtraAfterDays: supplier.absentExtraAfterDays,
+                  absentExtraPercent: Number(supplier.absentExtraPercent),
                   gasPerDay: Number(supplier.gasPerDay),
                   gasMonthlyCap: Number(supplier.gasMonthlyCap),
                   shortfallMode: supplier.shortfallMode,

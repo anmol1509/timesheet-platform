@@ -30,7 +30,7 @@ export type DayPlan = {
   otFixedRate?: number;
   /** basic ÷ 30 ÷ standard hours */
   otHourlyBase: number;
-  absence: { freeDays: number; perDay: number | null; dailyRate: number; /** The most absence deductions may take this month (AED); none when absent. */ capTotal?: number | null };
+  absence: { freeDays: number; perDay: number | null; dailyRate: number; /** The most absence deductions may take this month (AED); none when absent. */ capTotal?: number | null; /** Days off beyond this many each cost an extra percent of the day's charge. */ extra?: { afterDays: number; percent: number } | null };
   shortfall?: { rule: ShortfallRule; rates: ShortfallRates };
 };
 
@@ -82,7 +82,8 @@ export function buildDays(plan: DayPlan): { rows: DayRow[]; totals: { salary: nu
     let deduction = 0;
     if (kind === "absent") {
       absentSeen += 1;
-      const wanted = plan.absence.perDay == null ? round2(plan.absence.dailyRate) : absentSeen > plan.absence.freeDays ? round2(plan.absence.perDay) : 0;
+      const extra = plan.absence.extra && absentSeen > plan.absence.extra.afterDays ? 1 + plan.absence.extra.percent / 100 : 1;
+      const wanted = plan.absence.perDay == null ? round2(plan.absence.dailyRate) : absentSeen > plan.absence.freeDays ? round2(plan.absence.perDay * extra) : 0;
       deduction = round2(Math.min(wanted, capLeft));
       capLeft = round2(capLeft - deduction);
     }

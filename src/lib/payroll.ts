@@ -54,6 +54,9 @@ export type PayProfile = {
   absenceDivisor?: "30" | "MONTH";
   /** The most the absence deductions may take, as a percentage of the month's pay. */
   absenceCapPercent?: number | null;
+  /** Once more than this many days are taken off in a month, each further day costs an extra absenceExtraPercent of its normal charge. */
+  absenceExtraAfterDays?: number | null;
+  absenceExtraPercent?: number;
 };
 
 export type PayPeriodFacts = {
@@ -90,12 +93,19 @@ export function absenceDayAmount(p: PayProfile, ctx: { basic: number; monthlyFix
 export const absenceCap = (p: PayProfile, pay: number): number | null =>
   p.absenceCapPercent && p.absenceCapPercent > 0 ? round2((pay * p.absenceCapPercent) / 100) : null;
 
+/** How many of the charged days fall beyond the point where the extra charge starts (days off after the first absenceExtraAfterDays). */
+export function extraDaysCharged(p: PayProfile, absent: number, charged: number): number {
+  if (p.absenceExtraAfterDays == null || p.absenceExtraAfterDays < 0) return 0;
+  return Math.min(charged, Math.max(0, absent - p.absenceExtraAfterDays));
+}
+
 /** What the supplier's absence rule takes off for the absences in the period (before any monthly limit). */
 function absencePenalty(p: PayProfile, f: PayPeriodFacts, ctx: { basic: number; monthlyFixed: number; hourlyDayPay?: number } = { basic: 0, monthlyFixed: 0 }) {
   const absent = Math.max(0, f.absentDays);
   if (p.absencePerDay == null) return round2((ctx.monthlyFixed / 30) * absent);
   const charged = Math.max(0, absent - (p.absenceFreeDays ?? 0));
-  return round2(charged * absenceDayAmount(p, { ...ctx, daysInMonth: f.daysInMonth }));
+  const day = absenceDayAmount(p, { ...ctx, daysInMonth: f.daysInMonth });
+  return round2(charged * day + extraDaysCharged(p, absent, charged) * day * Math.max(0, p.absenceExtraPercent ?? 100) / 100);
 }
 
 /**
