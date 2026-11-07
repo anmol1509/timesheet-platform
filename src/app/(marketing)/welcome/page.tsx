@@ -152,7 +152,7 @@ const DIVE_SHOTS = {
 
 const STEP_SHOTS = [
   shot("sol-ts-client.webp", 1400, 800, "A September client timesheet with each worker's daily hours."),
-  shot("wps-approval.webp", 694, 390, "The approvals inbox with a payroll run waiting for a decision."),
+  shot("wps-approval.webp", 656, 391, "The approvals inbox with a payroll run waiting for a decision."),
   shot("wps-run-main.webp", 1400, 1085, "An approved payroll run with the process steps and the bank file button."),
 ] as const;
 

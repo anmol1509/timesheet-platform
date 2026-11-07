@@ -70,7 +70,7 @@ export default function TimesheetSoftwarePage() {
           lead: "The same consolidated workbook your sites already send, a site with no system, or a subcontractor's own submission: one system reconciles all three.",
           steps: [
             { title: "Hours come in", body: "Upload the monthly Excel workbook as it is and every month tab is detected, enter hours by hand for a site with no system, or let a subcontractor submit through their own portal.", image: shot("sol-ts-client.webp", 1400, 800, "The client timesheet with each worker's daily hours for September and a status per worker.") },
-            { title: "Approve in one queue", body: "Overtime over threshold, missing days and rest-day work are flagged as hours arrive, so supervisors sign off in one place and every change lands in the audit log.", image: shot("wps-approval.webp", 694, 390, "The approvals inbox showing an item waiting for a second person, with Send back and Approve buttons.") },
+            { title: "Approve in one queue", body: "Overtime over threshold, missing days and rest-day work are flagged as hours arrive, so supervisors sign off in one place and every change lands in the audit log.", image: shot("wps-approval.webp", 656, 391, "The approvals inbox showing an item waiting for a second person, with Send back and Approve buttons.") },
             { title: "Hours flow on", body: "The same approved hours become client invoices at each client's own rate and the input to payroll, so nothing is retyped between teams.", image: shot("sol-billing.webp", 1400, 940, "The billing overview showing invoices issued from approved hours, grouped by client."), top: true },
           ],
         },

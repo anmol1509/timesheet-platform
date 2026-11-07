@@ -116,7 +116,7 @@ export default function WpsPayrollSoftwarePage() {
               <Peek top {...shot("wps-run-main.webp", 1400, 1085, "The payroll run page showing total net pay, employee count and the review, submit, approve and pay steps.")} />
             </Step>
             <Step n={3} title="A second person approves" body="Above your approval limit the person who created the run can't approve it. The decision, and every change behind it, is written to the audit log.">
-              <Peek {...shot("wps-approval.webp", 694, 390, "The approvals inbox showing a payroll run of AED 64,752.97 waiting for a decision, with Send back and Approve buttons.")} />
+              <Peek {...shot("wps-approval.webp", 656, 391, "The approvals inbox showing a payroll run of AED 64,752.97 waiting for a decision, with Send back and Approve buttons.")} />
             </Step>
             <Step n={4} title="Export the bank file" body="Download the WPS salary file built from each employee's stored bank and routing details, upload it to your bank or exchange house, then mark the run paid.">
               <CodeCard inStep label="The first lines of a WPS SIF file: employee records followed by one control record with the count and total." lines={[...SIF_LINES]} />
@@ -151,7 +151,7 @@ export default function WpsPayrollSoftwarePage() {
             </Tile>
             <Tile span2 icon={<ShieldCheck size={22} aria-hidden />} title="Approval limits and a four-eyes check before money moves" body="A payroll run above a set threshold can't be approved by the same person who created it, so a payroll error is caught before the transfer, not after.">
               <T.Media>
-                <T.Img fade {...shot("wps-approval.webp", 694, 390, "The approvals inbox with a payroll run waiting for a second person's decision.")} />
+                <T.Img fade {...shot("wps-approval.webp", 656, 391, "The approvals inbox with a payroll run waiting for a second person's decision.")} />
               </T.Media>
             </Tile>
             <Tile span2 icon={<History size={22} aria-hidden />} title="A complete audit trail" body="Approval thresholds, a four-eyes rule above them, and a record of who changed what and when.">
