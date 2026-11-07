@@ -56,13 +56,14 @@ export const articleLd = (p: {
   description: string;
   datePublished: string;
   dateModified?: string;
+  image?: string;
 }): Thing => ({
   "@type": "Article",
   "@id": `${SITE_URL}${p.path}#article`,
   mainEntityOfPage: `${SITE_URL}${p.path}`,
   headline: p.title,
   description: p.description,
-  image: `${SITE_URL}/brand-assets/og-default.png`,
+  image: `${SITE_URL}${p.image ?? "/brand-assets/og-default.png"}`,
   datePublished: p.datePublished,
   dateModified: p.dateModified ?? p.datePublished,
   inLanguage: "en-AE",
