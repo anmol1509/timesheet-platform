@@ -19,6 +19,34 @@ export type Post = {
 // one line added here plus its own folder.
 export const POSTS: readonly Post[] = [
   {
+    slug: "reconcile-site-attendance-timesheets-invoices",
+    cluster: "timesheets-billing",
+    title: "How to Reconcile Site Attendance, Timesheets and Client Invoices",
+    description: "A practical month-end process for matching worker attendance, approved client hours and labour supply invoices, with a worked example and checklist.",
+    date: "2026-11-07",
+  },
+  {
+    slug: "manpower-contract-profitability-billable-hours",
+    cluster: "timesheets-billing",
+    title: "Why a Manpower Contract Can Lose Money Despite a High Hourly Rate",
+    description: "See how billable hours, labour costs and markup affect a manpower contract's result, using a simple worked example and review checklist.",
+    date: "2026-11-07",
+  },
+  {
+    slug: "manpower-deployment-handover-checklist",
+    cluster: "operations-buying",
+    title: "Manpower Deployment Handover Checklist for UAE Sites",
+    description: "A practical checklist for moving workers from an approved request to site arrival, including project details, documents, transport and accommodation.",
+    date: "2026-11-07",
+  },
+  {
+    slug: "payroll-month-end-checklist-labour-suppliers",
+    cluster: "payroll-wps",
+    title: "Payroll Month-End Checklist for UAE Labour Suppliers",
+    description: "A step-by-step payroll checklist covering attendance, changes, approvals, WPS file checks and payment follow-up for manpower suppliers.",
+    date: "2026-11-07",
+  },
+  {
     slug: "employee-time-recording-software-uae",
     cluster: "timesheets-billing",
     seoTitle: "Employee Time Recording Software: UAE Buyer's Guide",

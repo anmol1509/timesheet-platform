@@ -84,7 +84,7 @@ export default async function CostsPage() {
             </tbody>
           </table>
         </div>
-        <p className="mt-3 text-xs text-muted">Amber means look soon (database over 70% of its disk, connections over 70%, AI credits under 20% left, Claude spend over 60% of what they pay, email over 80% of the plan). Red is worse. A figure that says "Not read yet" appears once you press Refresh usage and the customer's app is on the latest version. Supabase CPU and memory, and Vercel usage, aren't read yet: they need an access key from each service.</p>
+        <p className="mt-3 text-xs text-muted">Amber means look soon (database over 70% of its disk, connections over 70%, AI credits under 20% left, Claude spend over 60% of what they pay, email over 80% of the plan). Red is worse. A figure that says &quot;Not read yet&quot; appears once you press Refresh usage and the customer&rsquo;s app is on the latest version. Supabase CPU and memory, and Vercel usage, aren&rsquo;t read yet: they need an access key from each service.</p>
       </section>
 
       <section className="card p-4">
