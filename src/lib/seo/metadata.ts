@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { OG_IMAGE, SITE_NAME } from "./site";
+import { ARTICLE_COVERS } from "@/lib/blogCovers";
 
 const MAX_TITLE = 60;
 const MAX_DESCRIPTION = 158;
@@ -29,7 +30,9 @@ export function finishMetadata(meta: Metadata): Metadata {
 
   const url = typeof meta.alternates?.canonical === "string" ? meta.alternates.canonical : undefined;
   const isArticle = !!url && /\/(blog|guides)\/[^/]+$/.test(url);
-  const image = { url: OG_IMAGE, width: 1200, height: 630, alt: `${SITE_NAME}: timesheets, WPS payroll and billing for UAE manpower suppliers` };
+  const blogSlug = url?.match(/\/blog\/([^/?#]+)$/)?.[1];
+  const cover = blogSlug ? ARTICLE_COVERS[blogSlug] : undefined;
+  const image = { url: cover?.src ?? OG_IMAGE, width: 1200, height: 630, alt: cover?.alt ?? `${SITE_NAME}: timesheets, WPS payroll and billing for UAE manpower suppliers` };
 
   return {
     ...meta,
@@ -46,6 +49,6 @@ export function finishMetadata(meta: Metadata): Metadata {
       type: (isArticle ? "article" : "website") as "article" | "website",
       images: [image],
     } as Metadata["openGraph"],
-    twitter: { card: "summary_large_image", title: plain, description, images: [OG_IMAGE] },
+    twitter: { card: "summary_large_image", title: plain, description, images: [image.url] },
   };
 }

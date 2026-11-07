@@ -1,6 +1,7 @@
 import { INDUSTRIES_DATA } from "@/app/(marketing)/industries/industries-data";
 import { SOLUTIONS_DATA } from "@/app/(marketing)/solutions/solutions-data";
 import { POSTS } from "@/app/(marketing)/blog/posts";
+import { ARTICLE_COVERS } from "@/lib/blogCovers";
 import type { IconName } from "./content-blocks";
 
 export type MenuItem = { label: string; href: string; description?: string; icon?: IconName; /** A small badge such as "New". */ tag?: string };
@@ -175,7 +176,7 @@ const RESOURCES: NavEntry = {
     href: `/blog/${NEWEST.slug}`,
     title: NEWEST.title,
     meta: new Date(NEWEST.date).toLocaleDateString("en-AE", { day: "numeric", month: "long", year: "numeric" }),
-    cover: COVER_BY_CLUSTER[NEWEST.cluster],
+    cover: ARTICLE_COVERS[NEWEST.slug]?.src ?? COVER_BY_CLUSTER[NEWEST.cluster],
     alt: "",
   },
   viewAll: { label: "Browse all guides", href: "/guides" },
