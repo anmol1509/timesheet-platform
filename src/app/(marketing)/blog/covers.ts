@@ -1,5 +1,7 @@
 import { ACCENTS } from "@/app/(marketing)/welcome/showcase/showcase";
 import type { ClusterSlug } from "./clusters";
+import type { Post } from "./posts";
+import { ARTICLE_COVERS } from "@/lib/blogCovers";
 
 /** Generated cover (1200x630) and accent colour for each topic cluster; the file sits in /public/brand-assets. */
 export const COVERS: Record<ClusterSlug, { src: string; alt: string; accent: (typeof ACCENTS)[keyof typeof ACCENTS] }> = {
@@ -8,3 +10,10 @@ export const COVERS: Record<ClusterSlug, { src: string; alt: string; accent: (ty
   "timesheets-billing": { src: "/brand-assets/blog-cover-timesheets.webp", alt: "A monthly timesheet calendar with a bar chart and a tick", accent: ACCENTS.blue },
   "operations-buying": { src: "/brand-assets/blog-cover-operations.webp", alt: "Two camp buildings and a staff bus", accent: ACCENTS.orange },
 };
+
+/** Article-specific editorial photography; the cluster cover remains a fallback for new posts. */
+
+
+export function coverFor(post: Pick<Post, "slug" | "cluster">) {
+  return { ...COVERS[post.cluster], ...ARTICLE_COVERS[post.slug] };
+}

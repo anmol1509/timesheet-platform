@@ -1,5 +1,5 @@
 import { clusterOf } from "./clusters";
-import { COVERS } from "./covers";
+import { coverFor } from "./covers";
 import type { Post } from "./posts";
 import b from "./blog.module.css";
 
@@ -9,7 +9,7 @@ export function formatDate(iso: string) {
 
 /** A post card with its topic cover. The accent is set on the card so each topic keeps its colour. */
 export function BlogCard({ post, eager }: { post: Post; eager?: boolean }) {
-  const cover = COVERS[post.cluster];
+  const cover = coverFor(post);
   const a = cover.accent;
   return (
     <a

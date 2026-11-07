@@ -4,7 +4,7 @@ import { JsonLd, articleLd } from "@/lib/seo/jsonld";
 import { NextStep, ShowcaseCta, ShowcaseRoot, ToolHero } from "@/app/(marketing)/welcome/showcase/showcase";
 import { BlogCard, formatDate } from "./blog-card";
 import { clusterOf, relatedPosts } from "./clusters";
-import { COVERS } from "./covers";
+import { coverFor } from "./covers";
 import type { Post } from "./posts";
 import b from "./blog.module.css";
 
@@ -68,7 +68,7 @@ const ARTICLE_CLASS = [
 export function PostLayout({ post, children }: { post: Post; children: React.ReactNode }) {
   const cluster = clusterOf(post.cluster);
   const pillar = cluster.pillars[0];
-  const cover = COVERS[post.cluster];
+  const cover = coverFor(post);
   const { nodes, toc, minutes } = prepare(children);
   return (
     <ShowcaseRoot accent={cover.accent}>
@@ -96,6 +96,7 @@ export function PostLayout({ post, children }: { post: Post; children: React.Rea
                 description: post.description,
                 datePublished: post.date,
                 dateModified: post.updated,
+                image: cover.src,
               })}
             />
             {nodes}

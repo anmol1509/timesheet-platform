@@ -5,7 +5,7 @@ import { Band, SectionHead, ShowcaseCta, ShowcaseRoot, ToolHero, ACCENTS } from 
 import { finishMetadata } from "@/lib/seo/metadata";
 import { BlogCard, formatDate } from "./blog-card";
 import { CLUSTERS, clusterOf, postsInCluster } from "./clusters";
-import { COVERS } from "./covers";
+import { COVERS, coverFor } from "./covers";
 import { POSTS } from "./posts";
 import b from "./blog.module.css";
 
@@ -28,7 +28,7 @@ const accentVars = (slug: (typeof CLUSTERS)[number]["slug"]) => {
 
 export default function BlogIndexPage() {
   const latest = [...POSTS].sort((x, y) => y.date.localeCompare(x.date))[0];
-  const cover = COVERS[latest.cluster];
+  const cover = coverFor(latest);
   return (
     <ContentShell>
       <ShowcaseRoot accent={ACCENTS.indigo}>
