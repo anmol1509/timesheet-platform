@@ -36,7 +36,7 @@ export function RatesForm({ rates, customers }: { rates: Rates; customers: { cod
         <Field name="emailMonthlyLimit" label="Emails a month the plan allows" value={rates.emailMonthlyLimit} hint="Resend free is 3,000" />
       </div>
       <div>
-        <p className="mb-2 text-xs font-medium text-muted">Claude price, $ per million tokens (matched by the model's name)</p>
+        <p className="mb-2 text-xs font-medium text-muted">Claude price, $ per million tokens (matched by the model&rsquo;s name)</p>
         <div className="grid gap-3 sm:grid-cols-4">
           {rates.models.map((m) => (
             <div key={m.family} className="space-y-1.5 rounded-lg border border-default p-2.5">

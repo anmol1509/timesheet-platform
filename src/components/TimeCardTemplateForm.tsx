@@ -37,7 +37,7 @@ export function TimeCardTemplateForm({ spec, custom, hidden, save, reset, onSave
   // Tell the screen once per save. The callback is a new function on every render, so it must not be a dependency: that
   // re-ran this on each render and, through the preview's version counter, requested the PDF again and again.
   const saved = useRef(onSaved);
-  saved.current = onSaved;
+  useEffect(() => { saved.current = onSaved; }, [onSaved]);
   useEffect(() => { if (state.ok) saved.current?.(); }, [state]);
   return (
     <form action={action} className="space-y-5">
